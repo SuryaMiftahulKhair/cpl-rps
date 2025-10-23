@@ -1,0 +1,68 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ProgramStudi {
+  id         String     @id @default(uuid())
+  kode       String     @unique
+  nama       String
+  kurikulums Kurikulum[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model Kurikulum {
+  id             String       @id @default(uuid())
+  nama           String
+  tahun          Int
+  programStudiId String
+  programStudi   ProgramStudi @relation(fields: [programStudiId], references: [id])
+  deskripsi      String?
+  versi          String?
+  mataKuliahs    MataKuliah[]
+  visiMisiItems  VisiMisi[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model MataKuliah {
+  id          String   @id @default(uuid())
+  kode        String   @unique
+  nama        String
+  sks         Int
+  semester    Int
+  kurikulumId String?
+  kurikulum   Kurikulum? @relation(fields: [kurikulumId], references: [id])
+  cplItems    CPL[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CPL {
+  id           String   @id @default(uuid())
+  kode         String
+  deskripsi    String
+  level        String? 
+  mataKuliahId String? 
+  mataKuliah   MataKuliah? @relation(fields: [mataKuliahId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([kode])
+}
+
+model VisiMisi {
+  id          String    @id @default(uuid())
+  kurikulumId String
+  kurikulum   Kurikulum @relation(fields: [kurikulumId], references: [id])
+  jenis       String    // "visi" atau "misi"
+  teks        String
+  urutan      Int?      // optional, untuk urutan misi
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
