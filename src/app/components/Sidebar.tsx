@@ -179,14 +179,14 @@ export default function Sidebar() {
                     >
                         <div className="ml-5 space-y-1 border-l-2 border-indigo-100 pl-1">
                             <SubMenuItem 
-                                href="/penilaian/data-kelas" 
-                                isActive={currentPath === "/penilaian/data-kelas"}
+                                href="/penilaian/datakelas" 
+                                isActive={currentPath === "/penilaian/datakelas"}
                             >
                                 Data Kelas
                             </SubMenuItem>
                             <SubMenuItem 
-                                href="/penilaian/data-nilai" 
-                                isActive={currentPath === "/penilaian/data-nilai"}
+                                href="/penilaian/datanilai" 
+                                isActive={currentPath === "/penilaian/datanilai"}
                             >
                                 Data Nilai
                             </SubMenuItem>
