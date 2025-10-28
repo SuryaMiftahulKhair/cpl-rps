@@ -1,5 +1,4 @@
-// VisiMisiCPLPage.tsx (ganti isi file lama dengan ini)
-// tetap "use client"
+// VisiMisiCPLPage.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,33 +6,42 @@ import { Edit, Trash2, ChevronLeft, Plus, Layers } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 import { useParams } from "next/navigation";
 
-type VisiMisiItem = {
+// ====== Types (sesuai schema sekarang) ======
+type CPLItem = {
   id: string;
-  jenis: "visi" | "misi" | string;
-  teks: string;
-  urutan?: number | null;
+  kode: string;
+  deskripsi: string;
+  level: string | null; // aku isi dari piGroup.nama_grup kalau ada
 };
 
-type CPLItem = {
-  id?: string;
-  kode?: string;
-  deskripsi?: string;
-  level?: string | null;
-  mataKuliahKode?: string | null;
-  mataKuliahNama?: string | null;
+type KurikulumDetailFromAPI = {
+  id: number;
+  nama: string;
+  tahun: number;
+  // dari include API: gunakan nama relasi yang cocok dengan schema kamu
+  cpl?: Array<{
+    id: number;
+    kode_cpl: string;
+    deskripsi: string;
+    piGroup?: { id: number; nama_grup: string | null; kode_grup: string | null } | null;
+  }>;
+  // kalau kamu include mataKuliah juga, bisa tambahkan di sini, tapi CPL di schema ada di level kurikulum
 };
 
 export default function VisiMisiCPLPage() {
   const params = useParams();
-  const kurikulumId = (params as any)?.id ?? (params as any)?.kpId ?? null; // fallbacks if route param naming different
+  const kurikulumId =
+    (params as any)?.id ??
+    (params as any)?.kpId ??
+    null; // fallback nama param
 
-  const [visiMisi, setVisiMisi] = useState<VisiMisiItem[]>([]);
-  const [visiText, setVisiText] = useState<string>("");
-  const [misiList, setMisiList] = useState<VisiMisiItem[]>([]);
+  // state UI
+  const [visiText, setVisiText] = useState<string>(""); // placeholder: schema tidak punya Visi/Misi
+  const [misiList, setMisiList] = useState<Array<{ id: string; teks: string; urutan?: number | null }>>([]); // placeholder
   const [cplList, setCplList] = useState<CPLItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("visi_misi");
+  const [activeTab, setActiveTab] = useState<"visi_misi" | "cpl_data">("visi_misi");
 
   useEffect(() => {
     let mounted = true;
@@ -48,54 +56,46 @@ export default function VisiMisiCPLPage() {
       setError(null);
       try {
         const res = await fetch(`/api/kurikulum/${kurikulumId}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        // visiMisiItems from backend, or fallback empty
-        const vm: VisiMisiItem[] = data?.visiMisiItems ?? [];
-        // set visi text (first visi) and misi list (sorted by urutan)
-        const visi = vm.find((i) => i.jenis === "visi")?.teks ?? vm.find((i) => i.jenis?.toLowerCase?.() === "visi")?.teks ?? "";
-        const misi = vm
-          .filter((i) => i.jenis === "misi" || i.jenis?.toLowerCase?.() === "misi")
-          .sort((a, b) => (Number(a.urutan ?? 0) - Number(b.urutan ?? 0)));
-
-        // build CPL list by flattening mataKuliahs -> cplItems
-        const mata = data?.mataKuliahs ?? [];
-        const cpls: CPLItem[] = [];
-        for (const m of mata) {
-          const items = m?.cplItems ?? [];
-          for (const c of items) {
-            cpls.push({
-              id: c.id,
-              kode: c.kode ?? "",
-              deskripsi: c.deskripsi ?? "",
-              level: c.level ?? null,
-              mataKuliahKode: m.kode ?? null,
-              mataKuliahNama: m.nama ?? null,
-            });
-          }
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `HTTP ${res.status}`);
         }
+        const data: KurikulumDetailFromAPI = await res.json();
+
+        // --- VISI/MISI: schema tidak punya modelnya -> tampilkan placeholder agar desain tetap sama
+        const visi = ""; // bisa diisi nanti jika kamu tambahkan tabel/kolom di schema
+        const misi: Array<{ id: string; teks: string; urutan?: number | null }> = [];
+
+        // --- CPL: mapping dari Kurikulum.cpl (sesuai schema kamu)
+        const cpls: CPLItem[] =
+          (data.cpl ?? []).map((c) => ({
+            id: String(c.id),
+            kode: c.kode_cpl,
+            deskripsi: c.deskripsi,
+            level: c.piGroup?.nama_grup ?? null, // tampilkan nama grup sebagai "Kelompok"
+          })) ?? [];
 
         if (!mounted) return;
-        setVisiMisi(vm);
         setVisiText(visi);
         setMisiList(misi);
         setCplList(cpls);
       } catch (err: any) {
         console.error("Failed fetch kurikulum:", err);
         if (!mounted) return;
-        setError("Gagal memuat data Visi/Misi/CPL. Cek koneksi atau konfigurasi API.");
+        setError(
+          err?.message || "Gagal memuat data Visi/Misi/CPL. Cek koneksi atau konfigurasi API."
+        );
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [kurikulumId]);
 
-  // render components below keep exactly the same markup & styling
-  // replace static text with state values, keep layout identical
   return (
     <DashboardLayout>
       {/* Main Title Area */}
@@ -146,13 +146,10 @@ export default function VisiMisiCPLPage() {
       {/* Tab Content */}
       <div className="px-6 lg:px-8 pb-8">
         <div className="bg-gray-50 rounded-b-xl shadow-sm border-x border-b border-gray-200">
-          {/* show a simple loading/error banner (keberadaan elemen ini tidak mengubah layout) */}
           {loading && (
             <div className="p-4 text-sm text-gray-600">Memuat data Visi/Misi & CPL...</div>
           )}
-          {error && (
-            <div className="p-4 text-sm text-red-600 bg-red-50">{error}</div>
-          )}
+          {error && <div className="p-4 text-sm text-red-600 bg-red-50">{error}</div>}
 
           {activeTab === "visi_misi" && (
             <div className="p-6 lg:p-8">
@@ -197,7 +194,10 @@ export default function VisiMisiCPLPage() {
                       <li className="text-gray-600">Belum ada misi yang diisikan.</li>
                     ) : (
                       misiList.map((m, idx) => (
-                        <li key={m.id ?? idx} className="flex gap-3 text-gray-700 leading-relaxed">
+                        <li
+                          key={m.id ?? String(idx)}
+                          className="flex gap-3 text-gray-700 leading-relaxed"
+                        >
                           <span className="flex-shrink-0 w-7 h-7 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-semibold">
                             {m.urutan ?? idx + 1}
                           </span>
@@ -266,7 +266,7 @@ export default function VisiMisiCPLPage() {
                       ) : (
                         cplList.map((item, index) => (
                           <tr
-                            key={item.id ?? `${item.kode}-${index}`}
+                            key={item.id}
                             className={`hover:bg-indigo-50/30 transition-colors duration-150 ${
                               index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
                             }`}
@@ -281,16 +281,13 @@ export default function VisiMisiCPLPage() {
                             </td>
                             <td className="px-4 py-4">
                               <span className="font-bold text-indigo-700">{item.kode}</span>
-                              {item.mataKuliahKode && (
-                                <div className="text-xs text-gray-500">({item.mataKuliahKode})</div>
-                              )}
                             </td>
                             <td className="px-4 py-4 text-gray-700 max-w-md leading-relaxed text-sm">
                               {item.deskripsi}
                             </td>
                             <td className="px-4 py-4 text-gray-600 max-w-md leading-relaxed text-sm">
-                              {/* no LO stored, leave blank or show mata kuliah name */}
-                              {item.mataKuliahNama ?? "-"}
+                              {/* Schema belum punya LO per CPL -> tampilkan '-' */}
+                              -
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex items-center justify-center gap-2">
@@ -316,9 +313,11 @@ export default function VisiMisiCPLPage() {
                 </div>
               </div>
 
-              {/* Pagination atau Info Tambahan */}
+              {/* Footer/Pagination dummy */}
               <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-                <span>Menampilkan {cplList.length} dari {cplList.length} data</span>
+                <span>
+                  Menampilkan {cplList.length} dari {cplList.length} data
+                </span>
                 <div className="flex gap-2">
                   <button className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                     Sebelumnya
