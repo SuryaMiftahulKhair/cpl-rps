@@ -40,12 +40,24 @@ function MatakuliahModal({ isOpen, onClose, onSubmit, submitting = false }: Mata
     e.preventDefault();
     if (submitting) return;
     const fd = new FormData(e.currentTarget);
-    const payload: MatakuliahModalData = {
-      kode_mk: String(fd.get("kodeMatakuliah") ?? "").trim(),
-      nama: String(fd.get("namaMatakuliah") ?? "").trim(),
-      sks: fd.get("jumlahSKS") ?? "0",
-      kurikulum_id: undefined,
-    };
+    const payload: MatakuliahModalData = (() => {
+      const rawSks = fd.get("jumlahSKS");
+      const sksParsed = typeof rawSks === "string" ? (rawSks.trim() === "" ? 0 : Number(rawSks)) : 0;
+
+      const rawSemester = fd.get("semester");
+      const semesterParsed = typeof rawSemester === "string" ? (rawSemester.trim() === "" ? null : Number(rawSemester)) : null;
+
+      const rawSifat = fd.get("sifatMatakuliah");
+      const sifatParsed = typeof rawSifat === "string" ? (rawSifat === "" ? null : rawSifat) : null;
+
+      return {
+        kode_mk: String(fd.get("kodeMatakuliah") ?? "").trim(),
+        nama: String(fd.get("namaMatakuliah") ?? "").trim(),
+        sks: sksParsed,
+        semester: semesterParsed,
+        sifat: sifatParsed,
+      };
+    })();
     if (!payload.kode_mk || !payload.nama) return; // simple guard
     onSubmit(payload);
   };
@@ -89,8 +101,6 @@ function MatakuliahModal({ isOpen, onClose, onSubmit, submitting = false }: Mata
               <option value="">-</option>
               <option value="Wajib">Wajib</option>
               <option value="Pilihan">Pilihan</option>
-              <option value="A">A</option>
-              <option value="B">B</option>
             </select>
           </div>
 
@@ -176,41 +186,41 @@ export default function MatakuliahListPage() {
   }, [kurikulumIdRaw]);
 
 
-  const handleAddMatakuliah = async (payload: MatakuliahModalData) => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      if (!kurikulumId || Number.isNaN(kurikulumId)) throw new Error("kurikulum id tidak valid.");
+const handleAddMatakuliah = async (payload: MatakuliahModalData) => {
+  setSubmitting(true);
+  setError(null);
+  try {
+    if (!kurikulumId || Number.isNaN(kurikulumId)) throw new Error("kurikulum id tidak valid.");
 
-      const body: any = {
-        kode_mk: payload.kode_mk,
-        nama: payload.nama,
-        sks: Number(payload.sks ?? 0),
-      };
-      if (payload.semester != null && payload.semester !== "") body.semester = Number(payload.semester);
-      if (payload.sifat) body.sifat = payload.sifat;
+    // API hanya menerima: kode_mk, nama, sks, pi_group_id
+    const body = {
+      kode_mk: payload.kode_mk,
+      nama: payload.nama,
+      sks: Number(payload.sks ?? 0),
+      pi_group_id: 0, // sementara default 0 (atau nanti pilih dari dropdown PI Group)
+    };
 
-      const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+    const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
-      if (!res.ok) {
-        const txt = await parseApiError(res);
-        throw new Error(txt || `HTTP ${res.status}`);
-      }
-
-      // reload list
-      await loadData();
-      setIsModalOpen(false);
-    } catch (err: any) {
-      console.error("POST matakuliah error:", err);
-      setError(err?.message ?? "Gagal menambahkan mata kuliah.");
-    } finally {
-      setSubmitting(false);
+    if (!res.ok) {
+      const txt = await parseApiError(res);
+      throw new Error(txt || `HTTP ${res.status}`);
     }
-  };
+
+    await loadData();
+    setIsModalOpen(false);
+
+  } catch (err: any) {
+    console.error("POST matakuliah error:", err);
+    setError(err?.message ?? "Gagal menambahkan mata kuliah.");
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   return (
     <DashboardLayout>

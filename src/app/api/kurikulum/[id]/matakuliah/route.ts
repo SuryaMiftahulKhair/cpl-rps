@@ -7,6 +7,8 @@ const createSchema = z.object({
   kode_mk: z.string().min(1, "Kode mata kuliah wajib diisi"),
   nama: z.string().min(1, "Nama mata kuliah wajib diisi"),
   sks: z.number().int().nonnegative("SKS harus >= 0"),
+  // tambah pi_group_id karena di Prisma schema field ini required pada unchecked create
+  pi_group_id: z.number().int().nonnegative().optional(),
   // semester & sifat sengaja TIDAK dimasukkan karena tidak ada di schema
 });
 
@@ -60,6 +62,8 @@ export async function POST(request: Request, { params }: { params: { id?: string
       kode_mk: String(raw.kode_mk ?? raw.kode ?? "").trim(),
       nama: String(raw.nama ?? "").trim(),
       sks: Number(raw.sks ?? 0),
+      // accept either snake_case or camelCase from clients, default to 0 when not provided
+      pi_group_id: Number(raw.pi_group_id ?? raw.piGroupId ?? 0),
     });
 
     if (!parsed.success) {
@@ -82,6 +86,8 @@ export async function POST(request: Request, { params }: { params: { id?: string
         nama: parsed.data.nama,
         sks: parsed.data.sks,
         kurikulum_id: kurikulumId,
+        // pastikan required field pi_group_id disertakan (gunakan 0 jika tidak diberikan)
+        pi_group_id: parsed.data.pi_group_id ?? 0,
       },
     });
 

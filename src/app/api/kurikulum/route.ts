@@ -23,7 +23,6 @@ export async function GET(request: Request) {
       prisma.kurikulum.findMany({
         where: { nama: { contains: q, mode: "insensitive" } },
         include: {
-          programStudi: true,
           mataKuliah: { select: { id: true } },
         },
         skip,
@@ -39,7 +38,6 @@ export async function GET(request: Request) {
       id: k.id,
       nama: k.nama,
       tahun: k.tahun,
-      programStudi: k.programStudi,
       mataKuliahCount: k.mataKuliah.length,
       createdAt: k.createdAt,
       updatedAt: k.updatedAt,
@@ -61,29 +59,13 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = postSchema.parse(body);
 
-    // Ambil ID program studi, atau pakai default
-    let prodiId = parsed.program_studi_id;
-    if (!prodiId) {
-      // Cari Program Studi pertama (default)
-      const prodi = await prisma.programStudi.findFirst();
-      if (!prodi) {
-        return NextResponse.json(
-          { error: "Tidak ada Program Studi tersedia, buat dulu di DB." },
-          { status: 400 }
-        );
-      }
-      prodiId = prodi.id;
-    }
-
     const tahun = parsed.tahun ?? new Date().getFullYear();
 
     const created = await prisma.kurikulum.create({
       data: {
         nama: parsed.nama,
         tahun,
-        program_studi_id: prodiId,
-      },
-      include: { programStudi: true },
+      }
     });
 
     return NextResponse.json(created, { status: 201 });
