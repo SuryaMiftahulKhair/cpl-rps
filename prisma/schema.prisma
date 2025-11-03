@@ -7,62 +7,237 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model ProgramStudi {
-  id         String     @id @default(uuid())
-  kode       String     @unique
-  nama       String
-  kurikulums Kurikulum[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  password_hash String
+  nama          String
+  role          UserRole
+
+  dosenPengampu DosenPengampu[]
+  pesertaKelas  PesertaKelas[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  DOSEN
+  MAHASISWA
 }
 
 model Kurikulum {
-  id             String       @id @default(uuid())
-  nama           String
-  tahun          Int
-  programStudiId String
-  programStudi   ProgramStudi @relation(fields: [programStudiId], references: [id])
-  deskripsi      String?
-  versi          String?
-  mataKuliahs    MataKuliah[]
-  visiMisiItems  VisiMisi[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id        Int      @id @default(autoincrement())
+  nama      String
+  tahun     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mataKuliah    MataKuliah[]
+  cpl           CPL[]
+  piGroups      PIGroup[]
+  AssasmentArea AssasmentArea[]
+
+  @@map("kurikulum")
 }
 
 model MataKuliah {
-  id          String   @id @default(uuid())
-  kode        String   @unique
-  nama        String
-  sks         Int
-  semester    Int
-  kurikulumId String?
-  kurikulum   Kurikulum? @relation(fields: [kurikulumId], references: [id])
-  cplItems    CPL[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id      Int    @id @default(autoincrement())
+  kode_mk String @unique
+  nama    String
+  sks     Int
+
+  kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
+  kurikulum_id Int
+
+  piGroup     PIGroup @relation(fields: [pi_group_id], references: [id])
+  pi_group_id Int
+
+  kelas Kelas[]
+
+  cpl CPL[]
+
+  @@map("mata_kuliah")
+}
+
+model PIGroup {
+  id        Int    @id @default(autoincrement())
+  kode_grup String
+
+  kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
+  kurikulum_id Int
+
+  assasment    AssasmentArea @relation(fields: [assesment_id], references: [id])
+  assesment_id Int
+
+  indicators PerformanceIndicator[]
+  cpl        CPL[]
+  MataKuliah MataKuliah[]
+
+  @@map("pi_group")
+}
+
+model PerformanceIndicator {
+  id        Int    @id @default(autoincrement())
+  deskripsi String @db.Text
+
+  piGroup     PIGroup @relation(fields: [pi_group_id], references: [id])
+  pi_group_id Int
+
+  cpmkMap CPMK_PI_Map[]
+
+  @@map("performance_indicator")
 }
 
 model CPL {
-  id           String   @id @default(uuid())
-  kode         String
-  deskripsi    String
-  level        String? 
-  mataKuliahId String? 
-  mataKuliah   MataKuliah? @relation(fields: [mataKuliahId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id        Int    @id @default(autoincrement())
+  kode_cpl  String
+  deskripsi String @db.Text
 
-  @@index([kode])
+  kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
+  kurikulum_id Int
+
+  piGroup     PIGroup      @relation(fields: [pi_group_id], references: [id])
+  pi_group_id Int
+  MataKuliah  MataKuliah[]
+
+  @@map("cpl")
 }
 
-model VisiMisi {
-  id          String    @id @default(uuid())
-  kurikulumId String
-  kurikulum   Kurikulum @relation(fields: [kurikulumId], references: [id])
-  jenis       String    // "visi" atau "misi"
-  teks        String
-  urutan      Int?      // optional, untuk urutan misi
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model AssasmentArea {
+  id   Int    @id @default(autoincrement())
+  nama String
+
+  kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
+  kurikulum_id Int
+  PIGroup      PIGroup[]
+
+  @@map("assasment_area")
+}
+
+model TahunAjaran {
+  id       Int      @id @default(autoincrement())
+  tahun    String
+  semester Semester
+
+  kelas Kelas[]
+
+  @@unique([tahun, semester])
+  @@map("tahun_ajaran")
+}
+
+enum Semester {
+  GANJIL
+  GENAP
+}
+
+model Kelas {
+  id         Int    @id @default(autoincrement())
+  nama_kelas String
+
+  mataKuliah     MataKuliah @relation(fields: [mata_kuliah_id], references: [id])
+  mata_kuliah_id Int
+
+  tahunAjaran     TahunAjaran @relation(fields: [tahun_ajaran_id], references: [id])
+  tahun_ajaran_id Int
+
+  dosenPengampu DosenPengampu[]
+  pesertaKelas  PesertaKelas[]
+  rps           RPS[]
+  cpmk          CPMK[]
+
+  @@map("kelas")
+}
+
+model DosenPengampu {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  kelas    Kelas @relation(fields: [kelas_id], references: [id])
+  kelas_id Int
+
+  dosen    User @relation(fields: [dosen_id], references: [id])
+  dosen_id Int
+
+  @@unique([kelas_id, dosen_id])
+  @@map("dosen_pengampu")
+}
+
+model PesertaKelas {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  kelas    Kelas @relation(fields: [kelas_id], references: [id])
+  kelas_id Int
+
+  mahasiswa    User @relation(fields: [mahasiswa_id], references: [id])
+  mahasiswa_id Int
+
+  nilai Nilai[]
+
+  @@unique([kelas_id, mahasiswa_id])
+  @@map("peserta_kelas")
+}
+
+model RPS {
+  id        Int     @id @default(autoincrement())
+  file_path String
+  is_locked Boolean @default(false)
+
+  kelas    Kelas @relation(fields: [kelas_id], references: [id])
+  kelas_id Int
+
+  @@map("rps")
+}
+
+model CPMK {
+  id        Int     @id @default(autoincrement())
+  kode_cpmk String
+  is_locked Boolean @default(false)
+
+  kelas    Kelas @relation(fields: [kelas_id], references: [id])
+  kelas_id Int
+
+  komponenPenilaian KomponenPenilaian[]
+
+  piMap CPMK_PI_Map[]
+
+  @@map("cpmk")
+}
+
+model CPMK_PI_Map {
+  cpmk    CPMK                 @relation(fields: [cpmk_id], references: [id])
+  cpmk_id Int
+  pi      PerformanceIndicator @relation(fields: [pi_id], references: [id])
+  pi_id   Int
+
+  @@id([cpmk_id, pi_id])
+  @@map("cpmk_pi_map")
+}
+
+model KomponenPenilaian {
+  id    Int    @id @default(autoincrement())
+  nama  String
+  bobot Float
+
+  cpmk    CPMK @relation(fields: [cpmk_id], references: [id])
+  cpmk_id Int
+
+  nilai Nilai[]
+
+  @@map("komponen_penilaian")
+}
+
+model Nilai {
+  id          Int   @id @default(autoincrement())
+  nilai_angka Float
+
+  pesertaKelas     PesertaKelas @relation(fields: [peserta_kelas_id], references: [id])
+  peserta_kelas_id Int
+
+  komponenPenilaian     KomponenPenilaian @relation(fields: [komponen_penilaian_id], references: [id])
+  komponen_penilaian_id Int
+
+  @@unique([peserta_kelas_id, komponen_penilaian_id])
+  @@map("nilai")
 }
