@@ -66,7 +66,7 @@ function JenisPenilaianModal({ isOpen, onClose, onSubmit }: JPModalProps) {
                         onClick={onClose} 
                         className="text-gray-400 hover:text-gray-600 transition p-1 rounded-full hover:bg-gray-100"
                     >
-                        <X size={20} />
+                        <X size={20} />Lihat
                     </button>
                 </div>
 
