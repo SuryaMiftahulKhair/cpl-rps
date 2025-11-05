@@ -53,9 +53,11 @@ model MataKuliah {
   piGroup     PIGroup @relation(fields: [pi_group_id], references: [id])
   pi_group_id Int
 
+  cpl     CPL @relation(fields: [cpl_id], references: [id])
+  cpl_id Int
+
   kelas Kelas[]
 
-  cpl CPL[]
 
   @@map("mata_kuliah")
 }
@@ -71,10 +73,10 @@ model PIGroup {
   assesment_id Int
 
   indicators PerformanceIndicator[]
-  cpl        CPL[]
   MataKuliah MataKuliah[]
 
   @@map("pi_group")
+  CPL CPL[]
 }
 
 model PerformanceIndicator {
@@ -83,6 +85,9 @@ model PerformanceIndicator {
 
   piGroup     PIGroup @relation(fields: [pi_group_id], references: [id])
   pi_group_id Int
+
+  cpl     CPL @relation(fields: [cpl_id], references: [id])
+  cpl_id Int
 
   cpmkMap CPMK_PI_Map[]
 
@@ -98,10 +103,11 @@ model CPL {
   kurikulum_id Int
 
   piGroup     PIGroup      @relation(fields: [pi_group_id], references: [id])
-  pi_group_id Int
+  pi_group_id Int @unique
   MataKuliah  MataKuliah[]
 
   @@map("cpl")
+  PerformanceIndicator PerformanceIndicator[]
 }
 
 model AssasmentArea {

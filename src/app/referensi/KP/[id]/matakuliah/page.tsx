@@ -1,121 +1,21 @@
-// src/app/referensi/KP/[id]/matakuliah/page.tsx
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { RefreshCw, ChevronLeft, Layers, Star, Eye, Plus, X, Save } from "lucide-react";
+import { RefreshCw, ChevronLeft, Layers, Star, Eye, Plus } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
+import MatakuliahModal, { MatakuliahModalData } from "@/app/components/MatakuliahModal";
 
-// --- Types (sesuai prisma schema mata_kuliah) ---
 interface Matakuliah {
   id: number;
   kode_mk: string;
   nama: string;
   sks: number;
   kurikulum_id?: number;
-  // semester / sifat mungkin tidak ada di DB; tampilkan jika ada
-  semester?: number | null;
-  sifat?: string | null;
+  semester?: number | null; // FE-only
+  sifat?: string | null;    // FE-only
 }
 
-interface MatakuliahModalData {
-  kode_mk: string;
-  nama: string;
-  sks: string | number;
-  semester?: string | number | null;
-  sifat?: string | null;
-}
-
-// ---------------- MatakuliahModal (UI tetap) ----------------
-interface MatakuliahModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: MatakuliahModalData) => void | Promise<void>;
-  submitting?: boolean;
-}
-function MatakuliahModal({ isOpen, onClose, onSubmit, submitting = false }: MatakuliahModalProps) {
-  if (!isOpen) return null;
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (submitting) return;
-    const fd = new FormData(e.currentTarget);
-    const payload: MatakuliahModalData = (() => {
-      const rawSks = fd.get("jumlahSKS");
-      const sksParsed = typeof rawSks === "string" ? (rawSks.trim() === "" ? 0 : Number(rawSks)) : 0;
-
-      const rawSemester = fd.get("semester");
-      const semesterParsed = typeof rawSemester === "string" ? (rawSemester.trim() === "" ? null : Number(rawSemester)) : null;
-
-      const rawSifat = fd.get("sifatMatakuliah");
-      const sifatParsed = typeof rawSifat === "string" ? (rawSifat === "" ? null : rawSifat) : null;
-
-      return {
-        kode_mk: String(fd.get("kodeMatakuliah") ?? "").trim(),
-        nama: String(fd.get("namaMatakuliah") ?? "").trim(),
-        sks: sksParsed,
-        semester: semesterParsed,
-        sifat: sifatParsed,
-      };
-    })();
-    if (!payload.kode_mk || !payload.nama) return; // simple guard
-    onSubmit(payload);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
-        <div className="flex justify-between items-center border-b pb-3 mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Tambah Mata Kuliah</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-full">
-            <X size={20} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="kodeMatakuliah" className="block text-sm font-medium text-gray-700 mb-1">KODE MATAKULIAH</label>
-            <input id="kodeMatakuliah" name="kodeMatakuliah" type="text" required className="w-full px-4 py-2 border rounded-lg" />
-          </div>
-
-          <div>
-            <label htmlFor="namaMatakuliah" className="block text-sm font-medium text-gray-700 mb-1">NAMA MATAKULIAH</label>
-            <input id="namaMatakuliah" name="namaMatakuliah" type="text" required className="w-full px-4 py-2 border rounded-lg" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="semester" className="block text-sm font-medium text-gray-700 mb-1">SEMESTER (opsional)</label>
-              <input id="semester" name="semester" type="number" className="w-full px-4 py-2 border rounded-lg" />
-            </div>
-
-            <div>
-              <label htmlFor="jumlahSKS" className="block text-sm font-medium text-gray-700 mb-1">JUMLAH SKS</label>
-              <input id="jumlahSKS" name="jumlahSKS" type="number" required defaultValue={3} className="w-full px-4 py-2 border rounded-lg" />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="sifatMatakuliah" className="block text-sm font-medium text-gray-700 mb-1">SIFAT (opsional)</label>
-            <select id="sifatMatakuliah" name="sifatMatakuliah" className="w-full px-3 py-2 border rounded-lg">
-              <option value="">-</option>
-              <option value="Wajib">Wajib</option>
-              <option value="Pilihan">Pilihan</option>
-            </select>
-          </div>
-
-          <div className="pt-4">
-            <button type="submit" disabled={submitting} className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-green-500 rounded-lg">
-              <Save size={16} /> {submitting ? "Menyimpan..." : "Simpan"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ---------------- Page Component (fetch real data, no dummy) ----------------
 export default function MatakuliahListPage() {
   const params = useParams();
   const router = useRouter();
@@ -127,7 +27,19 @@ export default function MatakuliahListPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [extras, setExtras] = useState<Record<string, { semester?: number | null; sifat?: string | null }>>({});
+
+  // simpan pilihan FE-only per kode mk
+  const [extras, setExtras] = useState<Record<
+    string,
+    {
+      semester?: number | null;
+      sifat?: string | null;
+      assesment_area_id?: number | null;
+      pi_group_id?: number | null;
+      cpl_id?: number | null;
+      performance_indicator_ids?: number[];
+    }
+  >>({});
 
   const parseApiError = async (res: Response) => {
     try {
@@ -149,13 +61,12 @@ export default function MatakuliahListPage() {
         return;
       }
 
-      const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`);
+      const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`, { cache: "no-store" });
       if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
 
       const json = await res.json();
       const list = Array.isArray(json) ? json : json?.data ?? [];
 
-      // gabungkan extras (semester/sifat) dengan data server berdasarkan kode_mk
       const mapped: Matakuliah[] = list.map((r: any) => {
         const kode = r.kode_mk ?? r.kode ?? "";
         const extra = extras[kode] || {};
@@ -185,42 +96,54 @@ export default function MatakuliahListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kurikulumIdRaw]);
 
+  const handleAddMatakuliah = async (payload: MatakuliahModalData) => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      if (!kurikulumId || Number.isNaN(kurikulumId)) throw new Error("kurikulum id tidak valid.");
+      if (!payload.pi_group_id) throw new Error("PI Group wajib dipilih.");
 
-const handleAddMatakuliah = async (payload: MatakuliahModalData) => {
-  setSubmitting(true);
-  setError(null);
-  try {
-    if (!kurikulumId || Number.isNaN(kurikulumId)) throw new Error("kurikulum id tidak valid.");
+      // API backend kamu saat ini hanya menerima pi_group_id.
+      const body = {
+        kode_mk: payload.kode_mk,
+        nama: payload.nama,
+        sks: Number(payload.sks ?? 0),
+        pi_group_id: Number(payload.pi_group_id),
+      };
 
-    // API hanya menerima: kode_mk, nama, sks, pi_group_id
-    const body = {
-      kode_mk: payload.kode_mk,
-      nama: payload.nama,
-      sks: Number(payload.sks ?? 0),
-      pi_group_id: 0, // sementara default 0 (atau nanti pilih dari dropdown PI Group)
-    };
+      const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+      if (!res.ok) {
+        const txt = await parseApiError(res);
+        throw new Error(txt || `HTTP ${res.status}`);
+      }
 
-    if (!res.ok) {
-      const txt = await parseApiError(res);
-      throw new Error(txt || `HTTP ${res.status}`);
+      // FE-only simpan metadata pilihan user per KODE MK
+      setExtras(prev => ({
+        ...prev,
+        [payload.kode_mk]: {
+          semester: payload.semester ?? null,
+          sifat: payload.sifat ?? null,
+          assesment_area_id: payload.assesment_area_id ?? null,
+          pi_group_id: payload.pi_group_id ?? null,
+          cpl_id: payload.cpl_id ?? null,
+          performance_indicator_ids: payload.performance_indicator_ids ?? [],
+        },
+      }));
+
+      await loadData();
+      setIsModalOpen(false);
+    } catch (err: any) {
+      console.error("POST matakuliah error:", err);
+      setError(err?.message ?? "Gagal menambahkan mata kuliah.");
+    } finally {
+      setSubmitting(false);
     }
-
-    await loadData();
-    setIsModalOpen(false);
-
-  } catch (err: any) {
-    console.error("POST matakuliah error:", err);
-    setError(err?.message ?? "Gagal menambahkan mata kuliah.");
-  } finally {
-    setSubmitting(false);
-  }
-};
+  };
 
   return (
     <DashboardLayout>
@@ -233,13 +156,22 @@ const handleAddMatakuliah = async (payload: MatakuliahModalData) => {
           </h1>
 
           <div className="flex gap-3">
-            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-green-500 text-white px-3 py-2.5 rounded-lg">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 bg-green-500 text-white px-3 py-2.5 rounded-lg"
+            >
               <Plus size={18} /> Tambah
             </button>
-            <button onClick={() => void loadData()} className="flex items-center gap-2 bg-sky-600 text-white px-5 py-2.5 rounded-lg">
+            <button
+              onClick={() => void loadData()}
+              className="flex items-center gap-2 bg-sky-600 text-white px-5 py-2.5 rounded-lg"
+            >
               <RefreshCw size={18} /> Refresh
             </button>
-            <button onClick={() => router.back()} className="flex items-center gap-2 bg-gray-500 text-white px-5 py-2.5 rounded-lg">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 bg-gray-500 text-white px-5 py-2.5 rounded-lg"
+            >
               <ChevronLeft size={18} /> Kembali
             </button>
           </div>
@@ -250,6 +182,7 @@ const handleAddMatakuliah = async (payload: MatakuliahModalData) => {
         <div className="bg-white shadow-xl rounded-xl">
           <h2 className="text-lg font-bold p-6 pb-2 text-gray-800">Data</h2>
 
+          {/* Filter bar (dibiarkan sama) */}
           <div className="p-4 border-b border-gray-100 grid grid-cols-6 gap-4">
             <input type="text" placeholder="ID" className="col-span-1 px-3 py-2 border rounded-lg text-sm" />
             <input type="text" placeholder="Kode" className="col-span-1 px-3 py-2 border rounded-lg text-sm" />
@@ -288,8 +221,12 @@ const handleAddMatakuliah = async (payload: MatakuliahModalData) => {
                       <td className="px-6 py-3 whitespace-nowrap text-gray-600">{item.sks}</td>
                       <td className="px-6 py-3 whitespace-nowrap text-gray-600">{item.sifat ?? "-"}</td>
                       <td className="px-6 py-3 whitespace-nowrap text-center space-x-2">
-                        <button className="p-1.5 text-indigo-600 border border-indigo-200 rounded-full hover:bg-indigo-100 transition" title="Set RPS Utama"><Star size={16} /></button>
-                        <button className="p-1.5 text-red-600 border border-red-200 rounded-full hover:bg-red-100 transition" title="Lihat Detail"><Eye size={16} /></button>
+                        <button className="p-1.5 text-indigo-600 border border-indigo-200 rounded-full hover:bg-indigo-100 transition" title="Set RPS Utama">
+                          <Star size={16} />
+                        </button>
+                        <button className="p-1.5 text-red-600 border border-red-200 rounded-full hover:bg-red-100 transition" title="Lihat Detail">
+                          <Eye size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -299,11 +236,19 @@ const handleAddMatakuliah = async (payload: MatakuliahModalData) => {
           </div>
 
           <div className="p-4 border-t border-gray-100">
-            <p className="text-sm text-gray-600">Menampilkan total <span className="font-semibold">{data.length}</span> Mata Kuliah dalam kurikulum ini.</p>
+            <p className="text-sm text-gray-600">
+              Menampilkan total <span className="font-semibold">{data.length}</span> Mata Kuliah dalam kurikulum ini.
+            </p>
           </div>
         </div>
 
-        <MatakuliahModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleAddMatakuliah} submitting={submitting} />
+        <MatakuliahModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleAddMatakuliah}
+          submitting={submitting}
+          kurikulumId={kurikulumId}
+        />
       </div>
     </DashboardLayout>
   );
