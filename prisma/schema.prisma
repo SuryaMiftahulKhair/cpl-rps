@@ -1,3 +1,5 @@
+// file: prisma/schema.prisma
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -50,14 +52,16 @@ model MataKuliah {
   kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
   kurikulum_id Int
 
-  piGroup     PIGroup @relation(fields: [pi_group_id], references: [id])
-  pi_group_id Int
-
-  cpl     CPL @relation(fields: [cpl_id], references: [id])
-  cpl_id Int
+  // --- DIHAPUS ---
+  // Relasi ini tidak diperlukan. Hubungan ke CPL/PI
+  // terjadi melalui Kelas -> CPMK -> PI -> CPL.
+  // piGroup      PIGroup @relation(fields: [pi_group_id], references: [id])
+  // pi_group_id  Int
+  // cpl          CPL @relation(fields: [cpl_id], references: [id])
+  // cpl_id       Int
+  // --- AKHIR HAPUSAN ---
 
   kelas Kelas[]
-
 
   @@map("mata_kuliah")
 }
@@ -73,20 +77,26 @@ model PIGroup {
   assesment_id Int
 
   indicators PerformanceIndicator[]
-  MataKuliah MataKuliah[]
+
+  // --- DIHAPUS ---
+  // Relasi ini tidak diperlukan.
+  // MataKuliah MataKuliah[]
+  // CPL CPL[]
+  // --- AKHIR HAPUSAN ---
 
   @@map("pi_group")
-  CPL CPL[]
 }
 
 model PerformanceIndicator {
   id        Int    @id @default(autoincrement())
   deskripsi String @db.Text
 
+  // Relasi untuk Organisasi: PI ini milik 1 Grup
   piGroup     PIGroup @relation(fields: [pi_group_id], references: [id])
   pi_group_id Int
 
-  cpl     CPL @relation(fields: [cpl_id], references: [id])
+  // Relasi untuk Kalkulasi: PI ini berkontribusi ke 1 CPL
+  cpl    CPL     @relation(fields: [cpl_id], references: [id])
   cpl_id Int
 
   cpmkMap CPMK_PI_Map[]
@@ -102,12 +112,18 @@ model CPL {
   kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
   kurikulum_id Int
 
-  piGroup     PIGroup      @relation(fields: [pi_group_id], references: [id])
-  pi_group_id Int @unique
-  MataKuliah  MataKuliah[]
+  // --- DIHAPUS ---
+  // Relasi langsung ke PIGroup dan MataKuliah dihapus
+  // untuk menyederhanakan dan menghindari redundansi.
+  // piGroup      PIGroup      @relation(fields: [pi_group_id], references: [id])
+  // pi_group_id  Int          @unique
+  // MataKuliah   MataKuliah[]
+  // --- AKHIR HAPUSAN ---
+
+  // Relasi 1-ke-Banyak: Satu CPL memiliki banyak PerformanceIndicator
+  PerformanceIndicator PerformanceIndicator[]
 
   @@map("cpl")
-  PerformanceIndicator PerformanceIndicator[]
 }
 
 model AssasmentArea {
@@ -173,10 +189,10 @@ model PesertaKelas {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
 
-  kelas    Kelas @relation(fields: [kelas_id], references: [id])
-  kelas_id Int
+  kelas     Kelas @relation(fields: [kelas_id], references: [id])
+  kelas_id  Int
 
-  mahasiswa    User @relation(fields: [mahasiswa_id], references: [id])
+  mahasiswa User @relation(fields: [mahasiswa_id], references: [id])
   mahasiswa_id Int
 
   nilai Nilai[]
@@ -199,14 +215,14 @@ model RPS {
 model CPMK {
   id        Int     @id @default(autoincrement())
   kode_cpmk String
+  deskripsi String  @db.Text // <-- DITAMBAHKAN
   is_locked Boolean @default(false)
 
   kelas    Kelas @relation(fields: [kelas_id], references: [id])
   kelas_id Int
 
   komponenPenilaian KomponenPenilaian[]
-
-  piMap CPMK_PI_Map[]
+  piMap             CPMK_PI_Map[]
 
   @@map("cpmk")
 }
@@ -235,11 +251,11 @@ model KomponenPenilaian {
 }
 
 model Nilai {
-  id          Int   @id @default(autoincrement())
-  nilai_angka Float
+  id                    Int    @id @default(autoincrement())
+  nilai_angka           Float
 
-  pesertaKelas     PesertaKelas @relation(fields: [peserta_kelas_id], references: [id])
-  peserta_kelas_id Int
+  pesertaKelas          PesertaKelas @relation(fields: [peserta_kelas_id], references: [id])
+  peserta_kelas_id      Int
 
   komponenPenilaian     KomponenPenilaian @relation(fields: [komponen_penilaian_id], references: [id])
   komponen_penilaian_id Int
