@@ -1,87 +1,186 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Eye, Plus, RefreshCw, Loader2 } from "lucide-react"; 
 import DashboardLayout from "@/app/components/DashboardLayout";
+import  { TahunAjaranModal } from "@/app/components/TahunAjaranModal";
 
-// --- Types ---
-interface Semester {
-    id: string;
-    nama: string;
-    tahunAjaran: string;
+async function parseApiError(res: Response): Promise<string> {
+  const text = await res.text();
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+  }
+  if (parsed?.error) {
+    if (Array.isArray(parsed.error)) return parsed.error.join(", ");
+    if (typeof parsed.error === "string") return parsed.error;
+    if (Array.isArray(parsed.error.issues)) { 
+      return parsed.error.issues.map((i: any) => `${i.path[0]}: ${i.message}`).join(", ");
+    }
+    return JSON.stringify(parsed.error);
+  }
+  return text || `HTTP ${res.status}`;
 }
 
-// --- Data Placeholder ---
-const semesterList: Semester[] = [
-    { id: "1", nama: "GANJIL 2025/2026", tahunAjaran: "2025/2026" },
-    { id: "2", nama: "GENAP 2024/2025", tahunAjaran: "2024/2025" },
-    { id: "3", nama: "GANJIL 2024/2025", tahunAjaran: "2024/2025" },
-    { id: "4", nama: "GENAP 2023/2024", tahunAjaran: "2023/2024" },
-    { id: "5", nama: "GANJIL 2023/2024", tahunAjaran: "2023/2024" },
-    { id: "6", nama: "GENAP 2022/2023", tahunAjaran: "2022/2023" },
-    { id: "7", nama: "GANJIL 2022/2023", tahunAjaran: "2022/2023" },
-    { id: "8", nama: "GENAP 2021/2022", tahunAjaran: "2021/2022" },
-    { id: "9", nama: "GANJIL 2021/2022", tahunAjaran: "2021/2022" },
-    { id: "10", nama: "GENAP 2020/2021", tahunAjaran: "2020/2021" },
-    { id: "11", nama: "GANJIL 2020/2021", tahunAjaran: "2020/2021" },
-    { id: "12", nama: "GENAP 2019/2020", tahunAjaran: "2019/2020" },
-    { id: "13", nama: "GANJIL 2019/2020", tahunAjaran: "2019/2020" },
-    { id: "14", nama: "GANJIL 2018/2019", tahunAjaran: "2018/2019" },
-    { id: "15", nama: "GENAP 2017/2018", tahunAjaran: "2017/2018" },
-];
+interface TahunAjaran {
+  id: number;
+  tahun: string;
+  semester: "GANJIL" | "GENAP";
+}
 
-// --- Main Component ---
-export default function PortofolioPage() {
-    return (
-        <DashboardLayout>
-            <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
-                {/* Header */}
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-800">Portofolio</h1>
-                    <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-lg shadow-sm">
-                        <p className="text-sm font-semibold">
-                            Peran saat ini sebagai Admin Program Studi
-                        </p>
-                    </div>
-                </div>
+// --- Komponen Halaman Utama ---
+export default function DataKelasPage() {
+  const [semesterList, setSemesterList] = useState<TahunAjaran[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-                {/* Semester Selection */}
-                <div>
-                    <div className="mb-6">
-                        <h2 className="text-xl font-semibold text-gray-700 mb-4">Pilih Semester</h2>
-                    </div>
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/tahunAjaran?page=1&limit=50"); 
+      if (!res.ok) throw new Error(await parseApiError(res));
 
-                    {/* Semester Cards Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {semesterList.map((semester) => (
-                            <Link 
-                                key={semester.id}
-                                href={`/penilaian/portofolio/${semester.id}`}
-                            >
-                                <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-indigo-400 hover:shadow-lg transition-all duration-200 group cursor-pointer">
-                                    <div className="text-center">
-                                        <h3 className="text-lg font-bold text-indigo-600 group-hover:text-indigo-700 mb-1">
-                                            {semester.nama}
-                                        </h3>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </div>
+      const json = await res.json();
+      const data = Array.isArray(json) ? json : json?.data ?? [];
 
-                {/* Back to Top Button */}
-                <div className="fixed bottom-8 right-8">
-                    <button 
-                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        className="bg-red-500 text-white p-3 rounded-full shadow-lg hover:bg-red-600 transition-colors"
-                        title="Kembali ke atas"
-                    >
-                        <svg className="w-6 h-6 rotate-[-90deg]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </button>
-                </div>
+      setSemesterList(data);
+    } catch (err: any) {
+      console.error("Fetch Tahun Ajaran error:", err);
+      setError(err?.message || "Gagal memuat data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleAddTahunAjaran = async (data: { tahun: string; semester: "GANJIL" | "GENAP" }) => {
+    setSubmitting(true);
+    setError(null);
+
+    const optimisticId = -Date.now();
+    const optimisticItem: TahunAjaran = { id: optimisticId, ...data };
+    setSemesterList((prev) => [optimisticItem, ...prev].sort((a, b) => b.tahun.localeCompare(a.tahun) || b.semester.localeCompare(a.semester)));
+    setIsModalOpen(false);
+
+    try {
+      const res = await fetch("/api/tahunAjaran", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) throw new Error(await parseApiError(res));
+
+      const created = await res.json();
+      setSemesterList((prev) =>
+        prev.map((item) =>
+          item.id === optimisticId ? created : item
+        )
+      );
+
+    } catch (err: any) {
+      console.error("Create Tahun Ajaran error:", err);
+      setError(err?.message || "Gagal menambahkan. Coba lagi.");
+      setSemesterList((prev) => prev.filter((p) => p.id !== optimisticId));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+ 
+  const formatNamaSemester = (tahun: string, semester: "GANJIL" | "GENAP") => {
+    const semesterFormatted = semester.toUpperCase();
+    return `${semesterFormatted} ${tahun}`;
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">Data Kelas</h1>
+        </div>
+        <div>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">Pilih Semester</h2>
+            <div className="flex items-center justify-end mb-4 gap-3">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                disabled={loading || submitting}
+                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-lg shadow-sm hover:bg-green-700 transition-all font-medium text-sm disabled:opacity-50"
+              >
+                <Plus size={18} />
+                <span>Tambah</span>
+              </button>
+              <button 
+                onClick={fetchData} 
+                disabled={loading || submitting}
+                className="flex items-center gap-2 bg-indigo-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-600 transition-colors shadow-md disabled:opacity-50"
+               >
+                 {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                <span>{loading ? "Memuat..." : "Refresh Data"}</span>
+              </button>
             </div>
-        </DashboardLayout>
-    );
+          </div>
+          
+          {error && (
+            <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {loading ? (
+              <div className="col-span-full text-center p-10 text-gray-500">
+                <Loader2 size={32} className="animate-spin mx-auto mb-2" />
+                Memuat data semester...
+              </div>
+            ) : semesterList.length === 0 ? (
+              <div className="col-span-full text-center p-10 text-gray-500">
+                Tidak ada data tahun ajaran.
+              </div>
+            ) : (
+              semesterList.map((semester) => (
+                <Link
+                  key={semester.id} 
+                  href={`/penilaian/portofolio/${semester.id}`}
+                  className="block" 
+                >
+                  <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-indigo-400 hover:shadow-lg transition-all duration-200 group cursor-pointer">
+                    <div className="flex items-center justify-between">
+                      <div className="text-left">
+                        <h3 className="text-lg font-bold text-indigo-600 group-hover:text-indigo-700 mb-1">
+                          {formatNamaSemester(semester.tahun, semester.semester)}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          Tahun Ajaran {semester.tahun}
+                        </p>
+                      </div>
+                      <Eye
+                        size={24}
+                        className="text-gray-400 group-hover:text-indigo-600 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+      <TahunAjaranModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleAddTahunAjaran}
+        submitting={submitting}
+      />
+    </DashboardLayout>
+  );
 }
