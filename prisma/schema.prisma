@@ -52,6 +52,15 @@ model MataKuliah {
   kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
   kurikulum_id Int
 
+  // --- DIHAPUS ---
+  // Relasi ini tidak diperlukan. Hubungan ke CPL/PI
+  // terjadi melalui Kelas -> CPMK -> PI -> CPL.
+  // piGroup      PIGroup @relation(fields: [pi_group_id], references: [id])
+  // pi_group_id  Int
+  // cpl          CPL @relation(fields: [cpl_id], references: [id])
+  // cpl_id       Int
+  // --- AKHIR HAPUSAN ---
+
   kelas Kelas[]
 
   @@map("mata_kuliah")
@@ -69,6 +78,12 @@ model PIGroup {
 
   indicators PerformanceIndicator[]
 
+  // --- DIHAPUS ---
+  // Relasi ini tidak diperlukan.
+  // MataKuliah MataKuliah[]
+  // CPL CPL[]
+  // --- AKHIR HAPUSAN ---
+
   @@map("pi_group")
 }
 
@@ -76,9 +91,11 @@ model PerformanceIndicator {
   id        Int    @id @default(autoincrement())
   deskripsi String @db.Text
 
+  // Relasi untuk Organisasi: PI ini milik 1 Grup
   piGroup     PIGroup @relation(fields: [pi_group_id], references: [id])
   pi_group_id Int
 
+  // Relasi untuk Kalkulasi: PI ini berkontribusi ke 1 CPL
   cpl    CPL     @relation(fields: [cpl_id], references: [id])
   cpl_id Int
 
@@ -95,6 +112,15 @@ model CPL {
   kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
   kurikulum_id Int
 
+  // --- DIHAPUS ---
+  // Relasi langsung ke PIGroup dan MataKuliah dihapus
+  // untuk menyederhanakan dan menghindari redundansi.
+  // piGroup      PIGroup      @relation(fields: [pi_group_id], references: [id])
+  // pi_group_id  Int          @unique
+  // MataKuliah   MataKuliah[]
+  // --- AKHIR HAPUSAN ---
+
+  // Relasi 1-ke-Banyak: Satu CPL memiliki banyak PerformanceIndicator
   PerformanceIndicator PerformanceIndicator[]
 
   @@map("cpl")

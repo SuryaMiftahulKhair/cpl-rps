@@ -1,32 +1,76 @@
 import { NextResponse } from "next/server";
 import prisma from "@/../lib/prisma";
 
-function toNum(x: string | undefined) {
-  const n = Number(x);
+function parseId(paramsId?: string) {
+  const n = Number(paramsId);
   return Number.isFinite(n) ? n : NaN;
 }
 
-// ✅ Next (App Router) butuh params di-await
+/**
+ * GET: Mengambil semua Assasment Area untuk satu kurikulum.
+ * Digunakan oleh: AreaManagementModal, PiGroupManagementModal, TambahPIRowModal
+ */
 export async function GET(
   _req: Request,
-  ctx: { params: Promise<{ id: string }> }
+  { params }: { params: { id?: string } }
 ) {
   try {
-    const { id } = await ctx.params;
-    const kurikulumId = toNum(id);
+    const kurikulumId = parseId(params?.id);
     if (Number.isNaN(kurikulumId)) {
-      return NextResponse.json({ error: "kurikulum id tidak valid" }, { status: 400 });
+      return NextResponse.json({ error: "ID kurikulum tidak valid" }, { status: 400 });
     }
 
-    const rows = await prisma.assasmentArea.findMany({
+    const areas = await prisma.assasmentArea.findMany({
       where: { kurikulum_id: kurikulumId },
-      select: { id: true, nama: true },
       orderBy: { nama: "asc" },
     });
+    
+    return NextResponse.json(areas);
 
-    return NextResponse.json(rows);
-  } catch (e: any) {
-    console.error("GET assasment-area error:", e);
-    return NextResponse.json({ error: "server error", detail: e?.message }, { status: 500 });
+  } catch (err: any) {
+    console.error("GET /api/kurikulum/[id]/assasment-area error:", err);
+    return NextResponse.json(
+      { error: "Terjadi kesalahan pada server.", detail: err?.message ?? String(err) },
+      { status: 500 }
+    );
   }
 }
+
+/**
+ * POST: Membuat Assasment Area baru.
+ * Digunakan oleh: AreaManagementModal
+ */
+export async function POST(
+  req: Request,
+  { params }: { params: { id?: string } }
+) {
+  try {
+    const kurikulumId = parseId(params?.id);
+    if (Number.isNaN(kurikulumId)) {
+      return NextResponse.json({ error: "ID kurikulum tidak valid" }, { status: 400 });
+    }
+
+    const body = await req.json();
+    const { nama } = body;
+
+    if (!nama) {
+      return NextResponse.json({ error: "Nama Area wajib diisi" }, { status: 400 });
+    }
+
+    const newArea = await prisma.assasmentArea.create({
+      data: {
+        nama,
+        kurikulum_id: kurikulumId,
+      },
+    });
+
+    return NextResponse.json(newArea, { status: 201 });
+  } catch (err: any) {
+    console.error("POST /api/kurikulum/[id]/assasment-area error:", err);
+    return NextResponse.json(
+      { error: "Terjadi kesalahan pada server.", detail: err?.message ?? String(err) },
+      { status: 500 }
+    );
+  }
+}
+
