@@ -1,37 +1,55 @@
-// src/app/referensi/KP/[id]/VMPCL/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { Edit, Trash2, ChevronLeft, Plus, Layers } from "lucide-react";
+import { Edit, Trash2, ChevronLeft, Plus, Layers, Settings, Database, FolderKanban } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 import { useParams, useRouter } from "next/navigation";
+import TambahPIRowModal from "@/app/components/TambahPIModal"; 
+import CplManagementModal from "@/app/components/CplManagementModal";
+import AreaManagementModal from "@/app/components/AreaManagementModal";
+import PiGroupManagementModal from "@/app/components/PiGroupManagementModal";
 
+
+// --- TIPE DATA ---
+// Tipe data untuk Ringkasan (Tabel Asli)
 type PIRow = {
-  area: string;         // AssasmentArea.nama
-  piCode: string;       // PIGroup.kode_grup
-  iloCode: string;      // CPL.kode_cpl
-  ilo: string;          // CPL.deskripsi
-  indicators: string[]; // PerformanceIndicator[].deskripsi
+  area: string;
+  piCode: string;
+  iloCode: string;
+  ilo: string;
+  indicators: string[];
 };
 
+
+
+// Helper
+const parseApiError = async (res: Response) => {
+  try {
+    const j = await res.json().catch(() => null);
+    return j?.error ?? j?.detail ?? `HTTP Error ${res.status}`;
+  } catch {
+    return `HTTP Error ${res.status}`;
+  }
+};
+
+
+// --- 1. KONTEN TAB VISI MISI (Tidak Berubah) ---
 const VisiMisiContent = () => (
   <div className="p-6 lg:p-8">
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
       <h2 className="text-xl lg:text-2xl font-bold text-gray-800">Visi, Misi, dan Profil Lulusan</h2>
       <div className="flex gap-3">
         <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm">
-          <Edit size={18} />
-          <span>Edit</span>
+          <Edit size={18} /> <span>Edit</span>
         </button>
         <button className="flex items-center gap-2 border border-gray-300 bg-white text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">
-          <ChevronLeft size={18} />
-          <span>Kembali</span>
+          <ChevronLeft size={18} /> <span>Kembali</span>
         </button>
       </div>
     </div>
-
     <div className="bg-white p-6 lg:p-8 rounded-xl shadow-sm border border-gray-200 space-y-8">
-      <div className="space-y-3 pb-6 border-b border-gray-200">
+      {/* ... (Teks Visi Misi Dummy) ... */}
+       <div className="space-y-3 pb-6 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-indigo-700 flex items-center gap-2">
           <div className="w-1 h-6 bg-indigo-600 rounded" />
           Visi
@@ -41,13 +59,12 @@ const VisiMisiContent = () => (
           cerdas berlandaskan Benua Maritim Indonesia tahun 2025
         </p>
       </div>
-
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-indigo-700 flex items-center gap-2">
-          <div className="w-1 h-6 bg-indigo-600 rounded" />
-          Misi
-        </h3>
-        <ol className="space-y-4 pl-3">
+         <h3 className="text-lg font-semibold text-indigo-700 flex items-center gap-2">
+           <div className="w-1 h-6 bg-indigo-600 rounded" />
+           Misi
+         </h3>
+         <ol className="space-y-4 pl-3">
           {[
             "Menghasilkan lulusan yang memiliki sikap dan tata nilai yang baik, serta memiliki kompetensi di bidang teknologi informasi berbasis jaringan komputer dan sistem cerdas",
             "Menghasilkan karya-karya ilmiah dibidang teknologi informasi berbasis jaringan komputer dan sistem cerdas yang bermanfaat bagi masyarakat",
@@ -61,20 +78,26 @@ const VisiMisiContent = () => (
               <span className="pt-0.5">{t}</span>
             </li>
           ))}
-        </ol>
-      </div>
+         </ol>
+       </div>
     </div>
   </div>
 );
 
+
+// --- 2. KONTEN TAB PERFORMANCE INDICATOR (Refaktor) ---
 const PITableContent = () => {
   const params = useParams();
-  const router = useRouter();
   const kurikulumId = Number((params as any)?.id);
-
   const [rows, setRows] = useState<PIRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  // State untuk semua modal
+  const [isTambahModalOpen, setIsTambahModalOpen] = useState(false);
+  const [isCplModalOpen, setIsCplModalOpen] = useState(false);
+  const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
+  const [isPiGroupModalOpen, setIsPiGroupModalOpen] = useState(false);
 
   const loadPI = async () => {
     setLoading(true);
@@ -85,28 +108,10 @@ const PITableContent = () => {
         setErr("Kurikulum ID tidak valid.");
         return;
       }
-
-      // NOTE: path disesuaikan dengan API di atas (VMCPL)
-      const res = await fetch(`/api/kurikulum/${kurikulumId}/VMCPL`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        cache: "no-store",
-      });
-
-      const contentType = res.headers.get("content-type") || "";
-      if (!res.ok) {
-        const txt = contentType.includes("application/json")
-          ? JSON.stringify(await res.json()).slice(0, 400)
-          : (await res.text()).slice(0, 400);
-        throw new Error(txt || `HTTP ${res.status}`);
-      }
-      if (!contentType.includes("application/json")) {
-        throw new Error("Unexpected response (bukan JSON). Cek path API dan penamaan folder (case-sensitive).");
-      }
-
+      const res = await fetch(`/api/kurikulum/${kurikulumId}/VMCPL`);
+      if (!res.ok) throw new Error(await parseApiError(res));
       const json = await res.json();
-      const list: PIRow[] = Array.isArray(json) ? json : json?.data ?? [];
-      setRows(list);
+      setRows(Array.isArray(json) ? json : json?.data ?? []);
     } catch (e: any) {
       console.error("Fetch PI error:", e);
       setErr(e?.message ?? "Gagal memuat data PI.");
@@ -117,24 +122,51 @@ const PITableContent = () => {
   };
 
   useEffect(() => {
-    void loadPI();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!Number.isNaN(kurikulumId)) { void loadPI(); }
   }, [kurikulumId]);
+  
+  // Fungsi ini akan me-refresh tabel ringkasan
+  const handleManagementSuccess = () => {
+    setIsCplModalOpen(false);
+    setIsAreaModalOpen(false);
+    setIsPiGroupModalOpen(false);
+    setIsTambahModalOpen(false);
+    loadPI(); 
+  };
 
   return (
     <div className="p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl lg:text-2xl font-bold text-gray-800">Performance Indicator for ILO Measurement</h2>
+        <h2 className="text-xl lg:text-2xl font-bold text-gray-800">Performance Indicator for ILO Measurement</h2>
+      </div>
+
+      {/* --- TOMBOL MANAJEMEN BARU --- */}
+      <div className="mb-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+        <h3 className="text-base font-semibold text-gray-700 mb-3">Manajemen Data</h3>
+        <div className="flex flex-wrap gap-3">
+          {/* Tombol "Kompleks" dari modal kakak */}
+          <button onClick={() => setIsTambahModalOpen(true)} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 shadow-sm">
+            <Plus size={18} /> <span>Tambah Baris (Kompleks)</span>
+          </button>
+          
+          <div className="border-l border-gray-300 mx-2"></div>
+
+          {/* Tombol Manajemen Data Master */}
+          <button onClick={() => setIsCplModalOpen(true)} className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 shadow-sm">
+            <Database size={18} /> <span>Kelola CPL (ILO)</span>
+          </button>
+          <button onClick={() => setIsAreaModalOpen(true)} className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 shadow-sm">
+            <Layers size={18} /> <span>Kelola Assasment Area</span>
+          </button>
+           <button onClick={() => setIsPiGroupModalOpen(true)} className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 shadow-sm">
+            <FolderKanban size={18} /> <span>Kelola PI Group & Indikator</span>
+          </button>
         </div>
-        <button className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors shadow-sm">
-          <Plus size={18} />
-          <span>Tambah Baru</span>
-        </button>
       </div>
 
       {err && <div className="mb-4 p-3 text-sm bg-red-50 text-red-700 rounded">{err}</div>}
 
+      {/* --- TABEL RINGKASAN ASLI --- */}
       <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -145,26 +177,16 @@ const PITableContent = () => {
                 <th className="w-24 px-4 py-4 text-center font-semibold text-xs text-indigo-800 uppercase tracking-wider">ILO Code</th>
                 <th className="px-4 py-4 text-left font-semibold text-xs text-indigo-800 uppercase tracking-wider">Intended Learning Outcomes</th>
                 <th className="px-4 py-4 text-left font-semibold text-xs text-indigo-800 uppercase tracking-wider">Performance Indicators</th>
-                <th className="w-28 px-4 py-4 text-center font-semibold text-xs text-indigo-800 uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500 text-sm">Memuat data...</td>
-                </tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500 text-sm">Memuat data...</td></tr>
               ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500 text-sm">Belum ada data PI untuk kurikulum ini.</td>
-                </tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500 text-sm">Belum ada data PI.</td></tr>
               ) : (
                 rows.map((item, idx) => (
-                  <tr
-                    key={`${item.piCode}-${item.iloCode}-${idx}`}
-                    className={`hover:bg-indigo-50/30 transition-colors duration-150 ${
-                      idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                    }`}
-                  >
+                  <tr key={`${item.piCode}-${item.iloCode}-${idx}`} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
                     <td className="px-4 py-4 text-center">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                         {item.area}
@@ -184,16 +206,6 @@ const PITableContent = () => {
                         ))}
                       </ul>
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <button className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors duration-150 group" title="Edit">
-                          <Edit size={16} className="group-hover:scale-110 transition-transform" />
-                        </button>
-                        <button className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-150 group" title="Hapus">
-                          <Trash2 size={16} className="group-hover:scale-110 transition-transform" />
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))
               )}
@@ -202,13 +214,45 @@ const PITableContent = () => {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-        <span>Menampilkan {rows.length} data Performance Indicator</span>
-      </div>
+      {/* --- MODAL-MODAL MANAJEMEN --- */}
+      {!Number.isNaN(kurikulumId) && (
+        <>
+          {/* Modal "Kompleks" (dari file kakak) */}
+          <TambahPIRowModal
+            isOpen={isTambahModalOpen}
+            onClose={() => setIsTambahModalOpen(false)}
+            onSubmitSuccess={handleManagementSuccess}
+            kurikulumId={kurikulumId}
+          />
+          {/* Modal Manajemen CPL (BARU) */}
+          <CplManagementModal
+            isOpen={isCplModalOpen}
+            onClose={() => setIsCplModalOpen(false)}
+            onSuccess={handleManagementSuccess} 
+            kurikulumId={kurikulumId}
+          />
+          {/* Modal Manajemen Area (BARU) */}
+          <AreaManagementModal
+            isOpen={isAreaModalOpen}
+            onClose={() => setIsAreaModalOpen(false)}
+            onSuccess={handleManagementSuccess}
+            kurikulumId={kurikulumId}
+          />
+           {/* Modal Manajemen PI Group (BARU) */}
+          <PiGroupManagementModal
+            isOpen={isPiGroupModalOpen}
+            onClose={() => setIsPiGroupModalOpen(false)}
+            onSuccess={handleManagementSuccess}
+            kurikulumId={kurikulumId}
+          />
+        </>
+      )}
     </div>
   );
 };
 
+
+// --- KOMPONEN UTAMA PAGE (Hanya 2 Tab) ---
 export default function VisiMisiCPLPage() {
   const [activeTab, setActiveTab] = useState<"visi_misi" | "pi_data">("visi_misi");
 
