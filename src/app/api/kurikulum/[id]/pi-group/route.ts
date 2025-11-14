@@ -1,9 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/../lib/prisma"; // sesuaikan path prisma
+import { z } from "zod";
 
-function parseId(paramsId?: string) {
-  const n = Number(paramsId);
-  return Number.isFinite(n) ? n : NaN;
+// --- PERBAIKAN: Update fungsi parseId ---
+function parseId(paramsId: string | undefined, nextUrl?: any) {
+  if (paramsId) return Number(paramsId);
+  try {
+    // Fallback jika params.id tidak ada (bug Next.js)
+    const url = nextUrl?.pathname ?? "";
+    const segments = url.split('/');
+    // Diharapkan URL: /api/kurikulum/2/pi-group
+    const idIndex = segments.indexOf('kurikulum') + 1; 
+    const id = segments[idIndex];
+    return id ? Number(id) : NaN;
+  } catch {
+    return NaN;
+  }
 }
 
 /**
@@ -11,11 +23,13 @@ function parseId(paramsId?: string) {
  * Digunakan oleh tab "Manajemen PI & Indikator".
  */
 export async function GET(
-  _req: Request,
+  request: NextRequest,
   { params }: { params: { id?: string } }
 ) {
   try {
-    const kurikulumId = parseId(params?.id);
+    // --- PERBAIKAN: Gunakan 'request' di parseId ---
+    const kurikulumId = parseId(params?.id, (request as any).nextUrl);
+    
     if (Number.isNaN(kurikulumId)) {
       return NextResponse.json(
         { error: "ID kurikulum tidak valid (harus integer)" },
@@ -44,18 +58,38 @@ export async function GET(
   }
 }
 
+// Skema Zod untuk validasi POST yang "simple" (dari PiGroupManagementModal)
+const simpleCreateSchema = z.object({
+  kode_grup: z.string().min(1, "Kode PI Group wajib diisi"),
+  assesment_id: z.number().int().positive("Assasment Area wajib dipilih"),
+});
+
+// Skema Zod untuk validasi POST yang "kompleks" (dari TambahPIRowModal)
+const complexCreateSchema = z.object({
+  kodeGrup: z.string().min(1, "Kode PI Group wajib diisi"),
+  assesmentId: z.number().int().positive("Assasment Area wajib dipilih"),
+  indicators: z.array(
+    z.object({
+      deskripsi: z.string().min(1, "Deskripsi indikator wajib diisi"),
+      cplId: z.number().int().positive("CPL wajib dipilih"),
+    })
+  ).min(1, "Minimal 1 indikator wajib ada"),
+});
+
+
 /**
- * POST handler untuk membuat PI Group BARU beserta Performance Indicator-nya
- * dalam satu transaksi (untuk modal "Kompleks")
- * ATAU
- * hanya membuat PI Group (untuk modal "Manajemen")
+ * POST handler untuk membuat PI Group BARU.
+ * Bisa menangani 2 tipe body:
+ * 1. Simple: (dari PiGroupManagementModal) { kode_grup, assesment_id }
+ * 2. Kompleks: (dari TambahPIRowModal) { kodeGrup, assesmentId, indicators: [...] }
  */
 export async function POST(
-  req: Request,
+  request: NextRequest,
   { params }: { params: { id?: string } }
 ) {
   try {
-    const kurikulumId = parseId(params?.id);
+    // --- PERBAIKAN: Gunakan 'req' di parseId ---
+    const kurikulumId = parseId(params?.id, (request as any).nextUrl);
     if (Number.isNaN(kurikulumId)) {
       return NextResponse.json(
         { error: "ID kurikulum tidak valid (harus integer)" },
@@ -63,52 +97,31 @@ export async function POST(
       );
     }
 
-    const body = await req.json();
+    const body = await request.json();
+
+    // --- PERBAIKAN: Validasi yang benar ---
     
-    // Cek apakah ini dari modal "Kompleks" (ada 'indicators')
-    // atau modal "Manajemen" (tidak ada 'indicators')
-    const {
-      assesment_id, // dari modal manajemen
-      kode_grup,    // dari modal manajemen
-      assesmentId,  // dari modal kompleks
-      kodeGrup,     // dari modal kompleks
-      indicators,   // dari modal kompleks
-    } = body;
-
-    // --- Kasus 1: Modal "Kompleks" (TambahPIRowModal) ---
-    if (indicators && Array.isArray(indicators)) {
-      const finalAssesmentId = Number(assesmentId);
-      const finalKodeGrup = String(kodeGrup);
-
-      if (!finalAssesmentId || !finalKodeGrup || indicators.length === 0) {
-        return NextResponse.json({ error: "Data tidak lengkap." }, { status: 400 });
-      }
+    // Coba validasi sebagai "Kompleks"
+    const complexParse = complexCreateSchema.safeParse(body);
+    if (complexParse.success) {
+      // Ini adalah request dari TambahPIRowModal
+      const { assesmentId, kodeGrup, indicators } = complexParse.data;
 
       const result = await prisma.$transaction(async (tx) => {
-        // A: Buat PIGroup
         const newPiGroup = await tx.pIGroup.create({
           data: {
-            kode_grup: finalKodeGrup,
-            assesment_id: finalAssesmentId,
+            kode_grup: kodeGrup,
+            assesment_id: assesmentId,
             kurikulum_id: kurikulumId,
           },
         });
 
-        // B: Siapkan data Indikator
-        const indicatorData = indicators.map(
-          (ind: { deskripsi: string; cplId: number | string }) => {
-            if (!ind.deskripsi || !ind.cplId) {
-              throw new Error("Data indikator tidak lengkap (deskripsi/cplId).");
-            }
-            return {
-              deskripsi: ind.deskripsi,
-              cpl_id: Number(ind.cplId),
-              pi_group_id: newPiGroup.id,
-            };
-          }
-        );
+        const indicatorData = indicators.map(ind => ({
+          deskripsi: ind.deskripsi,
+          cpl_id: ind.cplId,
+          pi_group_id: newPiGroup.id,
+        }));
 
-        // C: Buat semua Indikator
         await tx.performanceIndicator.createMany({
           data: indicatorData,
         });
@@ -119,25 +132,42 @@ export async function POST(
       return NextResponse.json(result, { status: 201 });
     }
 
-    // --- Kasus 2: Modal "Manajemen" (PiGroupManagementModal) ---
-    if (assesment_id && kode_grup) {
-      const newPiGroup = await prisma.pIGroup.create({
+    // Jika bukan "Kompleks", coba validasi sebagai "Simple"
+    const simpleParse = simpleCreateSchema.safeParse(body);
+    if (simpleParse.success) {
+      // Ini adalah request dari PiGroupManagementModal
+      const { kode_grup, assesment_id } = simpleParse.data;
+
+      const newGroup = await prisma.pIGroup.create({
         data: {
-          kode_grup: String(kode_grup),
-          assesment_id: Number(assesment_id),
+          kode_grup,
+          assesment_id,
           kurikulum_id: kurikulumId,
         },
       });
-      return NextResponse.json(newPiGroup, { status: 201 });
+      return NextResponse.json(newGroup, { status: 201 });
     }
-    
-    // Jika body tidak cocok
-    return NextResponse.json({ error: "Body request tidak valid" }, { status: 400 });
+
+    // Jika keduanya gagal, berarti body-nya salah
+    // Ini akan FIX error "Nama Area wajib diisi"
+    return NextResponse.json(
+      { error: "Body request tidak valid.", 
+        detail: { 
+          simpleError: simpleParse.error?.issues, 
+          complexError: complexParse.error?.issues 
+        } 
+      }, 
+      { status: 400 }
+    );
+    // ------------------------------------
 
   } catch (err: any) {
     console.error("POST /api/kurikulum/[id]/pi-group error:", err);
-    if (err.code === 'P2002') {
-      return NextResponse.json({ error: "Kode PI Group sudah ada." }, { status: 409 });
+     if (err.code === 'P2002') {
+      return NextResponse.json(
+        { error: "Kode PI Group sudah ada. Gunakan kode lain." },
+        { status: 409 }
+      );
     }
     return NextResponse.json(
       { error: "Gagal membuat PI Group", detail: err.message },

@@ -194,7 +194,10 @@ export default function PiGroupManagementModal({ isOpen, onClose, onSuccess, kur
                       <td className="px-4 py-3 font-medium text-indigo-700">{item.kode_grup}</td>
                       <td className="px-4 py-3 text-gray-700 text-sm">{item.assasment?.nama ?? "-"}</td>
       
-                      <td className="px-4 py-3 text-gray-700 text-sm text-center">{item._count.indicators}</td>
+                      {/* --- PERBAIKAN DI SINI --- */}
+                      <td className="px-4 py-3 text-gray-700 text-sm text-center">{item._count?.indicators ?? 0}</td>
+                      {/* ----------------------- */}
+                      
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
                           <button onClick={() => openIndicatorModal(item)} className="p-2 text-sky-600 bg-sky-50 rounded-lg hover:bg-sky-100" title="Kelola Indikator">
