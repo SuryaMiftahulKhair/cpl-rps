@@ -1,21 +1,29 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/../lib/prisma";
 
-function parseId(paramsId?: string) {
-  const n = Number(paramsId);
-  return Number.isFinite(n) ? n : NaN;
+// --- PERBAIKAN 1: Update fungsi parseId ---
+function parseId(paramsId: string | undefined, nextUrl?: any) {
+  if (paramsId) return Number(paramsId);
+  try {
+    // Fallback jika params.id tidak ada
+    const p = nextUrl?.pathname?.split("/").pop();
+    return p ? Number(p) : NaN;
+  } catch {
+    return NaN;
+  }
 }
 
 /**
  * GET: Mengambil semua Assasment Area untuk satu kurikulum.
- * Digunakan oleh: AreaManagementModal, PiGroupManagementModal, TambahPIRowModal
  */
 export async function GET(
-  _req: Request,
+  request: NextRequest, // <-- PERBAIKAN 2: Kembalikan 'request'
   { params }: { params: { id?: string } }
 ) {
   try {
-    const kurikulumId = parseId(params?.id);
+    // --- PERBAIKAN 3: Gunakan 'request' di parseId ---
+    const kurikulumId = parseId(params?.id, (request as any).nextUrl);
+    
     if (Number.isNaN(kurikulumId)) {
       return NextResponse.json({ error: "ID kurikulum tidak valid" }, { status: 400 });
     }
@@ -38,19 +46,20 @@ export async function GET(
 
 /**
  * POST: Membuat Assasment Area baru.
- * Digunakan oleh: AreaManagementModal
  */
 export async function POST(
-  req: Request,
+  request: NextRequest,
   { params }: { params: { id?: string } }
 ) {
   try {
-    const kurikulumId = parseId(params?.id);
+    // --- PERBAIKAN 3 (juga di POST): Gunakan 'req' di parseId ---
+    const kurikulumId = parseId(params?.id, (request as any).nextUrl);
+
     if (Number.isNaN(kurikulumId)) {
       return NextResponse.json({ error: "ID kurikulum tidak valid" }, { status: 400 });
     }
 
-    const body = await req.json();
+    const body = await request.json();
     const { nama } = body;
 
     if (!nama) {
@@ -73,4 +82,3 @@ export async function POST(
     );
   }
 }
-

@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import prisma from "@/../lib/prisma"; // sesuaikan path prisma
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/../lib/prisma"; // sesuaikan kalau prisma-mu ada di path lain
 import { CPL, PerformanceIndicator } from "@prisma/client"; // Import tipe
 
 // Tipe DTO untuk baris tabel
@@ -17,11 +17,13 @@ function parseId(paramsId?: string) {
 }
 
 export async function GET(
-  _req: Request,
+  request: NextRequest,
   { params }: { params: { id?: string } }
 ) {
   try {
-    const kurikulumId = parseId(params?.id);
+    // `params` may be an async object in some Next.js runtimes — await it
+    const resolvedParams = await (params as any);
+    const kurikulumId = parseId(resolvedParams?.id); // Ini sekarang akan aman
     if (Number.isNaN(kurikulumId)) {
       return NextResponse.json(
         { error: "kurikulum id tidak valid (harus integer)" },
@@ -35,9 +37,7 @@ export async function GET(
       include: {
         assasment: true, // Relasi ke AssasmentArea (untuk 'area')
         
-        // --- INI PERBAIKANNYA ---
-        // Kita tidak bisa lagi 'include: { cpl: true }' karena relasi itu sudah dihapus.
-        // Kita ambil 'cpl' melalui 'indicators'
+        // --- Ini sudah benar ---
         indicators: {
           include: {
             cpl: true, // Ambil CPL yang terhubung ke setiap indicator
@@ -50,51 +50,38 @@ export async function GET(
     });
 
     // Map ke bentuk baris tabel UI
-    // 'groups' sekarang memiliki tipe yang benar, 'g.cpl' tidak ada
     const rows: PIRow[] = groups.flatMap((g) => {
       const area = g.assasment?.nama ?? "-";
       const piCode = g.kode_grup;
 
-      // --- LOGIKA MAPPING BARU (FIX) ---
-      // Ini memperbaiki error 'Parameter 'c' implicitly has an 'any' type.'
-      // Kita group semua indicator berdasarkan CPL-nya.
+      // --- LOGIKA MAPPING BARU (Ini sudah benar) ---
       const cplGroupMap = new Map<number, { cpl: CPL, indicators: PerformanceIndicator[] }>();
 
-      // Loop semua indicator yang dimiliki PIGroup ini
       for (const indicator of g.indicators) {
-        if (indicator.cpl) { // Hanya proses indicator yang terhubung ke CPL
+        if (indicator.cpl) {
           const cpl = indicator.cpl;
           if (!cplGroupMap.has(cpl.id)) {
-            // Jika CPL ini baru, buat entri baru di Map
             cplGroupMap.set(cpl.id, { cpl: cpl, indicators: [] });
           }
-          // Tambahkan indicator ke grup CPL yang sesuai
-          // '!' aman digunakan di sini karena kita baru cek/buat entri di atas
           cplGroupMap.get(cpl.id)!.indicators.push(indicator);
         }
       }
 
-      // Jika PI Group tidak punya indicator yang terhubung CPL,
-      // (misal: PI Group baru dibuat tapi indicator-nya belum dipetakan ke CPL)
-      // tetap tampilkan barisnya dengan CPL kosong.
       if (cplGroupMap.size === 0) {
         return [{
           area,
           piCode,
           iloCode: "-",
           ilo: "-",
-          // Tampilkan semua indicator (walaupun tidak terhubung CPL)
           indicators: g.indicators.map(ind => ind.deskripsi), 
         }];
       }
 
-      // Ubah Map (data yang sudah ter-grup) menjadi array PIRow
       return Array.from(cplGroupMap.values()).map(grouped => ({
         area,
         piCode,
         iloCode: grouped.cpl.kode_cpl,
         ilo: grouped.cpl.deskripsi,
-        // Ambil deskripsi dari indicator yang sudah di-grup
         indicators: grouped.indicators.map(ind => ind.deskripsi),
       }));
       // -------------------------------

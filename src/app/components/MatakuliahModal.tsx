@@ -45,7 +45,7 @@ export default function MatakuliahModal({
         // Mode Add: Reset form
         setKodeMK("");
         setNama("");
-        setSks("0");
+        setSks("");
         setSemester("");
         setSifat("");
       }
@@ -110,7 +110,7 @@ export default function MatakuliahModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Semester (Opsional, FE-Only)</label>
+              <label className="block text-sm font-medium text-gray-700">Semester</label>
               <input
                 type="number"
                 value={semester}
@@ -120,7 +120,7 @@ export default function MatakuliahModal({
               />
             </div>
              <div>
-              <label className="block text-sm font-medium text-gray-700">Sifat (Opsional, FE-Only)</label>
+              <label className="block text-sm font-medium text-gray-700">Sifat</label>
               <input
                 type="text"
                 value={sifat}

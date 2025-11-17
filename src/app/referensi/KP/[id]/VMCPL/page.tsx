@@ -4,11 +4,6 @@ import { useEffect, useState } from "react";
 import { Edit, Trash2, ChevronLeft, Plus, Layers, Settings, Database, FolderKanban } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 import { useParams, useRouter } from "next/navigation";
-import TambahPIRowModal from "@/app/components/TambahPIModal"; 
-import CplManagementModal from "@/app/components/CplManagementModal";
-import AreaManagementModal from "@/app/components/AreaManagementModal";
-import PiGroupManagementModal from "@/app/components/PiGroupManagementModal";
-
 
 // --- TIPE DATA ---
 // Tipe data untuk Ringkasan (Tabel Asli)
@@ -20,7 +15,13 @@ type PIRow = {
   indicators: string[];
 };
 
-
+// --- Komponen Modal ---
+// Modal "Kompleks" yang kakak kirim
+import TambahPIRowModal from "@/app/components/TambahPIModal"; 
+// Modal Manajemen (BARU)
+import CplManagementModal from "@/app/components/CplManagementModal";
+import AreaManagementModal from "@/app/components/AreaManagementModal";
+import PiGroupManagementModal from "@/app/components/PiGroupManagementModal";
 
 // Helper
 const parseApiError = async (res: Response) => {
@@ -48,7 +49,6 @@ const VisiMisiContent = () => (
       </div>
     </div>
     <div className="bg-white p-6 lg:p-8 rounded-xl shadow-sm border border-gray-200 space-y-8">
-      {/* ... (Teks Visi Misi Dummy) ... */}
        <div className="space-y-3 pb-6 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-indigo-700 flex items-center gap-2">
           <div className="w-1 h-6 bg-indigo-600 rounded" />
@@ -88,7 +88,17 @@ const VisiMisiContent = () => (
 // --- 2. KONTEN TAB PERFORMANCE INDICATOR (Refaktor) ---
 const PITableContent = () => {
   const params = useParams();
-  const kurikulumId = Number((params as any)?.id);
+  
+  // --- PERBAIKAN UNTUK ERROR "kurikulum id tidak valid" ---
+  // Parse the dynamic route param defensively and ensure we only accept
+  // a positive integer. This avoids sending invalid values to the API.
+  const kurikulumIdRaw = (params as any)?.id;
+  const kurikulumIdStr = Array.isArray(kurikulumIdRaw) ? kurikulumIdRaw[0] : (kurikulumIdRaw ?? "");
+  const kurikulumId = Number.isInteger(Number(kurikulumIdStr))
+    ? parseInt(kurikulumIdStr as string, 10)
+    : NaN;
+  // ----------------------------------------------------
+
   const [rows, setRows] = useState<PIRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -103,11 +113,15 @@ const PITableContent = () => {
     setLoading(true);
     setErr(null);
     try {
-      if (!kurikulumId || Number.isNaN(kurikulumId)) {
+      if (!Number.isInteger(kurikulumId) || Number.isNaN(kurikulumId) || kurikulumId <= 0) {
         setRows([]);
-        setErr("Kurikulum ID tidak valid.");
+        // Perbarui pesan error agar lebih jelas
+        setErr(`Kurikulum ID tidak valid (Nilai: ${kurikulumIdRaw}). Harus bilangan bulat positif.`);
         return;
       }
+
+      // Use the integer value when calling the API to avoid sending unexpected
+      // strings (e.g. array or slugs) which the API will reject.
       const res = await fetch(`/api/kurikulum/${kurikulumId}/VMCPL`);
       if (!res.ok) throw new Error(await parseApiError(res));
       const json = await res.json();
@@ -122,8 +136,11 @@ const PITableContent = () => {
   };
 
   useEffect(() => {
-    if (!Number.isNaN(kurikulumId)) { void loadPI(); }
-  }, [kurikulumId]);
+    // Hanya jalankan loadPI jika kurikulumId valid
+    if (kurikulumId && !Number.isNaN(kurikulumId)) { 
+      void loadPI(); 
+    }
+  }, [kurikulumId]); // Dependency array diubah ke kurikulumId yang sudah di-parse
   
   // Fungsi ini akan me-refresh tabel ringkasan
   const handleManagementSuccess = () => {
@@ -182,6 +199,9 @@ const PITableContent = () => {
             <tbody className="bg-white divide-y divide-gray-100">
               {loading ? (
                 <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500 text-sm">Memuat data...</td></tr>
+              ) : err ? (
+                // Tampilkan error di dalam tabel juga jika loading selesai tapi ada error
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-red-600 text-sm">{err}</td></tr>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500 text-sm">Belum ada data PI.</td></tr>
               ) : (

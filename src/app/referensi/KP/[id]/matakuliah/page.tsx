@@ -9,14 +9,24 @@ import MatakuliahModal from "@/app/components/MatakuliahModal";
 import { ExcelImportModal } from "@/app/components/ExcelImportModal";
 import DetailModal from "@/app/components/DetailModal";
 
-// Tipe 'extras' disederhanakan
-type ExtrasData = Omit<MatakuliahModalData, 'kode_mk' | 'nama' | 'sks'>;
+// --- PERBAIKAN: Fungsi parseId untuk fix "ID Kurikulum tidak valid" ---
+function parseKurikulumId(params: any): number {
+  const idRaw = params?.id;
+  if (typeof idRaw === 'string') {
+    return Number(idRaw);
+  }
+  if (Array.isArray(idRaw) && typeof idRaw[0] === 'string') {
+    return Number(idRaw[0]);
+  }
+  return NaN;
+}
 
 export default function MatakuliahListPage() {
   const params = useParams();
   const router = useRouter();
-  const kurikulumIdRaw = (params as any)?.id;
-  const kurikulumId = kurikulumIdRaw ? Number(kurikulumIdRaw) : NaN;
+  
+  // --- PERBAIKAN: Gunakan fungsi parseId ---
+  const kurikulumId = parseKurikulumId(params);
 
   const [data, setData] = useState<Matakuliah[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,10 +37,10 @@ export default function MatakuliahListPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const [extras, setExtras] = useState<Record<string, ExtrasData>>({});
+  // --- PERBAIKAN: Hapus state 'extras' ---
+  // const [extras, setExtras] = useState<Record<string, ExtrasData>>({});
 
   const parseApiError = async (res: Response) => {
-    // ... (Fungsi ini tidak berubah, biarkan apa adanya) ...
     try {
       const j = await res.json().catch(() => null);
       if (j && (j.error || j.detail || j.message)) return j.error ?? j.detail ?? j.message;
@@ -40,38 +50,43 @@ export default function MatakuliahListPage() {
     }
   };
 
+  // --- PERBAIKAN: Sederhanakan loadData, tidak perlu 'newExtras' ---
   const loadData = async () => {
-    // ... (Fungsi ini tidak berubah, logikanya masih valid) ...
     setLoading(true);
     setError(null);
     try {
-      if (!kurikulumId || Number.isNaN(kurikulumId)) {
+      if (Number.isNaN(kurikulumId)) {
         setData([]);
         setError("kurikulum id tidak tersedia atau tidak valid.");
         return;
       }
 
       const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`, { cache: "no-store" });
-      if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+      if (!res.ok) {
+         const errText = await parseApiError(res);
+         if (errText.includes("kurikulum id tidak valid")) {
+            setError("Error API: Kurikulum ID tidak valid. Coba Hapus folder .next dan restart server.");
+         } else {
+            setError(errText || `HTTP ${res.status}`);
+         }
+         setData([]);
+         return;
+      }
 
       const json = await res.json();
       const list = Array.isArray(json) ? json : json?.data ?? [];
 
+      // --- PERBAIKAN: Mapping data langsung dari API ---
       const mapped: Matakuliah[] = list.map((r: any) => {
-        const kode = r.kode_mk ?? r.kode ?? "";
-        const extra = extras[kode] || {};
         return {
           id: Number(r.id),
-          kode_mk: kode,
+          kode_mk: r.kode_mk ?? "",
           nama: r.nama ?? "",
           sks: Number(r.sks ?? 0),
-          kurikulum_id: Number(r.kurikulum_id ?? r.kurikulumId ?? kurikulumId),
-          semester: extra.semester ?? (r.semester != null ? Number(r.semester) : null),
-          sifat: extra.sifat ?? (r.sifat ?? null),
-          area: (extra as any).area ?? (r.area ?? null), // 'area' tidak ada di tipe ExtrasData, tapi kita jaga
-          pi_area: (extra as any).pi_area ?? (r.pi_area ?? null),
-          cpl: (extra as any).cpl ?? (r.cpl ?? null),
-          performance_indicator: (extra as any).performance_indicator ?? (r.performance_indicator ?? null),
+          kurikulum_id: Number(r.kurikulum_id ?? kurikulumId),
+          // --- PERBAIKAN: Baca langsung dari 'r' (response API) ---
+          semester: r.semester ?? null,
+          sifat: r.sifat ?? null,
         };
       });
       setData(mapped);
@@ -85,26 +100,24 @@ export default function MatakuliahListPage() {
   };
 
   useEffect(() => {
-    void loadData();
-  }, [kurikulumIdRaw]);
+    if (!Number.isNaN(kurikulumId)) {
+      loadData();
+    }
+  }, [kurikulumId]);
 
   const handleAddMatakuliah = async (payload: MatakuliahModalData) => {
     setSubmitting(true);
     setError(null);
     try {
-      if (!kurikulumId || Number.isNaN(kurikulumId)) throw new Error("kurikulum id tidak valid.");
+      if (Number.isNaN(kurikulumId)) throw new Error("kurikulum id tidak valid.");
       
-      // --- PENYESUAIAN ---
-      // Validasi pi_group_id dan cpl_id dihapus
-      // ---------------------
-
+      // --- PERBAIKAN: Kirim 'semester' dan 'sifat' ke API ---
       const body = {
         kode_mk: payload.kode_mk,
         nama: payload.nama,
         sks: Number(payload.sks ?? 0),
-        // --- PENYESUAIAN ---
-        // pi_group_id dan cpl_id dihapus dari body
-        // ---------------------
+        semester: payload.semester ?? null,
+        sifat: payload.sifat ?? null,
       };
 
       const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`, {
@@ -118,21 +131,11 @@ export default function MatakuliahListPage() {
         throw new Error(txt || `HTTP ${res.status}`);
       }
 
-      // Simpan data FE-only ke state 'extras'
-      setExtras(prev => ({
-        ...prev,
-        [payload.kode_mk]: {
-          semester: payload.semester ?? null,
-          sifat: payload.sifat ?? null,
-          assesment_area_id: payload.assesment_area_id ?? null,
-          performance_indicator_ids: payload.performance_indicator_ids ?? [],
-          // --- PENYESUAIAN ---
-          // pi_group_id dan cpl_id dihapus dari 'extras'
-          // ---------------------
-        },
-      }));
-
+      // --- PERBAIKAN: Hapus logika 'setExtras' ---
+      
+      // --- PERBAIKAN: Panggil loadData() biasa ---
       await loadData();
+      
       setIsModalOpen(false);
     } catch (err: any) {
       console.error("POST matakuliah error:", err);
@@ -147,28 +150,24 @@ export default function MatakuliahListPage() {
     setError(null);
     
     try {
-      if (!kurikulumId || Number.isNaN(kurikulumId)) {
+      if (Number.isNaN(kurikulumId)) {
         throw new Error("kurikulum id tidak valid.");
       }
 
       let successCount = 0;
       let failCount = 0;
       const errors: string[] = [];
-      const newExtras: typeof extras = {};
+      // --- PERBAIKAN: Hapus 'newExtrasBatch' ---
 
       for (const item of importedData) {
         try {
-          // --- PENYESUAIAN ---
-          // Validasi pi_group_id dan cpl_id dihapus
-          // ---------------------
-
+          // --- PERBAIKAN: Kirim 'semester' dan 'sifat' ke API ---
           const body = {
             kode_mk: item.kode_mk,
             nama: item.nama,
             sks: Number(item.sks ?? 0),
-            // --- PENYESUAIAN ---
-            // pi_group_id dan cpl_id dihapus dari body
-            // ---------------------
+            semester: item.semester ?? null,
+            sifat: item.sifat ?? null,
           };
 
           const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`, {
@@ -179,15 +178,7 @@ export default function MatakuliahListPage() {
 
           if (res.ok) {
             successCount++;
-            newExtras[item.kode_mk] = {
-              semester: item.semester,
-              sifat: item.sifat,
-              assesment_area_id: item.assesment_area_id,
-              performance_indicator_ids: item.performance_indicator_ids,
-              // --- PENYESUAIAN ---
-              // pi_group_id dan cpl_id dihapus
-              // ---------------------
-            };
+            // --- PERBAIKAN: Hapus logika 'newExtrasBatch' ---
           } else {
             failCount++;
             const errText = await parseApiError(res);
@@ -199,10 +190,9 @@ export default function MatakuliahListPage() {
         }
       }
 
-      if (successCount > 0) {
-        setExtras(prev => ({ ...prev, ...newExtras }));
-      }
+      // --- PERBAIKAN: Hapus 'setExtras' ---
       
+      // --- PERBAIKAN: Panggil loadData() biasa ---
       await loadData();
       
       if (successCount > 0) {
@@ -228,7 +218,7 @@ export default function MatakuliahListPage() {
   return (
     <DashboardLayout>
       <div className="p-8">
-        {/* --- (Bagian Header/Tombol tidak berubah) --- */}
+        {/* ... (Header tidak berubah) ... */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <Layers size={24} className="text-indigo-600" />
@@ -266,25 +256,38 @@ export default function MatakuliahListPage() {
           </div>
         </div>
 
-        {/* --- (Bagian Error tidak berubah) --- */}
         {error && (
           <div className={`mb-4 p-3 text-sm rounded ${error.includes('Berhasil') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
             {error}
           </div>
         )}
 
-        {/* --- (Bagian Tabel tidak berubah) --- */}
         <div className="bg-white shadow-xl rounded-xl">
+          {/* ... (Filter tidak berubah) ... */}
           <h2 className="text-lg font-bold p-6 pb-2 text-gray-800">Data</h2>
-          {/* Filter inputs... */}
           <div className="p-4 border-b border-gray-100 grid grid-cols-7 gap-4">
-             {/* ... input ... */}
+            <input type="text" placeholder="ID" className="px-3 py-2 border rounded-lg text-sm" />
+            <input type="text" placeholder="Kode" className="px-3 py-2 border rounded-lg text-sm" />
+            <input type="text" placeholder="Nama" className="col-span-2 px-3 py-2 border rounded-lg text-sm" />
+            <input type="text" placeholder="Semester" className="px-3 py-2 border rounded-lg text-sm" />
+            <input type="text" placeholder="SKS" className="px-3 py-2 border rounded-lg text-sm" />
+            <input type="text" placeholder="Sifat" className="px-3 py-2 border rounded-lg text-sm" />
           </div>
+
           <div className="overflow-x-auto border-t border-gray-200 rounded-b-xl">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-indigo-50">
-                {/* ... th ... */}
+                <tr>
+                  <th className="px-4 py-3 text-left font-bold text-xs text-indigo-700 uppercase">ID</th>
+                  <th className="px-4 py-3 text-left font-bold text-xs text-indigo-700 uppercase">KODE</th>
+                  <th className="px-4 py-3 text-left font-bold text-xs text-indigo-700 uppercase">NAMA</th>
+                  <th className="px-4 py-3 text-left font-bold text-xs text-indigo-700 uppercase">SEM</th>
+                  <th className="px-4 py-3 text-left font-bold text-xs text-indigo-700 uppercase">SKS</th>
+                  <th className="px-4 py-3 text-left font-bold text-xs text-indigo-700 uppercase">SIFAT</th>
+                  <th className="px-4 py-3 text-center font-bold text-xs text-indigo-700 uppercase">AKSI</th>
+                </tr>
               </thead>
+
               <tbody className="bg-white divide-y divide-gray-100">
                 {loading ? (
                   <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">Memuat data...</td></tr>
@@ -320,11 +323,15 @@ export default function MatakuliahListPage() {
               </tbody>
             </table>
           </div>
-          {/* ... (Footer tabel tidak berubah) ... */}
+
+          <div className="p-4 border-t border-gray-100">
+            <p className="text-sm text-gray-600">
+              Menampilkan total <span className="font-semibold">{data.length}</span> Mata Kuliah dalam kurikulum ini.
+            </p>
+          </div>
         </div>
 
-        {/* --- Komponen Modal --- */}
-
+        {/* Modal-modal ini tidak perlu diubah, mereka mengambil data dari 'page.tsx' */}
         <MatakuliahModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
