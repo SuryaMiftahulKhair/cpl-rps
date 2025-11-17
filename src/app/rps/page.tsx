@@ -1,75 +1,109 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import DashboardLayout from "@/app/components/DashboardLayout";
+import { Loader2, BookCopy, ChevronRight, Layers } from "lucide-react";
 import Link from "next/link";
-import { Book, LayoutPanelTop } from "lucide-react";
-import DashboardLayout from "@/app/components/DashboardLayout"; // Sesuaikan path
 
-// --- Data Kurikulum ---
-const kurikulumList = [
-    { id: 1003, nama: "Kurikulum Sarjana K-23" },
-    { id: 864, nama: "Kurikulum 2021" },
-    { id: 118, nama: "Kurikulum 2018" },
-    { id: 117, nama: "KPT 2016" },
-    { id: 116, nama: "KBK 2011" },
-    { id: 115, nama: "KURIKULUM 2008" },
-];
+// Tipe data untuk Kurikulum
+type Kurikulum = {
+  id: number;
+  nama: string;
+  tahun: number;
+};
 
-// --- Komponen RPS Card ---
-interface KurikulumCardProps {
-    kurikulum: { id: number; nama: string };
-}
+export default function RpsAdminDashboardPage() {
+  const [kurikulumList, setKurikulumList] = useState<Kurikulum[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const KurikulumCard: React.FC<KurikulumCardProps> = ({ kurikulum }) => (
-    // Link ke halaman detail RPS Matakuliah per Kurikulum
-    <Link 
-        href={`/rps/${kurikulum.id}/list`} // Rute dinamis untuk daftar RPS
-        className="bg-white p-6 rounded-xl shadow-md border border-gray-200 
-                   flex flex-col justify-center items-center text-center 
-                   transition duration-200 hover:shadow-lg hover:border-indigo-400 hover:bg-indigo-50"
-    >
-        <Book size={32} className="text-indigo-500 mb-2" />
-        <h3 className="text-sm font-semibold text-indigo-700 hover:text-indigo-800">
-            {kurikulum.nama}
-        </h3>
-    </Link>
-);
+  useEffect(() => {
+    const loadKurikulum = async () => {
 
+      setLoading(true);
+      setError(null);
+      try {
+        // API baru untuk mengambil semua kurikulum
+        const res = await fetch("/api/kurikulum"); 
+        if (!res.ok) {
+          throw new Error("Gagal memuat data kurikulum");
+        }
+        
+        const data: Kurikulum[] = await res.json();
+        setKurikulumList(data);
+        
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-// --- Komponen Utama RPSMatakuliahPage ---
+    loadKurikulum();
+  }, );
 
-export default function RPSMatakuliahPage() {
-    // Asumsi: Peran ini mungkin datang dari context atau state global
-    const userRole = "Admin Program Studi"; 
+  return (
+    <DashboardLayout>
+      <div className="p-6 lg:p-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">RPS Matakuliah</h1>
+          { (
+             <span className="p-2 px-3 text-sm font-medium bg-red-100 text-red-700 rounded-lg">
+               Peran saat ini sebagai 
+             </span>
+          )}
+        </div>
 
-    return (
-        <DashboardLayout>
-            <div className="p-8">
-                
-                {/* Page Header and Role Alert */}
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-                        <LayoutPanelTop size={28} className="text-indigo-600" />
-                        RPS Matakuliah
-                    </h1>
-                    
-                    {/* Role Alert Box */}
-                    <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded-lg text-sm shadow-sm">
-                        Peran saat ini sebagai **{userRole}**
+        {loading && (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="animate-spin text-indigo-600" size={40} />
+          </div>
+        )}
+        
+        {error && (
+          <div className="mb-4 p-3 text-sm bg-red-50 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div>
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">Pilih Kurikulum</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              
+              {kurikulumList.length === 0 ? (
+                <p className="text-gray-500">Belum ada kurikulum. Silakan tambahkan di halaman "Referensi".</p>
+              ) : (
+                kurikulumList.map(kur => (
+                  <Link 
+                    key={kur.id} 
+                    // Arahkan ke halaman detail [kurikulumId]
+                    href={`/rps-matakuliah/${kur.id}`} 
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-indigo-300 transition-all duration-300 group flex flex-col justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-indigo-50 rounded-lg">
+                         <Layers size={24} className="text-indigo-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-800">{kur.nama}</h3>
+                        <p className="text-sm text-gray-500">Tahun {kur.tahun}</p>
+                      </div>
                     </div>
-                </div>
-
-                <div className="space-y-6">
-                    <h2 className="text-xl font-semibold text-gray-700 mt-4 mb-4">Pilih Kurikulum</h2>
-
-                    {/* Kurikulum Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-                        {kurikulumList.map((kurikulum) => (
-                            <KurikulumCard key={kurikulum.id} kurikulum={kurikulum} />
-                        ))}
+                    <div className="flex justify-end items-center mt-4">
+                       <span className="text-sm font-medium text-indigo-600 group-hover:underline flex items-center gap-1">
+                         Lihat Mata Kuliah
+                         <ChevronRight size={16} />
+                       </span>
                     </div>
-                </div>
+                  </Link>
+                ))
+              )}
+
             </div>
-        </DashboardLayout>
-    );
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
 }

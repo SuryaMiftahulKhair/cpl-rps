@@ -76,7 +76,8 @@ export function ExcelImportModal({ isOpen, onClose, onImport, kurikulumId, submi
           <strong className="text-gray-800">Kode MK</strong>, 
           <strong className="text-gray-800">Nama MK</strong>, 
           <strong className="text-gray-800">SKS</strong>, 
-          (Opsional: <strong className="text-gray-800">Semester</strong>, <strong className="text-gray-800">Sifat</strong>)
+          <strong className="text-gray-800">Semester</strong>, 
+          <strong className="text-gray-800">Sifat</strong>
         </p>
         
         <input 

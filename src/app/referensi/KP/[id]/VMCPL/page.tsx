@@ -17,7 +17,6 @@ type PIRow = {
 
 // --- Komponen Modal ---
 // Modal "Kompleks" yang kakak kirim
-import TambahPIRowModal from "@/app/components/TambahPIModal"; 
 // Modal Manajemen (BARU)
 import CplManagementModal from "@/app/components/CplManagementModal";
 import AreaManagementModal from "@/app/components/AreaManagementModal";
@@ -161,10 +160,6 @@ const PITableContent = () => {
       <div className="mb-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
         <h3 className="text-base font-semibold text-gray-700 mb-3">Manajemen Data</h3>
         <div className="flex flex-wrap gap-3">
-          {/* Tombol "Kompleks" dari modal kakak */}
-          <button onClick={() => setIsTambahModalOpen(true)} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 shadow-sm">
-            <Plus size={18} /> <span>Tambah Baris (Kompleks)</span>
-          </button>
           
           <div className="border-l border-gray-300 mx-2"></div>
 
@@ -238,12 +233,6 @@ const PITableContent = () => {
       {!Number.isNaN(kurikulumId) && (
         <>
           {/* Modal "Kompleks" (dari file kakak) */}
-          <TambahPIRowModal
-            isOpen={isTambahModalOpen}
-            onClose={() => setIsTambahModalOpen(false)}
-            onSubmitSuccess={handleManagementSuccess}
-            kurikulumId={kurikulumId}
-          />
           {/* Modal Manajemen CPL (BARU) */}
           <CplManagementModal
             isOpen={isCplModalOpen}
