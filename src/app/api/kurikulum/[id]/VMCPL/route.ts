@@ -1,29 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/../lib/prisma"; // sesuaikan kalau prisma-mu ada di path lain
-import { CPL, PerformanceIndicator } from "@prisma/client"; // Import tipe
+import { NextResponse, NextRequest } from "next/server";
+import prisma from "@/../lib/prisma";
+import { CPL, PerformanceIndicator } from "@prisma/client";
 
-// Tipe DTO untuk baris tabel
 type PIRow = {
-  area: string;       // AssasmentArea.nama
-  piCode: string;     // PIGroup.kode_grup
-  iloCode: string;    // CPL.kode_cpl
-  ilo: string;        // CPL.deskripsi
-  indicators: string[]; // PerformanceIndicator[].deskripsi
+  area: string;       
+  piCode: string;     
+  iloCode: string;    
+  ilo: string;        
+  indicators: string[]; 
 };
 
-function parseId(paramsId?: string) {
-  const n = Number(paramsId);
-  return Number.isFinite(n) ? n : NaN;
+// Fungsi parseId baru
+function parseId(paramsId: string | undefined, nextUrl?: any) {
+  if (paramsId) return Number(paramsId);
+  try {
+    const url = nextUrl?.pathname ?? "";
+    const segments = url.split('/');
+    const idIndex = segments.indexOf('kurikulum') + 1; 
+    const id = segments[idIndex];
+    return id ? Number(id) : NaN;
+  } catch {
+    return NaN;
+  }
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id?: string } }
+  { params }: { params: { id?: string } } // <-- PERBAIKAN: Pakai 'id'
 ) {
   try {
-    // `params` may be an async object in some Next.js runtimes — await it
-    const resolvedParams = await (params as any);
-    const kurikulumId = parseId(resolvedParams?.id); // Ini sekarang akan aman
+    // --- PERBAIKAN: Baca 'params.id' ---
+    const kurikulumId = parseId(params.id, (request as any).nextUrl);
+    
     if (Number.isNaN(kurikulumId)) {
       return NextResponse.json(
         { error: "kurikulum id tidak valid (harus integer)" },
@@ -31,32 +39,24 @@ export async function GET(
       );
     }
 
-    // Ambil semua PIGroup milik kurikulum
     const groups = await prisma.pIGroup.findMany({
       where: { kurikulum_id: kurikulumId },
       include: {
-        assasment: true, // Relasi ke AssasmentArea (untuk 'area')
-        
-        // --- Ini sudah benar ---
+        assasment: true,
         indicators: {
           include: {
-            cpl: true, // Ambil CPL yang terhubung ke setiap indicator
+            cpl: true,
           },
           orderBy: { id: 'asc' },
         },
-        // ---------------------
       },
       orderBy: { id: "asc" },
     });
 
-    // Map ke bentuk baris tabel UI
     const rows: PIRow[] = groups.flatMap((g) => {
       const area = g.assasment?.nama ?? "-";
       const piCode = g.kode_grup;
-
-      // --- LOGIKA MAPPING BARU (Ini sudah benar) ---
       const cplGroupMap = new Map<number, { cpl: CPL, indicators: PerformanceIndicator[] }>();
-
       for (const indicator of g.indicators) {
         if (indicator.cpl) {
           const cpl = indicator.cpl;
@@ -66,7 +66,6 @@ export async function GET(
           cplGroupMap.get(cpl.id)!.indicators.push(indicator);
         }
       }
-
       if (cplGroupMap.size === 0) {
         return [{
           area,
@@ -76,7 +75,6 @@ export async function GET(
           indicators: g.indicators.map(ind => ind.deskripsi), 
         }];
       }
-
       return Array.from(cplGroupMap.values()).map(grouped => ({
         area,
         piCode,
@@ -84,7 +82,6 @@ export async function GET(
         ilo: grouped.cpl.deskripsi,
         indicators: grouped.indicators.map(ind => ind.deskripsi),
       }));
-      // -------------------------------
     });
 
     return NextResponse.json(rows, {
