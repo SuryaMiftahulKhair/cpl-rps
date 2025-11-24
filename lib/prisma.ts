@@ -9,7 +9,6 @@ declare global {
 const prisma =
   global.__prisma ??
   new PrismaClient({
-    adapter: process.env.DATABASE_URL,
   });
 
 if (process.env.NODE_ENV !== "production") global.__prisma = prisma;
