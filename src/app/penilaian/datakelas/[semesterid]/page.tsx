@@ -1,15 +1,16 @@
 // file: src/app/penilaian/datakelas/[semesterid]/page.tsx
 "use client";
 
-// 1. Impor 'use', 'useState', 'useEffect'
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Eye } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
+// 1. Import Modal Baru
+import KelasModal from "@/app/components/KelasModal";
 
 // --- Types ---
 interface PageParams {
-  semesterid: string; // Sesuai nama folder [semesterid]
+  semesterid: string;
 }
 
 interface MatakuliahKelas {
@@ -21,77 +22,87 @@ interface MatakuliahKelas {
   sks: number;
 }
 
-// --- Helper untuk parse error ---
+// --- Helper Error ---
 async function parseApiError(res: Response): Promise<string> {
   const text = await res.text();
-  let parsed: any = null;
   try {
-    parsed = JSON.parse(text);
-  } catch {
-    /* not json */
-  }
-  if (parsed?.error) {
-    if (Array.isArray(parsed.error)) return parsed.error.join(", ");
-    if (typeof parsed.error === "string") return parsed.error;
-    if (Array.isArray(parsed.error.issues)) {
-      return parsed.error.issues
-        .map((i: any) => `${i.path[0]}: ${i.message}`)
-        .join(", ");
-    }
-    return JSON.stringify(parsed.error);
-  }
+    const parsed = JSON.parse(text);
+    if (parsed?.error) return typeof parsed.error === "string" ? parsed.error : JSON.stringify(parsed.error);
+  } catch {}
   return text || `HTTP ${res.status}`;
 }
 
-// --- Komponen Utama ---
 export default function SemesterMatakuliahListPage({
   params,
 }: {
   params: Promise<PageParams>;
 }) {
-  // 2. Gunakan 'use' untuk "membuka" Promise 'params'
   const resolvedParams = use(params);
-  
-  // 3. Akses 'semesterid' dari 'resolvedParams'
   const { semesterid } = resolvedParams;
 
-  // State untuk data, loading, dan filter
+  // State Halaman
   const [matakuliahList, setMatakuliahList] = useState<MatakuliahKelas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 2. State untuk Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // State Filter
   const [searchSemKur, setSearchSemKur] = useState("");
   const [searchNamaKelas, setSearchNamaKelas] = useState("");
   const [searchKodeMK, setSearchKodeMK] = useState("");
   const [searchNamaMK, setSearchNamaMK] = useState("");
 
-  // 4. useEffect untuk mengambil data
+  // Fetch Data Function (Agar bisa dipanggil ulang setelah tambah data)
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/kelas?semesterId=${semesterid}`);
+      if (!res.ok) throw new Error(await parseApiError(res));
+      const data = await res.json();
+      setMatakuliahList(data);
+    } catch (err: any) {
+      setError(`Gagal mengambil data kelas: ${err.message || "Error tidak diketahui"}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (!semesterid) return;
+    if (semesterid) fetchData();
+  }, [semesterid]);
 
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/kelas?semesterId=${semesterid}`);
-        
-        if (!res.ok) {
-          throw new Error(await parseApiError(res));
-        }
+  // 3. Handler Tambah Kelas
+  const handleCreateKelas = async (data: { mata_kuliah_id: number; nama_kelas: string }) => {
+    setSubmitting(true);
+    try {
+      const payload = {
+        ...data,
+        tahun_ajaran_id: parseInt(semesterid), // ID semester dari URL params
+      };
 
-        const data = await res.json();
-        setMatakuliahList(data);
-      } catch (err: any) {
-        setError(`Gagal mengambil data kelas: ${err.message || "Error tidak diketahui"}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      const res = await fetch("/api/kelas", { // Pastikan route POST /api/kelas sudah ada
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    fetchData();
-  }, [semesterid]); // Dependency array sudah benar
+      if (!res.ok) throw new Error(await parseApiError(res));
 
-  // 5. Logika filter
+      // Sukses
+      setIsModalOpen(false);
+      fetchData(); // Refresh tabel
+    } catch (err: any) {
+      alert(`Gagal membuat kelas: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Filter Logic
   const filteredMatakuliah = matakuliahList.filter((mk) => {
     const matchSemKur = String(mk.semesterKur).toLowerCase().includes(searchSemKur.toLowerCase());
     const matchNamaKelas = mk.namaKelas.toLowerCase().includes(searchNamaKelas.toLowerCase());
@@ -113,7 +124,11 @@ export default function SemesterMatakuliahListPage({
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex justify-end items-center mb-4">
              <div className="flex gap-2">
-                <button className="bg-cyan-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-cyan-600 transition-colors shadow">
+                {/* 4. Tombol Buka Modal */}
+                <button 
+                    onClick={() => setIsModalOpen(true)}
+                    className="bg-cyan-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-cyan-600 transition-colors shadow"
+                >
                     Baru
                 </button>
                 <button className="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-600 transition-colors shadow">
@@ -127,13 +142,14 @@ export default function SemesterMatakuliahListPage({
                 </Link>
              </div>
           </div>
+          
           {/* Search Filters */}
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-3">
-             <input type="text" placeholder="Sem. Kur." value={searchSemKur} onChange={(e) => setSearchSemKur(e.target.value)} className="..."/>
-             <input type="text" placeholder="Nama Kelas" value={searchNamaKelas} onChange={(e) => setSearchNamaKelas(e.target.value)} className="..."/>
-             <input type="text" placeholder="Kode Matakuliah" value={searchKodeMK} onChange={(e) => setSearchKodeMK(e.target.value)} className="..."/>
-             <input type="text" placeholder="Nama Matakuliah" value={searchNamaMK} onChange={(e) => setSearchNamaMK(e.target.value)} className="..."/>
-             <input type="text" placeholder="SKS" className="..."/>
+             <input type="text" placeholder="Sem. Kur." value={searchSemKur} onChange={(e) => setSearchSemKur(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
+             <input type="text" placeholder="Nama Kelas" value={searchNamaKelas} onChange={(e) => setSearchNamaKelas(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
+             <input type="text" placeholder="Kode Matakuliah" value={searchKodeMK} onChange={(e) => setSearchKodeMK(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
+             <input type="text" placeholder="Nama Matakuliah" value={searchNamaMK} onChange={(e) => setSearchNamaMK(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
+             <input type="text" placeholder="SKS" className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
           </div>
         </div>
 
@@ -176,7 +192,7 @@ export default function SemesterMatakuliahListPage({
                     </td>
                   </tr>
                 ) : (
-                  filteredMatakuliah.map((mk) => ( // 'index' dihapus, gunakan 'mk.id'
+                  filteredMatakuliah.map((mk) => (
                     <tr key={mk.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-gray-600">{mk.semesterKur}</td>
                       <td className="px-6 py-4 text-gray-800 font-medium">{mk.namaKelas}</td>
@@ -184,7 +200,7 @@ export default function SemesterMatakuliahListPage({
                       <td className="px-6 py-4 text-gray-800">{mk.namaMatakuliah}</td>
                       <td className="px-6 py-4 text-center font-semibold text-gray-700">{mk.sks}</td>
                       <td className="px-6 py-4 text-center">
-                        <Link href={`/penilaian/datakelas/${semesterid}/${mk.id}`}> {/* Link menggunakan mk.id */}
+                        <Link href={`/penilaian/datakelas/${semesterid}/${mk.id}`}>
                           <button className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors shadow bg-indigo-500 hover:bg-indigo-600">
                             Detail Kelas
                           </button>
@@ -197,8 +213,15 @@ export default function SemesterMatakuliahListPage({
             </table>
           </div>
         </div>
-        {/* ... (Back to Top Button) ... */}
       </div>
+
+      {/* 5. Render Modal */}
+      <KelasModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateKelas}
+        submitting={submitting}
+      />
     </DashboardLayout>
   );
 }

@@ -142,8 +142,8 @@ export default function DetailKelasPage({
             <strong>Error:</strong> {error}
           </div>
           <Link href={`/penilaian/datakelas/${semesterid}`}>
-              <button className="bg-gray-500 text-white px-4 py-2 ...">
-                  <ArrowLeft size={16} />
+              <button className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-600 transition-colors shadow flex items-center gap-2">
+                  <ArrowLeft size={10} />
                   Kembali
               </button>
           </Link>
@@ -171,11 +171,11 @@ export default function DetailKelasPage({
               <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
                 <h2 className="text-lg font-bold text-gray-800">Informasi Kelas</h2>
                 <div className="flex gap-2">
-                  <button className="bg-indigo-500 text-white px-4 py-2 ...">
+                  <button className="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-600 transition-colors shadow flex items-center gap-2">
                     Sinkronisasi Neosia
                   </button>
                   <Link href={`/penilaian/datakelas/${semesterid}`}> 
-                    <button className="bg-gray-500 text-white px-4 py-2 ...">
+                    <button className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-600 transition-colors shadow flex items-center gap-2">
                       <ArrowLeft size={16} />
                       Kembali
                     </button>
@@ -202,7 +202,7 @@ export default function DetailKelasPage({
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="flex justify-between items-center px-6 py-4 ...">
                 <h2 className="text-lg font-bold text-gray-800">Data Dosen</h2>
-                <button className="bg-green-500 text-white px-4 py-2 ...">
+                <button className="bg-green-500 text-white px-4 py-2 rounded-lg">
                   Tambah Manual Dosen
                 </button>
               </div>
@@ -210,23 +210,46 @@ export default function DetailKelasPage({
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className=" text-gray-800 px-6 py-3 ...">NIP</th>
-                      <th className=" text-gray-800 px-6 py-3 ...">NAMA</th>
-                      <th className=" text-gray-800 px-6 py-3 ...">POSISI</th>
-                      <th className=" text-gray-800 px-6 py-3 ...">AKSI</th>
+                      <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">
+                        NIP
+                      </th>
+                      <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">
+                        NAMA
+                      </th>
+                      <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">
+                        POSISI
+                      </th>
+                      <th className="px-6 py-3 text-center font-bold text-gray-700 uppercase tracking-wider w-20">
+                        AKSI
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {dosenData.length === 0 ? (
-                      <tr><td colSpan={4} className="text-center py-8 text-gray-500">Tidak ada data dosen</td></tr>
+                      <tr>
+                        <td colSpan={4} className="text-center py-8 text-gray-500">
+                          Tidak ada data dosen
+                        </td>
+                      </tr>
                     ) : (
                       dosenData.map((dosen) => (
-                        <tr key={dosen.id} className="hover:bg-gray-50 ...">
-                          <td className=" text-gray-800 px-6 py-4 ...">{dosen.nip}</td>
-                          <td className=" text-gray-800 px-6 py-4 ...">{dosen.nama}</td>
-                          <td className=" text-gray-800 px-6 py-4 ...">{dosen.posisi}</td>
-                          <td className=" text-gray-800 px-6 py-4 text-center">
-                            <button onClick={() => handleDeleteDosen(dosen.id)} className="p-2 bg-red-500 ...">
+                        <tr key={dosen.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 text-left text-gray-700 font-mono text-xs whitespace-nowrap">
+                            {dosen.nip}
+                          </td>
+                          <td className="px-6 py-4 text-left text-gray-800 font-medium">
+                            {dosen.nama}
+                          </td>
+                          <td className="px-6 py-4 text-left text-gray-700">
+                            {dosen.posisi}
+                          </td>
+
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => handleDeleteDosen(dosen.id)}
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                              title="Hapus Dosen"
+                            >
                               <Trash2 size={16} />
                             </button>
                           </td>
@@ -251,10 +274,10 @@ export default function DetailKelasPage({
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className=" text-gray-800 px-6 py-3 ...">#</th>
-                    <th className=" text-gray-800 px-6 py-3 ...">NIM</th>
-                    <th className=" text-gray-800 px-6 py-3 ...">NAMA</th>
-                    <th className=" text-gray-800 px-6 py-3 ...">AKSI</th>
+                    <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NO.</th>
+                    <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NIM</th>
+                    <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NAMA</th>
+                    <th className="px-6 py-3 text-center font-bold text-gray-700 uppercase tracking-wider">AKSI</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -263,11 +286,11 @@ export default function DetailKelasPage({
                   ) : (
                     mahasiswaData.map((mahasiswa, index) => (
                       <tr key={mahasiswa.id} className="hover:bg-gray-50 ...">
-                        <td className=" text-gray-800 px-6 py-4 ...">{index + 1}</td>
-                        <td className=" text-gray-800 px-6 py-4 ...">{mahasiswa.nim}</td>
-                        <td className=" text-gray-800 px-6 py-4 ...">{mahasiswa.nama}</td>
+                        <td className="px-6 py-4 text-left text-gray-700 font-mono text-xs whitespace-nowrap">{index + 1}</td>
+                        <td className="px-6 py-4 text-left text-gray-700 font-mono text-xs whitespace-nowrap">{mahasiswa.nim}</td>
+                        <td className="px-6 py-4 text-left text-gray-700 font-mono text-xs whitespace-nowrap">{mahasiswa.nama}</td>
                         <td className=" text-gray-800 px-6 py-4 text-center">
-                          <button onClick={() => handleDeleteMahasiswa(mahasiswa.id)} className="text-red-500 ...">
+                          <button onClick={() => handleDeleteMahasiswa(mahasiswa.id)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors">
                             <Trash2 size={18} />
                           </button>
                         </td>
