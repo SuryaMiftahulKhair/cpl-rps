@@ -4,8 +4,9 @@
 // 1. Impor 'use', 'useState', 'useEffect'
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { Trash2, ArrowLeft, Loader2 } from "lucide-react";
+import { Trash2, ArrowLeft, Loader2, Plus } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
+import DosenModal from "@/app/components/DosenModal";
 
 // --- Types ---
 interface PageParams {
@@ -74,55 +75,83 @@ export default function DetailKelasPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 4. useEffect untuk mengambil data
-  useEffect(() => {
-    if (!kelasId) return;
-
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
+  const [isDosenModalOpen, setIsDosenModalOpen] = useState(false);
+  const [submittingDosen, setSubmittingDosen] = useState(false);
+  
+  const fetchData = async () => {
+      // ... (Logika fetch TETAP SAMA, hapus setIsLoading(true) agar tidak flicker saat refresh data) ...
       try {
-        console.log(`Fetching detail for Kelas ID: ${kelasId}`);
-        
-        // 5. Panggil API route dinamis /api/kelas/[id]
         const res = await fetch(`/api/kelas/${kelasId}`);
-
-        if (!res.ok) {
-          throw new Error(await parseApiError(res));
-        }
-
+        if (!res.ok) throw new Error(await parseApiError(res));
         const data = await res.json();
-        
         setKelasInfo(data.kelasInfo);
         setDosenData(data.dosenList);
         setMahasiswaData(data.mahasiswaList);
-
       } catch (err: any) {
-        setError(`Gagal mengambil detail kelas: ${err.message || 'Error tidak diketahui'}`);
-      } finally {
-        setIsLoading(false);
+        setError(`Gagal mengambil detail kelas: ${err.message}`);
       }
-    };
+  };
 
-    fetchData();
+  // 4. useEffect untuk mengambil data
+  useEffect(() => {
+    if (!kelasId) return;
+    setIsLoading(true);
+    fetchData().finally(() => setIsLoading(false));
   }, [kelasId]); // Dependency array
+
+  const handleAddDosen = async (data: { nip: string; nama: string; posisi: string }) => {
+    setSubmittingDosen(true);
+    try {
+      const res = await fetch(`/api/kelas/${kelasId}/dosen`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) throw new Error(await parseApiError(res));
+
+      // Sukses
+      setIsDosenModalOpen(false);
+      await fetchData(); 
+    } catch (err: any) {
+      alert(`Gagal menambahkan dosen: ${err.message}`);
+    } finally {
+      setSubmittingDosen(false);
+    }
+  };
 
   // ... (Handler Delete Dosen & Mahasiswa tetap sama) ...
   const handleDeleteDosen = async (dosenPengampuId: number) => {
-    if (confirm("Apakah Anda yakin ingin menghapus dosen ini dari kelas?")) {
-      // TODO: Panggil API DELETE /api/dosen-pengampu/[dosenPengampuId]
-      setDosenData(dosenData.filter(d => d.id !== dosenPengampuId));
+    if (!confirm("Apakah Anda yakin ingin menghapus dosen ini dari kelas?")) return;
+
+    try {
+      // 1. Panggil API DELETE yang baru dibuat
+      const res = await fetch(`/api/dosen/pengampu/${dosenPengampuId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ dosenPengampuId: dosenPengampuId }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Gagal menghapus dosen.");
+      }
+
+      // 2. Jika sukses, update state lokal agar UI berubah tanpa refresh halaman
+      setDosenData((prevData) => prevData.filter((d) => d.id !== dosenPengampuId));
+      
+      // Opsional: Tampilkan notifikasi sukses
+      alert("Dosen berhasil dihapus.");
+
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
     }
   };
 
-  const handleDeleteMahasiswa = async (pesertaKelasId: number) => {
-    if (confirm("Apakah Anda yakin ingin menghapus mahasiswa ini dari kelas?")) {
-      // TODO: Panggil API DELETE /api/peserta-kelas/[pesertaKelasId]
-      setMahasiswaData(mahasiswaData.filter(m => m.id !== pesertaKelasId));
-    }
-  };
-
-  // Tampilkan status Loading
+   // Tampilkan status Loading
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -200,10 +229,14 @@ export default function DetailKelasPage({
 
             {/* Data Dosen */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="flex justify-between items-center px-6 py-4 ...">
+              <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
                 <h2 className="text-lg font-bold text-gray-800">Data Dosen</h2>
-                <button className="bg-green-500 text-white px-4 py-2 rounded-lg">
-                  Tambah Manual Dosen
+                {/* 4. Hubungkan Tombol */}
+                <button 
+                    onClick={() => setIsDosenModalOpen(true)}
+                    className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition-colors shadow flex items-center gap-2"
+                >
+                  <Plus size={16} /> Tambah Dosen
                 </button>
               </div>
               <div className="overflow-x-auto">
@@ -289,11 +322,6 @@ export default function DetailKelasPage({
                         <td className="px-6 py-4 text-left text-gray-700 font-mono text-xs whitespace-nowrap">{index + 1}</td>
                         <td className="px-6 py-4 text-left text-gray-700 font-mono text-xs whitespace-nowrap">{mahasiswa.nim}</td>
                         <td className="px-6 py-4 text-left text-gray-700 font-mono text-xs whitespace-nowrap">{mahasiswa.nama}</td>
-                        <td className=" text-gray-800 px-6 py-4 text-center">
-                          <button onClick={() => handleDeleteMahasiswa(mahasiswa.id)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors">
-                            <Trash2 size={18} />
-                          </button>
-                        </td>
                       </tr>
                     ))
                   )}
@@ -303,6 +331,13 @@ export default function DetailKelasPage({
           </div>
         </div>
       </div>
+      {/* 5. Render Modal Dosen */}
+      <DosenModal 
+        isOpen={isDosenModalOpen}
+        onClose={() => setIsDosenModalOpen(false)}
+        onSubmit={handleAddDosen}
+        submitting={submittingDosen}
+      />
     </DashboardLayout>
   );
 }
