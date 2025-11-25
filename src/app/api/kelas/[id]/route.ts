@@ -80,5 +80,50 @@ export async function GET(
   }
 }
 
-// TODO: Tambahkan fungsi DELETE untuk menghapus DosenPengampu atau PesertaKelas
-// export async function DELETE(request: Request) { ... }
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const id = parseInt(params.id, 10);
+
+    const body = await request.json().catch(() => null);
+    if (!body || !body.dosenPengampuId) {
+      return NextResponse.json(
+        { error: "dosenPengampuId wajib disertakan dalam body untuk menghapus dosen." }, 
+        { status: 400 }
+      );
+    }
+    const { dosenPengampuId } = body;
+    const record = await prisma.dosenPengampu.findFirst({
+      where: {
+        id: dosenPengampuId,
+        kelas_id: id // Pastikan relasinya benar
+      }
+    });
+
+    if (!record) {
+      return NextResponse.json({ error: "Data pengampu tidak ditemukan di kelas ini" }, { status: 404 });
+    }
+
+    // Lakukan penghapusan
+    await prisma.dosenPengampu.delete({
+      where: { id: dosenPengampuId },
+    });
+
+    // Hapus record dari tabel DosenPengampu berdasarkan ID-nya
+    await prisma.dosenPengampu.delete({
+      where: { id: id },
+    });
+
+    return NextResponse.json({ message: "Dosen berhasil dihapus dari kelas" }, { status: 200 });
+
+  } catch (err) {
+    console.error("DELETE /api/kelas/[id] error:", err);
+    return NextResponse.json(
+      { error: "Gagal menghapus dosen dari kelas" },
+      { status: 500 }
+    );
+  }
+}
+

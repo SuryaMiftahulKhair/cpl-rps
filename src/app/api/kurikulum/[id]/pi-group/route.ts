@@ -1,15 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/../lib/prisma"; // sesuaikan path prisma
+import { NextResponse, NextRequest } from "next/server";
+import prisma from "@/../lib/prisma";
 import { z } from "zod";
 
-// --- PERBAIKAN: Update fungsi parseId ---
+// Fungsi parseId baru
 function parseId(paramsId: string | undefined, nextUrl?: any) {
   if (paramsId) return Number(paramsId);
   try {
-    // Fallback jika params.id tidak ada (bug Next.js)
     const url = nextUrl?.pathname ?? "";
     const segments = url.split('/');
-    // Diharapkan URL: /api/kurikulum/2/pi-group
     const idIndex = segments.indexOf('kurikulum') + 1; 
     const id = segments[idIndex];
     return id ? Number(id) : NaN;
@@ -18,17 +16,13 @@ function parseId(paramsId: string | undefined, nextUrl?: any) {
   }
 }
 
-/**
- * GET handler untuk mengambil semua PI Group dalam satu kurikulum.
- * Digunakan oleh tab "Manajemen PI & Indikator".
- */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id?: string } }
+  { params }: { params: { id?: string } } // <-- PERBAIKAN: Pakai 'id'
 ) {
   try {
-    // --- PERBAIKAN: Gunakan 'request' di parseId ---
-    const kurikulumId = parseId(params?.id, (request as any).nextUrl);
+    // --- PERBAIKAN: Baca 'params.id' ---
+    const kurikulumId = parseId(params.id, (request as any).nextUrl);
     
     if (Number.isNaN(kurikulumId)) {
       return NextResponse.json(
@@ -37,12 +31,10 @@ export async function GET(
       );
     }
 
-    // Ambil data PI Group
     const groups = await prisma.pIGroup.findMany({
       where: { kurikulum_id: kurikulumId },
       include: {
-        assasment: true, // Untuk menampilkan nama Area
-        // Hitung jumlah indikator yang dimiliki
+        assasment: true,
         _count: { select: { indicators: true } },
       },
       orderBy: { kode_grup: "asc" },
@@ -58,13 +50,12 @@ export async function GET(
   }
 }
 
-// Skema Zod untuk validasi POST yang "simple" (dari PiGroupManagementModal)
+// Skema Zod
 const simpleCreateSchema = z.object({
   kode_grup: z.string().min(1, "Kode PI Group wajib diisi"),
   assesment_id: z.number().int().positive("Assasment Area wajib dipilih"),
 });
 
-// Skema Zod untuk validasi POST yang "kompleks" (dari TambahPIRowModal)
 const complexCreateSchema = z.object({
   kodeGrup: z.string().min(1, "Kode PI Group wajib diisi"),
   assesmentId: z.number().int().positive("Assasment Area wajib dipilih"),
@@ -77,19 +68,13 @@ const complexCreateSchema = z.object({
 });
 
 
-/**
- * POST handler untuk membuat PI Group BARU.
- * Bisa menangani 2 tipe body:
- * 1. Simple: (dari PiGroupManagementModal) { kode_grup, assesment_id }
- * 2. Kompleks: (dari TambahPIRowModal) { kodeGrup, assesmentId, indicators: [...] }
- */
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { id?: string } }
+  req: NextRequest,
+  { params }: { params: { id?: string } } // <-- PERBAIKAN: Pakai 'id'
 ) {
   try {
-    // --- PERBAIKAN: Gunakan 'req' di parseId ---
-    const kurikulumId = parseId(params?.id, (request as any).nextUrl);
+    // --- PERBAIKAN: Baca 'params.id' ---
+    const kurikulumId = parseId(params.id, (req as any).nextUrl);
     if (Number.isNaN(kurikulumId)) {
       return NextResponse.json(
         { error: "ID kurikulum tidak valid (harus integer)" },
@@ -97,14 +82,10 @@ export async function POST(
       );
     }
 
-    const body = await request.json();
+    const body = await req.json();
 
-    // --- PERBAIKAN: Validasi yang benar ---
-    
-    // Coba validasi sebagai "Kompleks"
     const complexParse = complexCreateSchema.safeParse(body);
     if (complexParse.success) {
-      // Ini adalah request dari TambahPIRowModal
       const { assesmentId, kodeGrup, indicators } = complexParse.data;
 
       const result = await prisma.$transaction(async (tx) => {
@@ -132,10 +113,8 @@ export async function POST(
       return NextResponse.json(result, { status: 201 });
     }
 
-    // Jika bukan "Kompleks", coba validasi sebagai "Simple"
     const simpleParse = simpleCreateSchema.safeParse(body);
     if (simpleParse.success) {
-      // Ini adalah request dari PiGroupManagementModal
       const { kode_grup, assesment_id } = simpleParse.data;
 
       const newGroup = await prisma.pIGroup.create({
@@ -148,8 +127,6 @@ export async function POST(
       return NextResponse.json(newGroup, { status: 201 });
     }
 
-    // Jika keduanya gagal, berarti body-nya salah
-    // Ini akan FIX error "Nama Area wajib diisi"
     return NextResponse.json(
       { error: "Body request tidak valid.", 
         detail: { 
@@ -159,7 +136,6 @@ export async function POST(
       }, 
       { status: 400 }
     );
-    // ------------------------------------
 
   } catch (err: any) {
     console.error("POST /api/kurikulum/[id]/pi-group error:", err);

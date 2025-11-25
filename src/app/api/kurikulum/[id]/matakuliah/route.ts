@@ -1,17 +1,17 @@
-import { NextResponse, NextRequest } from "next/server"; // Import NextRequest
-import prisma from "@/../lib/prisma"; // sesuaikan path prisma
+import { NextResponse, NextRequest } from "next/server";
+import prisma from "@/../lib/prisma";
 import { z } from "zod";
 
-// --- PERBAIKAN: Tambahkan .nullable() ---
+// Skema Zod
 const createSchema = z.object({
   kode_mk: z.string().min(1, "Kode mata kuliah wajib diisi"),
   nama: z.string().min(1, "Nama mata kuliah wajib diisi"),
   sks: z.number().int().nonnegative("SKS harus >= 0"),
-  sifat: z.string().nullable().optional(), // <-- Tambah .nullable()
-  semester: z.number().int().nonnegative().nullable().optional(), // <-- Tambah .nullable()
+  sifat: z.string(), // Dibuat wajib
+  semester: z.number().int().positive(), // Dibuat wajib
 });
 
-// Fungsi parseId baru yang lebih aman
+// Fungsi parseId
 function parseId(paramsId: string | undefined, nextUrl?: any) {
   if (paramsId) return Number(paramsId);
   try {
@@ -26,18 +26,19 @@ function parseId(paramsId: string | undefined, nextUrl?: any) {
 }
 
 export async function GET(
-  request: NextRequest, // Gunakan NextRequest
-  { params }: { params: { id?: string } }
+  request: NextRequest,
+  { params }: { params: { id?: string } } // <-- PERBAIKAN: Pakai 'id'
 ) {
   try {
-    const id = parseId(params?.id, (request as any).nextUrl);
-    if (Number.isNaN(id)) {
+    // --- PERBAIKAN: Baca 'params.id' ---
+    const kurikulumId = parseId(params.id, (request as any).nextUrl);
+    if (Number.isNaN(kurikulumId)) {
       return NextResponse.json({ error: "kurikulum id tidak valid (harus integer)" }, { status: 400 });
     }
 
     const list = await prisma.mataKuliah.findMany({
-      where: { kurikulum_id: id },
-      orderBy: { kode_mk: "asc" },
+      where: { kurikulum_id: kurikulumId },
+      orderBy: { semester: "asc" },
     });
 
     return NextResponse.json(list);
@@ -51,11 +52,12 @@ export async function GET(
 }
 
 export async function POST(
-  request: NextRequest, // Gunakan NextRequest
-  { params }: { params: { id?: string } }
+  request: NextRequest,
+  { params }: { params: { id?: string } } // <-- PERBAIKAN: Pakai 'id'
 ) {
   try {
-    const kurikulumId = parseId(params?.id, (request as any).nextUrl);
+    // --- PERBAIKAN: Baca 'params.id' ---
+    const kurikulumId = parseId(params.id, (request as any).nextUrl);
     if (Number.isNaN(kurikulumId)) {
       return NextResponse.json({ error: "kurikulum id tidak valid (harus integer)" }, { status: 400 });
     }
@@ -67,19 +69,24 @@ export async function POST(
 
     const raw = await request.json().catch(() => ({}));
     
-    // --- PERBAIKAN: Ubah 'undefined' menjadi 'null' ---
     const parsed = createSchema.safeParse({
       kode_mk: String(raw.kode_mk ?? "").trim(),
       nama: String(raw.nama ?? "").trim(),
       sks: Number(raw.sks ?? 0),
-      sifat: raw.sifat ? String(raw.sifat).trim() : null, // <-- Kirim 'null'
-      semester: raw.semester != null ? Number(raw.semester) : null, // <-- Kirim 'null'
+      sifat: String(raw.sifat ?? ""), // Wajib
+      semester: Number(raw.semester ?? 0), // Wajib
     });
 
     if (!parsed.success) {
       const msg = parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; ");
       return NextResponse.json({ error: msg }, { status: 400 });
     }
+     if (!parsed.data.sifat) {
+        return NextResponse.json({ error: "Sifat wajib diisi" }, { status: 400 });
+     }
+     if (!parsed.data.semester || parsed.data.semester <= 0) {
+        return NextResponse.json({ error: "Semester wajib diisi" }, { status: 400 });
+     }
 
     const exist = await prisma.mataKuliah.findUnique({
       where: { kode_mk: parsed.data.kode_mk },
@@ -88,14 +95,13 @@ export async function POST(
       return NextResponse.json({ error: `Kode MK '${parsed.data.kode_mk}' sudah ada.` }, { status: 409 });
     }
 
-// --- PERBAIKAN: Pastikan nilai sesuai tipe Prisma (string/number) ---
     const created = await prisma.mataKuliah.create({
       data: {
         kode_mk: parsed.data.kode_mk,
         nama: parsed.data.nama,
         sks: parsed.data.sks,
-        sifat: parsed.data.sifat ?? "",       // <-- Pastikan string sesuai tipe Prisma
-        semester: parsed.data.semester ?? 0, // <-- Pastikan number sesuai tipe Prisma
+        sifat: parsed.data.sifat,
+        semester: parsed.data.semester,
         kurikulum_id: kurikulumId,
       },
     });
