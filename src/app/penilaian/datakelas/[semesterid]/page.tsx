@@ -145,7 +145,6 @@ export default function SemesterMatakuliahListPage({
           
           {/* Search Filters */}
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-3">
-             <input type="text" placeholder="Sem. Kur." value={searchSemKur} onChange={(e) => setSearchSemKur(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
              <input type="text" placeholder="Nama Kelas" value={searchNamaKelas} onChange={(e) => setSearchNamaKelas(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
              <input type="text" placeholder="Kode Matakuliah" value={searchKodeMK} onChange={(e) => setSearchKodeMK(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
              <input type="text" placeholder="Nama Matakuliah" value={searchNamaMK} onChange={(e) => setSearchNamaMK(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
@@ -166,7 +165,7 @@ export default function SemesterMatakuliahListPage({
             <table className="w-full text-sm">
               <thead className="bg-gray-100 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">SEM. KUR.</th>
+                  <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NO.</th>
                   <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NAMA KELAS</th>
                   <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">KODE MATAKULIAH</th>
                   <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NAMA MATAKULIAH</th>
@@ -192,9 +191,9 @@ export default function SemesterMatakuliahListPage({
                     </td>
                   </tr>
                 ) : (
-                  filteredMatakuliah.map((mk) => (
+                  filteredMatakuliah.map((mk, index) => (
                     <tr key={mk.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-gray-600">{mk.semesterKur}</td>
+                      <td className="px-6 py-4 text-gray-600">{index+1}</td>
                       <td className="px-6 py-4 text-gray-800 font-medium">{mk.namaKelas}</td>
                       <td className="px-6 py-4 text-gray-700 font-mono">{mk.kodeMatakuliah}</td>
                       <td className="px-6 py-4 text-gray-800">{mk.namaMatakuliah}</td>

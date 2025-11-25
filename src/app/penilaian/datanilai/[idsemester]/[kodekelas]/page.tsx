@@ -1,3 +1,4 @@
+// src/app/penilaian/datanilai/[idsemester]/[kodekelas]/page.tsx
 "use client";
 
 import { useState, use } from "react";
@@ -6,8 +7,8 @@ import DashboardLayout from "@/app/components/DashboardLayout";
 
 // --- Types ---
 interface PageParams {
-    semesterId: string;
-    idKelas: string;
+    idsemester: string;
+    kodekelas: string;
 }
 
 interface NilaiMahasiswa {
@@ -69,7 +70,7 @@ export default function DataNilaiDetailPage({
 }: {
     params: Promise<PageParams>
 }) {
-    const { semesterId, idKelas } = use(params);
+    const { idsemester, kodekelas } = use(params);
     const [showAlert, setShowAlert] = useState(true);
 
     return (
@@ -104,7 +105,7 @@ export default function DataNilaiDetailPage({
                             <button className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
                                 Abaikan Nilai dari Sikola-v2
                             </button>
-                            <Link href={`/penilaian/datanilai/${semesterId}`}>
+                            <Link href={`/penilaian/datanilai/${idsemester}`}>
                                 <button className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-600 transition-colors">
                                     Kembali
                                 </button>
