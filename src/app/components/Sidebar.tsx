@@ -234,8 +234,8 @@ export default function Sidebar() {
                                 CPL Prodi
                             </SubMenuItem>
                             <SubMenuItem 
-                                href="/laporan/cpl-mahasiswa" 
-                                isActive={currentPath === "/laporan/cpl-mahasiswa"}
+                                href="/laporan/cpl-mhswa" 
+                                isActive={currentPath === "/laporan/cpl-mhswa"}
                             >
                                 CPL Mahasiswa
                             </SubMenuItem>
