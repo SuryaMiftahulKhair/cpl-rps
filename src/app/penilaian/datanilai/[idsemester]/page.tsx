@@ -8,10 +8,9 @@ import DashboardLayout from "@/app/components/DashboardLayout";
 
 // --- Types ---
 interface PageParams {
-  idsemester: string; // Sesuai nama folder [idsemester]
+  idsemester: string; 
 }
 
-// Sesuaikan dengan struktur data dari API /api/kelas
 interface KelasData {
   id: number;
   semesterKur: number | string;
@@ -47,7 +46,7 @@ export default function SemesterNilaiListPage({
   const [error, setError] = useState<string | null>(null);
   
   // State Filter
-  const [searchSemKur, setSearchSemKur] = useState("");
+
   const [searchIdKelas, setSearchIdKelas] = useState("");
   const [searchNamaKelas, setSearchNamaKelas] = useState("");
   const [searchKodeMK, setSearchKodeMK] = useState("");
@@ -83,14 +82,14 @@ export default function SemesterNilaiListPage({
 
   // 4. Filter Logic
   const filteredKelas = kelasList.filter(kelas => {
-    const matchSemKur = String(kelas.semesterKur).toLowerCase().includes(searchSemKur.toLowerCase());
+    
     // Convert ID ke string untuk pencarian
     const matchIdKelas = String(kelas.id).toLowerCase().includes(searchIdKelas.toLowerCase());
     const matchNamaKelas = kelas.namaKelas.toLowerCase().includes(searchNamaKelas.toLowerCase());
     const matchKodeMK = kelas.kodeMatakuliah.toLowerCase().includes(searchKodeMK.toLowerCase());
     const matchNamaMK = kelas.namaMatakuliah.toLowerCase().includes(searchNamaMK.toLowerCase());
     
-    return matchSemKur && matchIdKelas && matchNamaKelas && matchKodeMK && matchNamaMK;
+    return  matchIdKelas && matchNamaKelas && matchKodeMK && matchNamaMK;
   });
 
   return (
