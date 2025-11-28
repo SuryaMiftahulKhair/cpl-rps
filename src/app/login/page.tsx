@@ -12,20 +12,34 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    // Simulasi loading
-    setTimeout(() => {
-      if (username === "admin" && password === "1234") {
-        router.push("/home");
-      } else {
-        setError("Username atau Password salah!");
-        setIsLoading(false);
+    try {
+      // --- MENGHUBUNGI API LOGIN (BACKEND) ---
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!res.ok) {
+        // Jika login gagal (password salah / user tidak ada)
+        const data = await res.json();
+        throw new Error(data.error || "Login gagal");
       }
-    }, 800);
+
+      // --- JIKA SUKSES ---
+      // Redirect ke halaman Dashboard (RPS Matakuliah)
+      router.push("/home"); 
+      router.refresh(); // Paksa refresh agar layout tahu status login berubah
+
+    } catch (err: any) {
+      setError(err.message);
+      setIsLoading(false); // Matikan loading hanya jika error
+    }
   }
 
   return (
@@ -91,6 +105,7 @@ export default function LoginPage() {
                   required
                   placeholder="Masukkan Username"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-gray-800"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -115,6 +130,7 @@ export default function LoginPage() {
                   required
                   placeholder="Masukkan Password"
                   className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-gray-800"
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
@@ -170,7 +186,7 @@ export default function LoginPage() {
             </p>
             <div className="space-y-1 text-xs text-blue-700">
               <p>• Username: <span className="font-mono font-semibold">admin</span></p>
-              <p>• Password: <span className="font-mono font-semibold">1234</span></p>
+              <p>• Password: <span className="font-mono font-semibold">password123</span></p>
             </div>
           </div>
 

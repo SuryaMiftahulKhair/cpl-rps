@@ -27,11 +27,11 @@ function parseId(paramsId: string | undefined, nextUrl?: any) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id?: string } } // <-- PERBAIKAN: Pakai 'id'
+  { params }: { params:Promise < { id?: string } >} // <-- PERBAIKAN: Pakai 'id'
 ) {
   try {
     // --- PERBAIKAN: Baca 'params.id' ---
-    const kurikulumId = parseId(params.id, (request as any).nextUrl);
+    const kurikulumId = parseId((await params).id, (request as any).nextUrl);
     if (Number.isNaN(kurikulumId)) {
       return NextResponse.json({ error: "kurikulum id tidak valid (harus integer)" }, { status: 400 });
     }
