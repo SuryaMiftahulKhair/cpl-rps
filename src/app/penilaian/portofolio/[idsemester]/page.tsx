@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState,useEffect, use } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
 // --- Types ---
 interface PageParams {
-    semesterId: string;
+    idsemester: string;
 }
 
 interface KelasPortofolio {
@@ -18,30 +18,16 @@ interface KelasPortofolio {
     sks: number;
 }
 
-// --- Data Placeholder ---
-const kelasPortofolioList: KelasPortofolio[] = [
-    {
-        semesterKur: "1",
-        namaKelas: "Pendidikan Agama Islam (T. Informatika A)",
-        kodeMatakuliah: "23U01110102",
-        namaMatakuliah: "Pendidikan Agama Islam",
-        sks: 2
-    },
-    {
-        semesterKur: "1",
-        namaKelas: "Pengantar Teknologi Informasi (Kelas A)",
-        kodeMatakuliah: "23D12110102",
-        namaMatakuliah: "Pengantar Teknologi Informasi",
-        sks: 3
-    },
-    {
-        semesterKur: "1",
-        namaKelas: "Dasar Pemrograman Komputer (Kelas A)",
-        kodeMatakuliah: "23D12110203",
-        namaMatakuliah: "Dasar Pemrograman Komputer",
-        sks: 4
-    },
-];
+async function parseApiError(res: Response): Promise<string> {
+  const text = await res.text();
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed?.error) return typeof parsed.error === "string" ? parsed.error : JSON.stringify(parsed.error);
+  } catch {}
+  return text || `HTTP ${res.status}`;
+}
+
+
 
 // --- Main Component ---
 export default function PortofolioKelasListPage({
@@ -49,21 +35,51 @@ export default function PortofolioKelasListPage({
 }: {
     params: Promise<PageParams>
 }) {
-    const { semesterId } = use(params);
+    const resolvedParams = use(params);
+    const { idsemester } = resolvedParams;
     
-    const [searchSemKur, setSearchSemKur] = useState("");
+    const [kelasList, setKelasList] = useState<KelasPortofolio[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
     const [searchNamaKelas, setSearchNamaKelas] = useState("");
     const [searchKodeMK, setSearchKodeMK] = useState("");
     const [searchNamaMK, setSearchNamaMK] = useState("");
 
+    useEffect(() => {
+    if (!idsemester) return;
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Panggil API yang sudah ada
+        const res = await fetch(`/api/kelas?semesterId=${idsemester}`);
+        
+        if (!res.ok) {
+          throw new Error(await parseApiError(res));
+        }
+
+        const data = await res.json();
+        setKelasList(data);
+
+      } catch (err: any) {
+        setError(`Gagal mengambil data kelas: ${err.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [idsemester]);
+
     // Filter kelas berdasarkan search
-    const filteredKelas = kelasPortofolioList.filter(kelas => {
-        const matchSemKur = kelas.semesterKur.toLowerCase().includes(searchSemKur.toLowerCase());
+    const filteredKelas = kelasList.filter(kelas => {
         const matchNamaKelas = kelas.namaKelas.toLowerCase().includes(searchNamaKelas.toLowerCase());
         const matchKodeMK = kelas.kodeMatakuliah.toLowerCase().includes(searchKodeMK.toLowerCase());
         const matchNamaMK = kelas.namaMatakuliah.toLowerCase().includes(searchNamaMK.toLowerCase());
         
-        return matchSemKur && matchNamaKelas && matchKodeMK && matchNamaMK;
+        return  matchNamaKelas && matchKodeMK && matchNamaMK;
     });
 
     return (
@@ -72,11 +88,6 @@ export default function PortofolioKelasListPage({
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold text-gray-800">Portofolio</h1>
-                    <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-lg shadow-sm">
-                        <p className="text-sm font-semibold">
-                            Peran saat ini sebagai Admin Program Studi
-                        </p>
-                    </div>
                 </div>
 
                 {/* Page Title and Filters */}
@@ -93,13 +104,7 @@ export default function PortofolioKelasListPage({
 
                     {/* Search Filters */}
                     <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                        <input
-                            type="text"
-                            placeholder="Sem. Kur."
-                            value={searchSemKur}
-                            onChange={(e) => setSearchSemKur(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
+                        
                         <input
                             type="text"
                             placeholder="Nama Kelas"
@@ -129,6 +134,12 @@ export default function PortofolioKelasListPage({
                     </div>
                 </div>
 
+                {error && (
+                    <div className="my-4 p-4 bg-red-100 text-red-700 border border-red-300 rounded-lg">
+                        <strong>Error:</strong> {error}
+                    </div>
+                )}
+
                 {/* Kelas Table */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     {filteredKelas.length > 0 ? (
@@ -137,7 +148,7 @@ export default function PortofolioKelasListPage({
                                 <thead className="bg-gray-100 border-b border-gray-200">
                                     <tr>
                                         <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">
-                                            SEM. KUR.
+                                            NO.
                                         </th>
                                         <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">
                                             NAMA KELAS
@@ -157,10 +168,26 @@ export default function PortofolioKelasListPage({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredKelas.map((kelas, index) => (
+                                    {isLoading ? (
+                                        <tr>
+                                            <td colSpan={7} className="text-center p-10 text-gray-500">
+                                            <Loader2 size={32} className="animate-spin mx-auto mb-2" />
+                                            Memuat data kelas...
+                                            </td>
+                                        </tr>
+                                    ) : filteredKelas.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={7} className="text-center p-10 text-gray-500">
+                                            {kelasList.length === 0 
+                                                ? "Tidak ada data kelas untuk semester ini." 
+                                                : "Tidak ada data yang sesuai filter."}
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredKelas.map((kelas, index) => (
                                         <tr key={index} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4 text-gray-600">
-                                                {kelas.semesterKur}
+                                                {index + 1}
                                             </td>
                                             <td className="px-6 py-4 text-gray-800 font-medium">
                                                 {kelas.namaKelas}
@@ -176,7 +203,7 @@ export default function PortofolioKelasListPage({
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <Link 
-                                                    href={`/penilaian/portofolio/${semesterId}/${kelas.kodeMatakuliah}`}
+                                                    href={`/penilaian/portofolio/${idsemester}/${kelas.kodeMatakuliah}`}
                                                 >
                                                     <button className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow">
                                                         Lihat Portofolio
@@ -184,7 +211,8 @@ export default function PortofolioKelasListPage({
                                                 </Link>
                                             </td>
                                         </tr>
-                                    ))}
+                                    ))
+                                )}
                                 </tbody>
                             </table>
                         </div>
@@ -215,3 +243,4 @@ export default function PortofolioKelasListPage({
         </DashboardLayout>
     );
 }
+

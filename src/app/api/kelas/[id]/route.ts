@@ -5,10 +5,10 @@ import prisma from "@/../lib/prisma";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id, 10);
+    const id = parseInt((await params).id, 10);
     if (isNaN(id)) {
       return NextResponse.json({ error: "ID Kelas tidak valid" }, { status: 400 });
     }
@@ -55,24 +55,24 @@ export async function GET(
         tahunAjaran: `${kelas.tahunAjaran.semester} ${kelas.tahunAjaran.tahun}`,
       },
       dosenList: kelas.dosenPengampu.map((dp) => ({
-        id: dp.id, // ID relasi DosenPengampu
-        nip: dp.dosen.username, // Asumsi NIP disimpan di 'username'
+        id: dp.id, 
+        nip: dp.dosen.username,
         nama: dp.dosen.nama,
-        posisi: "Pengampu", // Anda bisa tambahkan 'posisi' di skema jika perlu
+        posisi: "Pengampu",
       })),
       mahasiswaList: kelas.pesertaKelas.map((pk, index) => ({
-        id: pk.id, // ID relasi PesertaKelas
+        id: pk.id, 
         no: index + 1,
-        nim: pk.mahasiswa.username, // Asumsi NIM disimpan di 'username'
+        nim: pk.mahasiswa.username, 
         nama: pk.mahasiswa.nama,
       })),
     };
 
-    // 5. Kembalikan data yang sudah dimapping
+
     return NextResponse.json(responseData, { status: 200 });
 
   } catch (err) {
-    console.error(`GET /api/kelas/${params.id} error:`, err);
+    console.error(`GET /api/kelas/${(await params).id} error:`, err);
     return NextResponse.json(
       { error: "Gagal mengambil detail kelas" },
       { status: 500 }
@@ -98,7 +98,7 @@ export async function DELETE(
     const record = await prisma.dosenPengampu.findFirst({
       where: {
         id: dosenPengampuId,
-        kelas_id: id // Pastikan relasinya benar
+        kelas_id: id 
       }
     });
 
@@ -106,12 +106,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Data pengampu tidak ditemukan di kelas ini" }, { status: 404 });
     }
 
-    // Lakukan penghapusan
     await prisma.dosenPengampu.delete({
       where: { id: dosenPengampuId },
     });
 
-    // Hapus record dari tabel DosenPengampu berdasarkan ID-nya
     await prisma.dosenPengampu.delete({
       where: { id: id },
     });

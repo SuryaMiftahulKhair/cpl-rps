@@ -1,271 +1,222 @@
+// src/app/penilaian/datanilai/[idsemester]/page.tsx
 "use client";
 
-import { useState, use } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
 // --- Types ---
 interface PageParams {
-    semesterId: string;
+  idsemester: string; 
 }
 
-interface KelasNilai {
-    semesterKur: string;
-    idKelas: string;
-    namaKelas: string;
-    kodeMatakuliah: string;
-    namaMatakuliah: string;
-    sks: number;
+interface KelasData {
+  id: number;
+  semesterKur: number | string;
+  namaKelas: string;
+  kodeMatakuliah: string;
+  namaMatakuliah: string;
+  sks: number;
 }
 
-// --- Data Placeholder ---
-const kelasNilaiList: KelasNilai[] = [
-    {
-        semesterKur: "None",
-        idKelas: "149616",
-        namaKelas: "Pendidikan Agama Islam (T. Informatika A)",
-        kodeMatakuliah: "23U01110102",
-        namaMatakuliah: "Pendidikan Agama Islam",
-        sks: 2
-    },
-    {
-        semesterKur: "None",
-        idKelas: "149620",
-        namaKelas: "Pendidikan Agama Islam (T.Informatika B)",
-        kodeMatakuliah: "23U01110102",
-        namaMatakuliah: "Pendidikan Agama Islam",
-        sks: 2
-    },
-    {
-        semesterKur: "None",
-        idKelas: "149634",
-        namaKelas: "Pendidikan Agama Khatolik (T. Informatika)",
-        kodeMatakuliah: "23U01110202",
-        namaMatakuliah: "Pendidikan Agama Khatolik",
-        sks: 2
-    },
-    {
-        semesterKur: "None",
-        idKelas: "149635",
-        namaKelas: "Pendidikan Agama Protestan (T. Informatika)",
-        kodeMatakuliah: "23U01110302",
-        namaMatakuliah: "Pendidikan Agama Protestan",
-        sks: 2
-    },
-    {
-        semesterKur: "None",
-        idKelas: "149638",
-        namaKelas: "Pendidikan Agama Hindu (T. Informatika)",
-        kodeMatakuliah: "23U01110402",
-        namaMatakuliah: "Pendidikan Agama Hindu",
-        sks: 2
-    },
-    {
-        semesterKur: "None",
-        idKelas: "149641",
-        namaKelas: "Pendidikan Agama Budha (T. Informatika)",
-        kodeMatakuliah: "23U01110502",
-        namaMatakuliah: "Pendidikan Agama Budha",
-        sks: 2
-    },
-];
+// --- Helper Error ---
+async function parseApiError(res: Response): Promise<string> {
+  const text = await res.text();
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed?.error) return typeof parsed.error === "string" ? parsed.error : JSON.stringify(parsed.error);
+  } catch {}
+  return text || `HTTP ${res.status}`;
+}
 
 // --- Main Component ---
 export default function SemesterNilaiListPage({
-    params
+  params
 }: {
-    params: Promise<PageParams>
+  params: Promise<PageParams>;
 }) {
-    const { semesterId } = use(params);
-    
-    const [searchSemKur, setSearchSemKur] = useState("");
-    const [searchIdKelas, setSearchIdKelas] = useState("");
-    const [searchNamaKelas, setSearchNamaKelas] = useState("");
-    const [searchKodeMK, setSearchKodeMK] = useState("");
-    const [searchNamaMK, setSearchNamaMK] = useState("");
+  // 1. Buka params menggunakan use()
+  const resolvedParams = use(params);
+  const { idsemester } = resolvedParams;
 
-    // Get semester name
-    const getSemesterName = (id: string) => {
-        const semesterMap: { [key: string]: string } = {
-            "1": "Ganjil 2025/2026",
-            "2": "Genap 2024/2025",
-            "3": "Ganjil 2024/2025",
-        };
-        return semesterMap[id] || `Semester ${id}`;
+  // 2. State untuk data dinamis
+  const [kelasList, setKelasList] = useState<KelasData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // State Filter
+
+  const [searchIdKelas, setSearchIdKelas] = useState("");
+  const [searchNamaKelas, setSearchNamaKelas] = useState("");
+  const [searchKodeMK, setSearchKodeMK] = useState("");
+  const [searchNamaMK, setSearchNamaMK] = useState("");
+
+  // 3. Fetch Data dari API (Gunakan API yang sama dengan Data Kelas)
+  useEffect(() => {
+    if (!idsemester) return;
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Panggil API yang sudah ada
+        const res = await fetch(`/api/kelas?semesterId=${idsemester}`);
+        
+        if (!res.ok) {
+          throw new Error(await parseApiError(res));
+        }
+
+        const data = await res.json();
+        setKelasList(data);
+
+      } catch (err: any) {
+        setError(`Gagal mengambil data kelas: ${err.message}`);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    // Filter kelas berdasarkan search
-    const filteredKelas = kelasNilaiList.filter(kelas => {
-        const matchSemKur = kelas.semesterKur.toLowerCase().includes(searchSemKur.toLowerCase());
-        const matchIdKelas = kelas.idKelas.toLowerCase().includes(searchIdKelas.toLowerCase());
-        const matchNamaKelas = kelas.namaKelas.toLowerCase().includes(searchNamaKelas.toLowerCase());
-        const matchKodeMK = kelas.kodeMatakuliah.toLowerCase().includes(searchKodeMK.toLowerCase());
-        const matchNamaMK = kelas.namaMatakuliah.toLowerCase().includes(searchNamaMK.toLowerCase());
-        
-        return matchSemKur && matchIdKelas && matchNamaKelas && matchKodeMK && matchNamaMK;
-    });
+    fetchData();
+  }, [idsemester]);
 
-    return (
-        <DashboardLayout>
-            <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
-                {/* Header */}
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-800">Data Nilai</h1>
-                    <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-lg shadow-sm">
-                        <p className="text-sm font-semibold">
-                            Peran saat ini sebagai Admin Program Studi
-                        </p>
-                    </div>
-                </div>
+  // 4. Filter Logic
+  const filteredKelas = kelasList.filter(kelas => {
+    
+    // Convert ID ke string untuk pencarian
+    const matchIdKelas = String(kelas.id).toLowerCase().includes(searchIdKelas.toLowerCase());
+    const matchNamaKelas = kelas.namaKelas.toLowerCase().includes(searchNamaKelas.toLowerCase());
+    const matchKodeMK = kelas.kodeMatakuliah.toLowerCase().includes(searchKodeMK.toLowerCase());
+    const matchNamaMK = kelas.namaMatakuliah.toLowerCase().includes(searchNamaMK.toLowerCase());
+    
+    return  matchIdKelas && matchNamaKelas && matchKodeMK && matchNamaMK;
+  });
 
-                {/* Page Title */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-2xl font-bold text-gray-800">
-                            Data Nilai | Semester {getSemesterName(semesterId)}
-                        </h2>
-                        <Link href="/penilaian/datanilai">
-                            <button className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-600 transition-colors shadow flex items-center gap-2">
-                                <ArrowLeft size={16} />
-                                Kembali
-                            </button>
-                        </Link>
-                    </div>
+  return (
+    <DashboardLayout>
+      <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">Data Nilai</h1>
+        </div>
 
-                    {/* Search Filters */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                        <input
-                            type="text"
-                            placeholder="Sem. Kur."
-                            value={searchSemKur}
-                            onChange={(e) => setSearchSemKur(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
-                        <input
-                            type="text"
-                            placeholder="ID Kelas"
-                            value={searchIdKelas}
-                            onChange={(e) => setSearchIdKelas(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Nama Kelas"
-                            value={searchNamaKelas}
-                            onChange={(e) => setSearchNamaKelas(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Kode Matakuliah"
-                            value={searchKodeMK}
-                            onChange={(e) => setSearchKodeMK(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Nama Matakuliah"
-                            value={searchNamaMK}
-                            onChange={(e) => setSearchNamaMK(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
-                        <input
-                            type="text"
-                            placeholder="SKS"
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
-                    </div>
-                </div>
+        {/* Page Title & Filters */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-800">
+               {/* Menampilkan ID semester sementara, idealnya fetch nama semester juga */}
+               Daftar Kelas | Semester ID: {idsemester} 
+            </h2>
+            <Link href="/penilaian/datanilai">
+              <button className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-600 transition-colors shadow flex items-center gap-2">
+                <ArrowLeft size={16} />
+                Kembali
+              </button>
+            </Link>
+          </div>
 
-                {/* Kelas Table */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-gray-100 border-b border-gray-200">
-                                <tr>
-                                    <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">
-                                        SEM. KUR.
-                                    </th>
-                                    <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">
-                                        ID KELAS
-                                    </th>
-                                    <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">
-                                        NAMA KELAS
-                                    </th>
-                                    <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">
-                                        KODE MATAKULIAH
-                                    </th>
-                                    <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">
-                                        NAMA MATAKULIAH
-                                    </th>
-                                    <th className="px-6 py-3 text-center font-bold text-gray-700 uppercase tracking-wider">
-                                        SKS
-                                    </th>
-                                    <th className="px-6 py-3 text-center font-bold text-gray-700 uppercase tracking-wider">
-                                        AKSI
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredKelas.map((kelas, index) => (
-                                    <tr key={index} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 text-gray-600">
-                                            {kelas.semesterKur}
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-700 font-mono">
-                                            {kelas.idKelas}
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-800 font-medium">
-                                            {kelas.namaKelas}
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-700 font-mono">
-                                            {kelas.kodeMatakuliah}
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-800">
-                                            {kelas.namaMatakuliah}
-                                        </td>
-                                        <td className="px-6 py-4 text-center font-semibold text-gray-700">
-                                            {kelas.sks}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <Link 
-                                                href={`/penilaian/datanilai/${semesterId}/${kelas.idKelas}`}
-                                            >
-                                                <button className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow">
-                                                    Penilaian
-                                                </button>
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+          {/* Search Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <input
+              type="text"
+              placeholder="Nama Kelas"
+              value={searchNamaKelas}
+              onChange={(e) => setSearchNamaKelas(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+            <input
+              type="text"
+              placeholder="ID Kelas"
+              value={searchIdKelas}
+              onChange={(e) => setSearchIdKelas(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+            <input
+              type="text"
+              placeholder="Nama MK"
+              value={searchNamaMK}
+              onChange={(e) => setSearchNamaMK(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+            <input
+              type="text"
+              placeholder="Kode MK"
+              value={searchKodeMK}
+              onChange={(e) => setSearchKodeMK(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+            <input
+              type="text"
+              placeholder="SKS"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              disabled
+            />
+          </div>
+        </div>
 
-                    {/* Empty State */}
-                    {filteredKelas.length === 0 && (
-                        <div className="text-center py-12">
-                            <p className="text-gray-500 text-sm">
-                                Tidak ada data kelas yang sesuai dengan filter
-                            </p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Back to Top Button */}
-                <div className="fixed bottom-8 right-8">
-                    <button 
-                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        className="bg-red-500 text-white p-3 rounded-full shadow-lg hover:bg-red-600 transition-colors"
-                        title="Kembali ke atas"
-                    >
-                        <svg className="w-6 h-6 rotate-[-90deg]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </button>
-                </div>
+        {/* Error Message */}
+        {error && (
+            <div className="my-4 p-4 bg-red-100 text-red-700 border border-red-300 rounded-lg">
+                <strong>Error:</strong> {error}
             </div>
-        </DashboardLayout>
-    );
+        )}
+
+        {/* Table Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NO.</th>
+                            <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NAMA KELAS</th>
+                            <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">ID KELAS</th>
+                            <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NAMA MK</th>
+                            <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">KODE MK</th>
+                            <th className="px-6 py-3 text-center font-bold text-gray-700 uppercase tracking-wider">SKS</th>
+                            <th className="px-6 py-3 text-center font-bold text-gray-700 uppercase tracking-wider">AKSI</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {isLoading ? (
+                             <tr>
+                                <td colSpan={7} className="text-center p-10 text-gray-500">
+                                  <Loader2 size={32} className="animate-spin mx-auto mb-2" />
+                                  Memuat data kelas...
+                                </td>
+                              </tr>
+                        ) : filteredKelas.length === 0 ? (
+                             <tr>
+                                <td colSpan={7} className="text-center p-10 text-gray-500">
+                                  {kelasList.length === 0 
+                                    ? "Tidak ada data kelas untuk semester ini." 
+                                    : "Tidak ada data yang sesuai filter."}
+                                </td>
+                              </tr>
+                        ) : (
+                            filteredKelas.map((kelas, index) => (
+                                <tr key={kelas.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-6 py-4 text-gray-600">{index + 1}</td>
+                                    <td className="px-6 py-4 text-gray-800 font-medium">{kelas.namaKelas}</td>
+                                    <td className="px-6 py-4 text-gray-700 font-mono">{kelas.id}</td>
+                                    <td className="px-6 py-4 text-gray-800">{kelas.namaMatakuliah}</td>
+                                    <td className="px-6 py-4 text-gray-700 font-mono">{kelas.kodeMatakuliah}</td>
+                                    <td className="px-6 py-4 text-center font-semibold text-gray-700">{kelas.sks}</td>
+                                    <td className="px-6 py-4 text-center">
+                                        <Link href={`/penilaian/datanilai/${idsemester}/${kelas.id}`}>
+                                            <button className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow">
+                                                Penilaian
+                                            </button>
+                                        </Link>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+      </div>
+    </DashboardLayout>
+  );
 }
