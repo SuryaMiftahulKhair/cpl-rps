@@ -50,10 +50,7 @@ export default function SemesterMatakuliahListPage({
   const [submitting, setSubmitting] = useState(false);
 
   // State Filter
-  const [searchSemKur, setSearchSemKur] = useState("");
-  const [searchNamaKelas, setSearchNamaKelas] = useState("");
-  const [searchKodeMK, setSearchKodeMK] = useState("");
-  const [searchNamaMK, setSearchNamaMK] = useState("");
+  const [searchTerm,setSearchTerm ] = useState("");
 
   // Fetch Data Function (Agar bisa dipanggil ulang setelah tambah data)
   const fetchData = async () => {
@@ -104,11 +101,12 @@ export default function SemesterMatakuliahListPage({
 
   // Filter Logic
   const filteredMatakuliah = matakuliahList.filter((mk) => {
-    const matchSemKur = String(mk.semesterKur).toLowerCase().includes(searchSemKur.toLowerCase());
-    const matchNamaKelas = mk.namaKelas.toLowerCase().includes(searchNamaKelas.toLowerCase());
-    const matchKodeMK = mk.kodeMatakuliah.toLowerCase().includes(searchKodeMK.toLowerCase());
-    const matchNamaMK = mk.namaMatakuliah.toLowerCase().includes(searchNamaMK.toLowerCase());
-    return matchSemKur && matchNamaKelas && matchKodeMK && matchNamaMK;
+    const term = searchTerm.toLowerCase();
+    return String(mk.semesterKur).toLowerCase().includes(term) ||
+      mk.namaKelas.toLowerCase().includes(term) ||
+      mk.kodeMatakuliah.toLowerCase().includes(term) ||
+      mk.namaMatakuliah.toLowerCase().includes(term) ||
+      String(mk.sks).includes(term)
   });
 
   return (
@@ -144,11 +142,9 @@ export default function SemesterMatakuliahListPage({
           </div>
           
           {/* Search Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-3">
-             <input type="text" placeholder="Nama Kelas" value={searchNamaKelas} onChange={(e) => setSearchNamaKelas(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
-             <input type="text" placeholder="Kode Matakuliah" value={searchKodeMK} onChange={(e) => setSearchKodeMK(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
-             <input type="text" placeholder="Nama Matakuliah" value={searchNamaMK} onChange={(e) => setSearchNamaMK(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
-             <input type="text" placeholder="SKS" className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+             <input type="text" placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-4 py-2 border border-gray-800 rounded-lg text-gray-800 text-sm focus:ring-2  focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
+             
           </div>
         </div>
 
