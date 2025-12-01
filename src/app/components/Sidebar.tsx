@@ -241,7 +241,7 @@ export default function Sidebar() {
                             </SubMenuItem>
                             <SubMenuItem 
                                 href="/laporan/rekap-metode" 
-                                isActive={currentPath === "/laporan/rekap-metode"}
+                                isActive={currentPath.startsWith("/laporan/rekap-metode")}
                             >
                                 Rekap Metode Penilaian
                             </SubMenuItem>
