@@ -100,7 +100,7 @@ export default function HomePage() {
                 </p>
 
                 <div className="flex items-start bg-red-50 border border-red-300 text-red-800 p-4 rounded-lg">
-                  <HiOutlineExclamationTriangle className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0 text-red-600" />
+                  <HiOutlineExclamationTriangle className="w-5 h-5 mt-0.5 mr-3 shrink-0 text-red-600" />
                   <div>
                     <h4 className="font-semibold text-red-900 mb-1">Peringatan Penting!</h4>
                     <p className="text-sm">

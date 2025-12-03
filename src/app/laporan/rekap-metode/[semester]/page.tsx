@@ -1,5 +1,6 @@
 import React from "react";
 import { notFound } from "next/navigation";
+import DashboardLayout from "@/app/components/DashboardLayout";
 
 interface Props {
   params: { semester: string };
@@ -17,6 +18,7 @@ export default function SemesterDetail({ params }: Props) {
   const display = raw.replace(/-/g, " ").toUpperCase().replace(/ (\d{4}) (\d{4})$/, " $1/$2");
 
   return (
+    <DashboardLayout>
     <div className="p-6">
       <h2 className="text-lg font-semibold text-gray-700 mb-4">Rekap Metode Penilaian</h2>
       <div className="bg-white rounded-lg shadow p-6">
@@ -29,5 +31,6 @@ export default function SemesterDetail({ params }: Props) {
         </div>
       </div>
     </div>
+    </DashboardLayout>
   );
 }

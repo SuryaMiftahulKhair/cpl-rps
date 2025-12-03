@@ -1,20 +1,27 @@
-import React from "react";
+import React, { use } from "react";
 import MataKuliahCard from "../components/MataKuliahCard";
 import ScrollToTop from "../components/ScrollToTop";
+import DashboardLayout from "@/app/components/DashboardLayout";
 
 interface Props {
-  params: { semester: string };
+  id: number;
+  tahun: string;
+  semester: "GANJIL" | "GENAP";
 }
 
 export const metadata = {
   title: "Rekap Kuisioner - Semester",
 };
 
-export default function SemesterPage({ params }: Props) {
-  const { semester } = params;
-  const display = semester.replace(/-/g, " ").toUpperCase().replace(/ (\d{4}) (\d{4})$/, " $1/$2");
+export default function SemesterPage({ 
+  params, 
+}:{
+  params: Promise <Props>;
+} ) {
+  const resolvedParams = use(params);
+  const { semester, tahun } = resolvedParams;
+  const display = semester === "GANJIL" ? `Ganjil ${tahun}` : `Genap ${tahun}`;
 
-  // Sample mata kuliah list (layout similar to screenshot)
   const matakuliahs = [
     { kode: "2310112103", nama: "Bioteknologi Produksi Ternak" },
     { kode: "2310112003", nama: "Manajemen Agribisnis dan Kelembagaan Peternakan" },
@@ -25,10 +32,11 @@ export default function SemesterPage({ params }: Props) {
   ];
 
   return (
+    <DashboardLayout>
     <div className="p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-gray-700 font-semibold text-lg">Rekap Kuisioner</h2>
-        <div className="text-sm text-gray-500">Semester: <span className="font-medium text-indigo-600">{display}</span></div>
+        <div className="text-sm text-gray-500">Tahun Ajaran: <span className="font-medium text-indigo-600">{display}</span></div>
       </div>
 
       <div className="bg-white rounded-lg shadow border border-gray-100 p-6">
@@ -43,5 +51,7 @@ export default function SemesterPage({ params }: Props) {
 
       <ScrollToTop />
     </div>
+    </DashboardLayout>
   );
 }
+
