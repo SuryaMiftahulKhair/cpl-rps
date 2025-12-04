@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import DataModal from "./DataModal";
 
 export default function MataKuliahCard({ kode, nama }: { kode: string; nama: string }) {

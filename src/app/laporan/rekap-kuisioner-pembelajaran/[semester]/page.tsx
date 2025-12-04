@@ -1,4 +1,6 @@
-import React, { use } from "react";
+"use client";
+
+import { use, useEffect, useState } from "react";
 import MataKuliahCard from "../components/MataKuliahCard";
 import ScrollToTop from "../components/ScrollToTop";
 import DashboardLayout from "@/app/components/DashboardLayout";
@@ -9,9 +11,19 @@ interface Props {
   semester: "GANJIL" | "GENAP";
 }
 
-export const metadata = {
-  title: "Rekap Kuisioner - Semester",
-};
+interface Matakuliah {
+  id: number;
+  kodeMatakuliah: string;
+  namaMatakuliah: string;
+}
+async function parseApiError(res: Response): Promise<string> {
+  const text = await res.text();
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed?.error) return typeof parsed.error === "string" ? parsed.error : JSON.stringify(parsed.error);
+  } catch {}
+  return text || `HTTP ${res.status}`;
+}
 
 export default function SemesterPage({ 
   params, 
@@ -22,14 +34,35 @@ export default function SemesterPage({
   const { semester, tahun } = resolvedParams;
   const display = semester === "GANJIL" ? `Ganjil ${tahun}` : `Genap ${tahun}`;
 
-  const matakuliahs = [
-    { kode: "2310112103", nama: "Bioteknologi Produksi Ternak" },
-    { kode: "2310112003", nama: "Manajemen Agribisnis dan Kelembagaan Peternakan" },
-    { kode: "2310111102", nama: "Dasar Teknologi HT" },
-    { kode: "2310110903", nama: "Ilmu Nutrisi Ternak" },
-    { kode: "2310110803", nama: "Pemuliaan Ternak" },
-    { kode: "2310110702", nama: "UU Peternakan dan Animal Welfare" },
-  ];
+  const [matakuliahList, setMatakuliahList] = useState<Matakuliah[]>([]);
+  const [, setIsLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
+
+  
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/kelas?semesterId=${semester}`);
+      if (!res.ok) throw new Error(await parseApiError(res));
+      const data = await res.json();
+      setMatakuliahList(data);
+    } catch (err: any) {
+      setError(`Gagal mengambil data kelas: ${err.message || "Error tidak diketahui"}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (semester) fetchData();
+  }, [semester]);
+
+  const Matakuliah = matakuliahList.map((m) => ({
+    id: m.id,
+    kode: m.kodeMatakuliah,
+    nama: m.namaMatakuliah,
+  }));
 
   return (
     <DashboardLayout>
@@ -43,7 +76,7 @@ export default function SemesterPage({
         <h3 className="text-sm text-gray-500 mb-4">Daftar Matakuliah</h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {matakuliahs.map((m) => (
+          {Matakuliah.map((m) => (
             <MataKuliahCard key={m.kode} kode={m.kode} nama={m.nama} />
           ))}
         </div>
