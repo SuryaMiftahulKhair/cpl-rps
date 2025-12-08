@@ -42,9 +42,7 @@ export default function PortofolioKelasListPage({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [searchNamaKelas, setSearchNamaKelas] = useState("");
-    const [searchKodeMK, setSearchKodeMK] = useState("");
-    const [searchNamaMK, setSearchNamaMK] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
     if (!idsemester) return;
@@ -74,12 +72,12 @@ export default function PortofolioKelasListPage({
   }, [idsemester]);
 
     // Filter kelas berdasarkan search
-    const filteredKelas = kelasList.filter(kelas => {
-        const matchNamaKelas = kelas.namaKelas.toLowerCase().includes(searchNamaKelas.toLowerCase());
-        const matchKodeMK = kelas.kodeMatakuliah.toLowerCase().includes(searchKodeMK.toLowerCase());
-        const matchNamaMK = kelas.namaMatakuliah.toLowerCase().includes(searchNamaMK.toLowerCase());
-        
-        return  matchNamaKelas && matchKodeMK && matchNamaMK;
+    const filteredKelas = kelasList.filter((kelas) => {
+        const term = searchTerm.toLowerCase();
+        return  String (kelas.namaMatakuliah).toLowerCase().includes(term)|| 
+        kelas.kodeMatakuliah.toLowerCase().includes(term) ||
+        kelas.namaKelas.toLowerCase().includes(term) ||
+        String (kelas.sks).toLowerCase().includes(term);
     });
 
     return (
@@ -107,30 +105,12 @@ export default function PortofolioKelasListPage({
                         
                         <input
                             type="text"
-                            placeholder="Nama Kelas"
-                            value={searchNamaKelas}
-                            onChange={(e) => setSearchNamaKelas(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                            placeholder="Search"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="px-4 py-2 border border-gray-800 rounded-lg text-sm focus:ring-2 text-gray-800 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                         />
-                        <input
-                            type="text"
-                            placeholder="Kode Matakuliah"
-                            value={searchKodeMK}
-                            onChange={(e) => setSearchKodeMK(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Nama Matakuliah"
-                            value={searchNamaMK}
-                            onChange={(e) => setSearchNamaMK(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
-                        <input
-                            type="text"
-                            placeholder="SKS"
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                        />
+                        
                     </div>
                 </div>
 
@@ -234,7 +214,7 @@ export default function PortofolioKelasListPage({
                         className="bg-red-500 text-white p-3 rounded-full shadow-lg hover:bg-red-600 transition-colors"
                         title="Kembali ke atas"
                     >
-                        <svg className="w-6 h-6 rotate-[-90deg]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6 -rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>

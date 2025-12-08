@@ -110,7 +110,7 @@ export default function DataKelasPage() {
         </div>
         <div>
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">Pilih Semester</h2>
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">Pilih Tahun Ajaran</h2>
             <div className="flex items-center justify-end mb-4 gap-3">
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -151,7 +151,7 @@ export default function DataKelasPage() {
               semesterList.map((semester) => (
                 <Link
                   key={semester.id} 
-                  href={`/laporan/rekap-metode/${semester.id}`}
+                  href={`/laporan/rekap-kuisioner-pembelajaran/${semester.id}`}
                   className="block" 
                 >
                   <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-indigo-400 hover:shadow-lg transition-all duration-200 group cursor-pointer">

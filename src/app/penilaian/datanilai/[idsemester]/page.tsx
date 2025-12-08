@@ -47,10 +47,8 @@ export default function SemesterNilaiListPage({
   
   // State Filter
 
-  const [searchIdKelas, setSearchIdKelas] = useState("");
-  const [searchNamaKelas, setSearchNamaKelas] = useState("");
-  const [searchKodeMK, setSearchKodeMK] = useState("");
-  const [searchNamaMK, setSearchNamaMK] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  
 
   // 3. Fetch Data dari API (Gunakan API yang sama dengan Data Kelas)
   useEffect(() => {
@@ -81,15 +79,17 @@ export default function SemesterNilaiListPage({
   }, [idsemester]);
 
   // 4. Filter Logic
-  const filteredKelas = kelasList.filter(kelas => {
+  const filteredKelas = kelasList.filter((kelas) => {
     
     // Convert ID ke string untuk pencarian
-    const matchIdKelas = String(kelas.id).toLowerCase().includes(searchIdKelas.toLowerCase());
-    const matchNamaKelas = kelas.namaKelas.toLowerCase().includes(searchNamaKelas.toLowerCase());
-    const matchKodeMK = kelas.kodeMatakuliah.toLowerCase().includes(searchKodeMK.toLowerCase());
-    const matchNamaMK = kelas.namaMatakuliah.toLowerCase().includes(searchNamaMK.toLowerCase());
-    
-    return  matchIdKelas && matchNamaKelas && matchKodeMK && matchNamaMK;
+    const term = searchTerm.toLowerCase();
+        
+    return (
+      String(kelas.kodeMatakuliah).toLowerCase().includes(term) ||
+      kelas.namaKelas.toLowerCase().includes(term) ||
+      kelas.namaMatakuliah.toLowerCase().includes(term) ||
+      String(kelas.id).toLowerCase().includes(term)
+    );
   });
 
   return (
@@ -116,41 +116,15 @@ export default function SemesterNilaiListPage({
           </div>
 
           {/* Search Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-3">
             <input
               type="text"
               placeholder="Nama Kelas"
-              value={searchNamaKelas}
-              onChange={(e) => setSearchNamaKelas(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-4 py-2 border border-gray-800 rounded-lg text-sm focus:ring-2 text-gray-800 focus:ring-indigo-500 outline-none"
             />
-            <input
-              type="text"
-              placeholder="ID Kelas"
-              value={searchIdKelas}
-              onChange={(e) => setSearchIdKelas(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-            <input
-              type="text"
-              placeholder="Nama MK"
-              value={searchNamaMK}
-              onChange={(e) => setSearchNamaMK(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-            <input
-              type="text"
-              placeholder="Kode MK"
-              value={searchKodeMK}
-              onChange={(e) => setSearchKodeMK(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-            <input
-              type="text"
-              placeholder="SKS"
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-              disabled
-            />
+            
           </div>
         </div>
 

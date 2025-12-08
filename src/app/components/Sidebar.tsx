@@ -246,8 +246,8 @@ export default function Sidebar() {
                                 Rekap Metode Penilaian
                             </SubMenuItem>
                             <SubMenuItem 
-                                href="/laporan/rekap-kuisioner" 
-                                isActive={currentPath === "/laporan/rekap-kuisioner"}
+                                href="/laporan/rekap-kuisioner-pembelajaran" 
+                                isActive={currentPath.startsWith("/laporan/rekap-kuisioner-pembelajaran")}
                             >
                                 Rekap Kuisioner Pembelajaran
                             </SubMenuItem>
