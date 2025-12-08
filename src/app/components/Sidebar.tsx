@@ -125,10 +125,10 @@ export default function Sidebar() {
     if (isReferensiActive && !openReferensi) setOpenReferensi(true);
 
     return (
-        <div className="w-64 h-screen bg-white shadow-xl flex flex-col border-r border-gray-200">
+        <div className="w-64 h-max-relative bg-white shadow-xl flex flex-col border-r border-gray-200">
             {/* --- Header / Branding --- (Unchanged) */}
             <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-indigo-600 opacity-5"></div>
+                <div className="absolute inset-0 bg-linear-to-br from-indigo-500 to-indigo-600 opacity-5"></div>
                 <div className="relative flex flex-col items-start p-5 border-b border-indigo-100">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-indigo-600 rounded-lg shadow-md">

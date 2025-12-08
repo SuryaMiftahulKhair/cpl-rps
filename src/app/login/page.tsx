@@ -179,105 +179,10 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs font-semibold text-blue-800 mb-2">
-              Demo Credentials:
-            </p>
-            <div className="space-y-1 text-xs text-blue-700">
-              <p>• Username: <span className="font-mono font-semibold">admin</span></p>
-              <p>• Password: <span className="font-mono font-semibold">password123</span></p>
-            </div>
-          </div>
-
           {/* Footer */}
           <p className="text-center text-xs text-gray-500 mt-8">
             © 2025 Universitas Hasanuddin. All rights reserved.
           </p>
-        </div>
-      </div>
-
-      {/* Right Side - Hero */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-800 p-12 items-center justify-center relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 text-white max-w-lg">
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-3 mb-6">
-              <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                <LayoutPanelTop size={40} />
-              </div>
-              <div>
-                <h2 className="text-4xl font-bold">APP-CPL</h2>
-                <p className="text-indigo-200 text-sm">Learning Outcomes</p>
-              </div>
-            </div>
-            <p className="text-xl font-semibold mb-4">
-              Sistem Informasi Capaian Pembelajaran Lulusan
-            </p>
-            <p className="text-indigo-100 leading-relaxed">
-              Platform terpadu untuk mengelola dan memantau capaian pembelajaran
-              lulusan di lingkungan Universitas Hasanuddin.
-            </p>
-          </div>
-
-          {/* Features List */}
-          <div className="space-y-4">
-            <div className="flex items-start gap-3 p-4 bg-white/10 rounded-lg backdrop-blur-sm">
-              <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                <div className="w-2 h-2 bg-white rounded-full"></div>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Manajemen Kurikulum</h3>
-                <p className="text-sm text-indigo-100">
-                  Kelola visi, misi, dan target CPL dengan mudah
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-4 bg-white/10 rounded-lg backdrop-blur-sm">
-              <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                <div className="w-2 h-2 bg-white rounded-full"></div>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Monitoring Real-time</h3>
-                <p className="text-sm text-indigo-100">
-                  Pantau perkembangan pembelajaran secara langsung
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-4 bg-white/10 rounded-lg backdrop-blur-sm">
-              <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                <div className="w-2 h-2 bg-white rounded-full"></div>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Laporan Komprehensif</h3>
-                <p className="text-sm text-indigo-100">
-                  Generate laporan akreditasi dan evaluasi
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-6 mt-12 pt-8 border-t border-white/20">
-            <div>
-              <div className="text-3xl font-bold mb-1">15+</div>
-              <div className="text-sm text-indigo-100">Program Studi</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold mb-1">500+</div>
-              <div className="text-sm text-indigo-100">Mata Kuliah</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold mb-1">2K+</div>
-              <div className="text-sm text-indigo-100">Mahasiswa</div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
