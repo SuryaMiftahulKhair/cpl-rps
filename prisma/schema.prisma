@@ -24,7 +24,6 @@ model User {
 enum UserRole {
   ADMIN
   DOSEN
-  MAHASISWA
 }
 
 model Kurikulum {
@@ -52,8 +51,6 @@ model MataKuliah {
 
   kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
   kurikulum_id Int
-
-  kelas Kelas[]
 
   @@map("mata_kuliah")
 }
@@ -115,8 +112,13 @@ model TahunAjaran {
   id       Int      @id @default(autoincrement())
   tahun    String
   semester Semester
+  kode_neosia     String   @unique
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   kelas Kelas[]
+
+  
 
   @@unique([tahun, semester])
   @@map("tahun_ajaran")
@@ -128,19 +130,27 @@ enum Semester {
 }
 
 model Kelas {
-  id         Int    @id @default(autoincrement())
-  nama_kelas String
-
-  mataKuliah     MataKuliah @relation(fields: [mata_kuliah_id], references: [id])
-  mata_kuliah_id Int
-
-  tahunAjaran     TahunAjaran @relation(fields: [tahun_ajaran_id], references: [id])
+  id              Int      @id @default(autoincrement())
+  kode_mk         String   
+  nama_mk         String   
+  nama_kelas      String   
+  sks             Int      @default(0) 
+  neosia_id       String?  @unique 
+  
+  // Relasi ke Semester
   tahun_ajaran_id Int
+  tahun_ajaran    TahunAjaran @relation(fields: [tahun_ajaran_id], references: [id])
+  
+  // Relasi ke Dosen & Mahasiswa (Persiapan untuk fitur selanjutnya)
+  dosen_pengampu DosenPengampu[]
+  peserta_kelas  PesertaKelas[]
 
-  dosenPengampu DosenPengampu[]
-  pesertaKelas  PesertaKelas[]
-  rps           RPS[]
-  cpmk          CPMK[]
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Opsional: Index untuk mempercepat pencarian
+  @@index([tahun_ajaran_id])
+  @@index([kode_mk])
 
   @@map("kelas")
 }
@@ -180,8 +190,8 @@ model RPS {
   file_path String
   is_locked Boolean @default(false)
 
-  kelas    Kelas @relation(fields: [kelas_id], references: [id])
-  kelas_id Int
+  // kelas    Kelas @relation(fields: [kelas_id], references: [id])
+  // kelas_id Int
 
   @@map("rps")
 }
@@ -192,8 +202,8 @@ model CPMK {
   deskripsi String  @db.Text // <-- DITAMBAHKAN
   is_locked Boolean @default(false)
 
-  kelas    Kelas @relation(fields: [kelas_id], references: [id])
-  kelas_id Int
+  // kelas    Kelas @relation(fields: [kelas_id], references: [id])
+  // kelas_id Int
 
   komponenPenilaian KomponenPenilaian[]
   piMap             CPMK_PI_Map[]

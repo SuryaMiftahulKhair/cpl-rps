@@ -1,11 +1,9 @@
-// file: src/app/penilaian/datakelas/[semesterid]/page.tsx
 "use client";
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Eye } from "lucide-react";
+import { ArrowLeft, Loader2, Search, RefreshCw, Plus } from "lucide-react"; 
 import DashboardLayout from "@/app/components/DashboardLayout";
-// 1. Import Modal Baru
 import KelasModal from "@/app/components/KelasModal";
 
 // --- Types ---
@@ -15,7 +13,6 @@ interface PageParams {
 
 interface MatakuliahKelas {
   id: number;
-  semesterKur: number | string;
   namaKelas: string;
   kodeMatakuliah: string;
   namaMatakuliah: string;
@@ -40,19 +37,18 @@ export default function SemesterMatakuliahListPage({
   const resolvedParams = use(params);
   const { semesterid } = resolvedParams;
 
-  // State Halaman
+  // State Data
   const [matakuliahList, setMatakuliahList] = useState<MatakuliahKelas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 2. State untuk Modal
+  // State Modal Manual & Search
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(""); 
 
-  // State Filter
-  const [searchTerm,setSearchTerm ] = useState("");
-
-  // Fetch Data Function (Agar bisa dipanggil ulang setelah tambah data)
+  // Fetch Data dari DB Lokal
   const fetchData = async () => {
     setIsLoading(true);
     setError(null);
@@ -72,16 +68,16 @@ export default function SemesterMatakuliahListPage({
     if (semesterid) fetchData();
   }, [semesterid]);
 
-  // 3. Handler Tambah Kelas
-  const handleCreateKelas = async (data: { mata_kuliah_id: number; nama_kelas: string }) => {
+  // Handler Create Kelas Manual (Opsional)
+  const handleCreateKelas = async (data: { kode_mk: string; nama_mk: string; nama_kelas: string; sks: number }) => {
     setSubmitting(true);
     try {
       const payload = {
         ...data,
-        tahun_ajaran_id: parseInt(semesterid), // ID semester dari URL params
+        tahun_ajaran_id: parseInt(semesterid),
       };
 
-      const res = await fetch("/api/kelas", { // Pastikan route POST /api/kelas sudah ada
+      const res = await fetch("/api/kelas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -89,82 +85,133 @@ export default function SemesterMatakuliahListPage({
 
       if (!res.ok) throw new Error(await parseApiError(res));
 
-      // Sukses
       setIsModalOpen(false);
-      fetchData(); // Refresh tabel
+      fetchData(); 
     } catch (err: any) {
-      alert(`Gagal membuat kelas: ${err.message}`);
+      alert(`Gagal: ${err.message}`);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // --- HANDLER SINKRONISASI NEOSIA ---
+  const handleSyncNeosia = async () => {
+    if (!confirm("Ambil data kelas terbaru dari Neosia?")) return;
+
+    setIsSyncing(true);
+    try {
+      // 1. Cek Semester punya Kode Neosia tidak?
+      const semRes = await fetch(`/api/tahunAjaran/${semesterid}`);
+      const semData = await semRes.json();
+
+      if (!semData.kode_neosia) {
+        alert("Semester ini belum punya Kode Neosia (cth: 20241). Edit semester dulu.");
+        setIsSyncing(false);
+        return;
+      }
+
+      // 2. Panggil API Sync
+      const res = await fetch("/api/kelas/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          semesterId: semesterid,
+          kodeNeosia: semData.kode_neosia,
+          prodiId: "18" // Default Informatika
+        })
+      });
+
+      if (!res.ok) throw new Error(await parseApiError(res));
+      const result = await res.json();
+      
+      alert(`Berhasil! ${result.total} kelas telah disinkronisasi.`);
+      fetchData(); // Refresh tabel
+
+    } catch (err: any) {
+      alert(`Sync Gagal: ${err.message}`);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
   // Filter Logic
   const filteredMatakuliah = matakuliahList.filter((mk) => {
     const term = searchTerm.toLowerCase();
-    return String(mk.semesterKur).toLowerCase().includes(term) ||
+    return (
       mk.namaKelas.toLowerCase().includes(term) ||
       mk.kodeMatakuliah.toLowerCase().includes(term) ||
-      mk.namaMatakuliah.toLowerCase().includes(term) ||
-      String(mk.sks).includes(term)
+      mk.namaMatakuliah.toLowerCase().includes(term)
+    );
   });
 
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Data Kelas</h1>
           <span className="text-lg text-gray-500">Semester ID: {semesterid}</span>
         </div>
 
-        {/* Header with Action Buttons */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex justify-end items-center mb-4">
+          <div className="flex justify-end items-center mb-4 flex-wrap gap-2">
              <div className="flex gap-2">
-                {/* 4. Tombol Buka Modal */}
+                {/* Tombol Manual */}
                 <button 
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-cyan-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-cyan-600 transition-colors shadow"
+                    className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-cyan-700 transition-colors shadow flex items-center gap-2"
                 >
-                    Baru
+                    <Plus size={16} /> Baru
                 </button>
-                <button className="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-600 transition-colors shadow">
-                    Sinkronisasi Neosia
+                
+                {/* TOMBOL SYNC NEOSIA */}
+                <button 
+                    onClick={handleSyncNeosia}
+                    disabled={isSyncing}
+                    className={`text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow flex items-center gap-2 ${
+                        isSyncing ? "bg-orange-400 cursor-not-allowed" : "bg-orange-600 hover:bg-orange-700"
+                    }`}
+                >
+                    <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
+                    {isSyncing ? "Sync..." : "Sync Neosia"}
                 </button>
+
                 <Link href="/penilaian/datakelas">
                     <button className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-600 transition-colors shadow flex items-center gap-2">
-                        <ArrowLeft size={16} />
-                        Kembali
+                        <ArrowLeft size={16} /> Kembali
                     </button>
                 </Link>
              </div>
           </div>
           
-          {/* Search Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-             <input type="text" placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-4 py-2 border border-gray-800 rounded-lg text-gray-800 text-sm focus:ring-2  focus:ring-indigo-500 focus:border-indigo-500 outline-none"/>
-             
+          {/* Search Bar */}
+          <div className="relative w-full md:w-1/2 lg:w-1/3 ml-auto"> 
+             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={18} className="text-gray-400" />
+             </div>
+             <input 
+                type="text" 
+                placeholder="Cari Kelas, Kode, Nama Matakuliah..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+             />
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
             <div className="my-4 p-4 bg-red-100 text-red-700 border border-red-300 rounded-lg">
                 <strong>Error:</strong> {error}
             </div>
         )}
 
-        {/* Matakuliah Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-100 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NO.</th>
-                  <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NAMA KELAS</th>
-                  <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">KODE MATAKULIAH</th>
+                  <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">KODE MK</th>
                   <th className="px-6 py-3 text-left font-bold text-gray-700 uppercase tracking-wider">NAMA MATAKULIAH</th>
+                  <th className="px-6 py-3 text-center font-bold text-gray-700 uppercase tracking-wider">KELAS</th>
                   <th className="px-6 py-3 text-center font-bold text-gray-700 uppercase tracking-wider">SKS</th>
                   <th className="px-6 py-3 text-center font-bold text-gray-700 uppercase tracking-wider">AKSI</th>
                 </tr>
@@ -172,27 +219,30 @@ export default function SemesterMatakuliahListPage({
               <tbody className="divide-y divide-gray-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="text-center p-10 text-gray-500">
+                    <td colSpan={5} className="text-center p-10 text-gray-500">
                       <Loader2 size={32} className="animate-spin mx-auto mb-2" />
                       Memuat data kelas...
                     </td>
                   </tr>
                 ) : filteredMatakuliah.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center p-10 text-gray-500">
+                    <td colSpan={5} className="text-center p-10 text-gray-500">
                       {matakuliahList.length === 0 
-                        ? "Tidak ada data kelas untuk semester ini." 
-                        : "Tidak ada data matakuliah yang sesuai dengan filter."
+                        ? "Belum ada kelas. Klik 'Sync Neosia' untuk mengambil data." 
+                        : "Tidak ada data sesuai pencarian."
                       }
                     </td>
                   </tr>
                 ) : (
-                  filteredMatakuliah.map((mk, index) => (
+                  filteredMatakuliah.map((mk) => (
                     <tr key={mk.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-gray-600">{index+1}</td>
-                      <td className="px-6 py-4 text-gray-800 font-medium">{mk.namaKelas}</td>
                       <td className="px-6 py-4 text-gray-700 font-mono">{mk.kodeMatakuliah}</td>
-                      <td className="px-6 py-4 text-gray-800">{mk.namaMatakuliah}</td>
+                      <td className="px-6 py-4 text-gray-800 font-medium">{mk.namaMatakuliah}</td>
+                      <td className="px-6 py-4 text-center">
+                          <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+                            {mk.namaKelas}
+                          </span>
+                      </td>
                       <td className="px-6 py-4 text-center font-semibold text-gray-700">{mk.sks}</td>
                       <td className="px-6 py-4 text-center">
                         <Link href={`/penilaian/datakelas/${semesterid}/${mk.id}`}>
@@ -210,7 +260,6 @@ export default function SemesterMatakuliahListPage({
         </div>
       </div>
 
-      {/* 5. Render Modal */}
       <KelasModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

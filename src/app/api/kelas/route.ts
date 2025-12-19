@@ -1,14 +1,17 @@
 // file: src/app/api/kelas/route.ts
 
 import { NextResponse } from "next/server";
-import prisma from "@/../lib/prisma"; // Pastikan path ini sesuai
-import { z } from "zod"; // Import Zod untuk validasi
+import prisma from "@/../lib/prisma";
+import { z } from "zod";
 
-// === Skema Validasi untuk POST ===
+// === Skema Validasi untuk POST (Disesuaikan dengan tabel Kelas baru) ===
 const createKelasSchema = z.object({
-  mata_kuliah_id: z.number().int({ message: "ID Mata Kuliah harus berupa angka integer" }),
   tahun_ajaran_id: z.number().int({ message: "ID Tahun Ajaran harus berupa angka integer" }),
   nama_kelas: z.string().min(1, "Nama kelas wajib diisi"),
+  // Tambahan field baru karena tabel MataKuliah sudah tidak ada
+  kode_mk: z.string().min(1, "Kode MK wajib diisi"),
+  nama_mk: z.string().min(1, "Nama MK wajib diisi"),
+  sks: z.number().int().min(0, "SKS harus angka positif"),
 });
 
 /**
@@ -41,22 +44,22 @@ export async function GET(request: Request) {
       where: {
         tahun_ajaran_id: id,
       },
-      include: {
-        mataKuliah: true,
-      },
+      // HAPUS include: { mataKuliah: true } karena relasi sudah tidak ada
       orderBy: {
         nama_kelas: "asc",
       },
     });
 
-    // 2. Map data
+    // 2. Map data (Sesuaikan dengan kolom langsung di tabel Kelas)
     const mappedData = kelasList.map((kelas) => ({
       id: kelas.id,
-      semesterKur: kelas.mataKuliah.kurikulum_id,
+      semesterKur: 0, // Placeholder karena data kurikulum_id hilang/tidak ada di tabel kelas saat ini
       namaKelas: kelas.nama_kelas,
-      kodeMatakuliah: kelas.mataKuliah.kode_mk,
-      namaMatakuliah: kelas.mataKuliah.nama,
-      sks: kelas.mataKuliah.sks,
+      
+      // PERBAIKAN: Akses langsung field dari tabel Kelas
+      kodeMatakuliah: kelas.kode_mk, 
+      namaMatakuliah: kelas.nama_mk,
+      sks: kelas.sks,
     }));
 
     return NextResponse.json(mappedData, { status: 200 });
@@ -81,34 +84,35 @@ export async function POST(request: Request) {
     // 1. Validasi input menggunakan Zod
     const parsed = createKelasSchema.parse(body);
 
-    // 2. Cek Duplikasi (Opsional tapi disarankan)
-    // Mencegah pembuatan kelas dengan nama yang sama untuk matkul yang sama di semester yang sama
+    // 2. Cek Duplikasi
+    // Cek berdasarkan Kode MK + Nama Kelas + Tahun Ajaran
     const existing = await prisma.kelas.findFirst({
       where: {
-        mata_kuliah_id: parsed.mata_kuliah_id,
+        kode_mk: parsed.kode_mk, // Cek Kode MK
         tahun_ajaran_id: parsed.tahun_ajaran_id,
-        nama_kelas: { equals: parsed.nama_kelas, mode: "insensitive" } // Case insensitive
+        nama_kelas: { equals: parsed.nama_kelas, mode: "insensitive" }
       }
     });
 
     if (existing) {
       return NextResponse.json(
-        { error: `Kelas '${parsed.nama_kelas}' sudah ada untuk mata kuliah ini di semester ini.` },
-        { status: 409 } // 409 Conflict
+        { error: `Kelas '${parsed.nama_kelas}' untuk MK '${parsed.nama_mk}' sudah ada di semester ini.` },
+        { status: 409 }
       );
     }
 
-    // 3. Simpan ke database
+    // 3. Simpan ke database (Tanpa mata_kuliah_id)
     const newKelas = await prisma.kelas.create({
       data: {
-        mata_kuliah_id: parsed.mata_kuliah_id,
         tahun_ajaran_id: parsed.tahun_ajaran_id,
         nama_kelas: parsed.nama_kelas,
+        // Isi data MK manual
+        kode_mk: parsed.kode_mk,
+        nama_mk: parsed.nama_mk,
+        sks: parsed.sks,
+        // Buat ID unik untuk neosia_id agar konsisten (opsional jika manual)
+        neosia_id: `MANUAL-${parsed.kode_mk}-${parsed.nama_kelas}-${Date.now()}`
       },
-      // Include mataKuliah agar data balikan bisa langsung dipakai frontend jika perlu
-      include: {
-        mataKuliah: true, 
-      }
     });
 
     return NextResponse.json(newKelas, { status: 201 });
@@ -119,11 +123,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: err.issues[0].message }, { status: 400 });
     }
     
-    // Handle Error Database (Foreign Key tidak ketemu, dll)
-    if ((err as any).code === 'P2003') { // Foreign key constraint failed
-        return NextResponse.json({ error: "Mata kuliah atau Tahun Ajaran tidak valid/tidak ditemukan." }, { status: 400 });
-    }
-
     console.error("POST /api/kelas error:", err);
     return NextResponse.json({ error: "Gagal membuat kelas" }, { status: 500 });
   }

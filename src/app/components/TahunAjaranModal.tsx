@@ -1,14 +1,14 @@
 // file: src/app/components/TahunAjaranModal.tsx
 "use client";
 
-import { FormEvent } from "react";
+import { FormEvent, useState } from "react";
 import { X } from "lucide-react";
 
 // === Tipe Data untuk Props ===
 interface TahunAjaranModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { tahun: string; semester: "GANJIL" | "GENAP" }) => void;
+  onSubmit: (data: { tahun: string; semester: "GANJIL" | "GENAP" ; kode_neosia : string}) => void;
   submitting: boolean;
 }
 
@@ -23,9 +23,15 @@ export function TahunAjaranModal({ isOpen, onClose, onSubmit, submitting }: Tahu
     const semester = formData.get("semester") as "GANJIL" | "GENAP";
 
     if (tahun.trim() && semester) {
-      onSubmit({ tahun: tahun.trim(), semester });
+      onSubmit({
+        tahun: tahun.trim(),
+        semester,
+        kode_neosia: kodeNeosia
+      });
     }
   };
+
+  const [kodeNeosia, setKodeNeosia] = useState("");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn">
@@ -46,6 +52,23 @@ export function TahunAjaranModal({ isOpen, onClose, onSubmit, submitting }: Tahu
               <option value="GENAP">GENAP</option>
             </select>
           </div>
+          <div className="mb-4">
+         <label className="block text-sm font-medium text-gray-700 mb-1">
+           Kode Semester Neosia
+         </label>
+         <input
+           type="text"
+           name="kode_neosia"
+           value={kodeNeosia}
+           onChange={(e) => setKodeNeosia(e.target.value)}
+           placeholder="Contoh: 20241 (Ganjil), 20242 (Genap)"
+           className="w-full px-3 py-2 border rounded-lg focus:ring-indigo-500"
+           required
+         />
+         <p className="text-xs text-gray-500 mt-1">
+           *Kode ini diperlukan untuk sinkronisasi nilai otomatis.
+         </p>
+       </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} disabled={submitting} className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Batal</button>
             <button type="submit" disabled={submitting} className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm disabled:opacity-50">
