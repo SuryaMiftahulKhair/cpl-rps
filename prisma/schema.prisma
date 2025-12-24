@@ -178,13 +178,15 @@ model PesertaKelas {
   kelas     Kelas @relation(fields: [kelas_id], references: [id])
   kelas_id  Int
 
-  NIM       String
+  nim       String
 
   nilai_angka Float? // Nilai Akhir
   nilai_huruf String? // Nilai Huruf
 
-  @@unique([kelas_id, NIM])
+  @@unique([kelas_id, nim])
   @@map("peserta_kelas")
+  users User[]
+  nilais Nilai[]
 }
 
 model RPS {
