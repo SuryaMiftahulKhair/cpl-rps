@@ -25,6 +25,7 @@ export async function decrypt(input: string): Promise<any> {
 
 // Simpan Sesi (Termasuk Token Kampus)
 export async function createSession(payload: {
+  userId: number;
   username: string;
   role: string;
   accessToken: string; // <-- Kita simpan token kampus di sini

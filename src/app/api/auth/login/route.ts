@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
     // --- 4. SIMPAN SESI (SANGAT PENTING: Struktur Data) ---
     // Struktur ini harus sama persis dengan yang dicek di Middleware
     await createSession({
+      userId: localUser.id,
       username: localUser.username,
       role: localUser.role,            // Ini nilainya "USER"
       accessToken: accessToken,        // Token kampus disimpan di sini
