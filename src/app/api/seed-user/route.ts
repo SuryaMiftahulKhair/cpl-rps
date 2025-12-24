@@ -7,7 +7,7 @@ export async function GET() {
     const username = "D121221058";
     const plainPassword = "40752";
     const nama = "Ulil";
-    const role = "MAHASISWA";
+    const role = "ADMIN";
 
     // 1. Cek user lama
     const existing = await prisma.user.findUnique({

@@ -25,16 +25,17 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
       });
 
-      if (!res.ok) {
-        // Jika login gagal (password salah / user tidak ada)
-        const data = await res.json();
-        throw new Error(data.error || "Login gagal");
+      if (res.ok) {
+        // JIKA SUKSES (Status 200)
+        console.log("Login sukses, mengalihkan...");
+        router.push("/home"); // <--- INI PERINTAH PINDAHNYA
+        router.refresh(); // Opsional: paksa refresh komponen
+      } else {
+        alert("Login Gagal!");
+        setIsLoading(false); // Matikan loading biar bisa coba lagi
       }
-
-      // --- JIKA SUKSES ---
-      // Redirect ke halaman Dashboard (RPS Matakuliah)
-      router.push("/home"); 
-      router.refresh(); // Paksa refresh agar layout tahu status login berubah
+    
+ // Paksa refresh agar layout tahu status login berubah
 
     } catch (err: any) {
       setError(err.message);

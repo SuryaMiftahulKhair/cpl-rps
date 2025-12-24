@@ -24,6 +24,7 @@ model User {
 enum UserRole {
   ADMIN
   DOSEN
+  USER
 }
 
 model Kurikulum {
@@ -153,6 +154,7 @@ model Kelas {
   @@index([kode_mk])
 
   @@map("kelas")
+  rps RPS[]
 }
 
 model DosenPengampu {
@@ -176,24 +178,55 @@ model PesertaKelas {
   kelas     Kelas @relation(fields: [kelas_id], references: [id])
   kelas_id  Int
 
-  mahasiswa User @relation(fields: [mahasiswa_id], references: [id])
-  mahasiswa_id Int
+  NIM       String
 
-  nilai Nilai[]
+  nilai_angka Float? // Nilai Akhir
+  nilai_huruf String? // Nilai Huruf
 
-  @@unique([kelas_id, mahasiswa_id])
+  @@unique([kelas_id, NIM])
   @@map("peserta_kelas")
 }
 
 model RPS {
-  id        Int     @id @default(autoincrement())
-  file_path String
-  is_locked Boolean @default(false)
+  id                  Int      @id @default(autoincrement())
+  // Data Dasar
+  deskripsi           String?  @db.Text // Deskripsi Mata Kuliah
+  materi_pembelajaran String?  @db.Text // Materi/Bahan Kajian
+  pustaka_utama       String?  @db.Text // Referensi Utama
+  pustaka_pendukung   String?  @db.Text // Referensi Pendukung
+  
+  // Status
+  is_locked           Boolean  @default(false)
+  file_path           String?  // Jika ada file upload manual (opsional)
 
-  // kelas    Kelas @relation(fields: [kelas_id], references: [id])
-  // kelas_id Int
+  // Relasi ke Kelas (One-to-One: 1 Kelas punya 1 RPS spesifik)
+  kelas_id            Int      @unique
+  kelas               Kelas    @relation(fields: [kelas_id], references: [id])
+
+  // Relasi ke Pertemuan Mingguan
+  pertemuan           RPSPertemuan[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@map("rps")
+}
+
+model RPSPertemuan {
+  id              Int     @id @default(autoincrement())
+  pekan_ke        Int     // Minggu ke-1, ke-2, dst
+  kemampuan_akhir String? @db.Text // Sub-CPMK
+  bahan_kajian    String? @db.Text // Materi Pembelajaran
+  metode_pembelajaran String? @db.Text // Metode (Luring/Daring)
+  waktu           String? // Estimasi Waktu (misal: 3x50')
+  pengalaman_belajar String? @db.Text // Pengalaman Belajar Mahasiswa
+  kriteria_penilaian String? @db.Text // Indikator/Kriteria
+  bobot_nilai     Float?  // Bobot (%)
+
+  rps_id          Int
+  rps             RPS     @relation(fields: [rps_id], references: [id], onDelete: Cascade)
+
+  @@map("rps_pertemuan")
 }
 
 model CPMK {

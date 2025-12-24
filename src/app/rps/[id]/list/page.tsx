@@ -227,7 +227,7 @@ export default function RpsListPage() {
         {/* Main Content Card */}
         <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
           {/* Card Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 bg-gradient-to-r from-indigo-50 to-indigo-100 border-b border-indigo-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 bg-linear-to-r from-indigo-50 to-indigo-100 border-b border-indigo-200">
             <div>
               <h2 className="text-lg font-bold text-gray-800 mb-1">
                 Pilih Mata Kuliah

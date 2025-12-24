@@ -1,87 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
-import { decrypt } from "@/../lib/auth"; // Pastikan path ini benar
+import { decrypt } from "@/../lib/auth"; 
 
-// 1. Daftar Halaman/API yang Boleh Diakses Siapa Saja (Public)
+// 1. Daftar Public
 const publicPaths = ["/login", "/register", "/api/auth/login", "/api/auth/register", "/api/seed-user"];
 
-// 2. Daftar Halaman/API Khusus ADMIN
-const adminPaths = [
-  "/rps",              // Halaman Pilih Kurikulum
-  "/referensi",        // Halaman VMCPL, dll
-  "/pengaturan",       // Halaman Manajemen User
-  "/api/kurikulum",    // API Kurikulum
-  "/api/users",        // API User
-  "/api/rps/riwayat",  // API Riwayat RPS
-];
+// 2. Daftar Admin
+const adminPaths = ["/rps", "/referensi", "/pengaturan", "/api/kurikulum", "/api/users", "/api/rps/riwayat"];
 
-// 3. Daftar Halaman/API Khusus DOSEN (Contoh)
-const dosenPaths = [
-  "/rps",
-  "/api/kelas",
-  "/api/cpmk",
-];
+// 3. Daftar Dosen
+const dosenPaths = ["/rps", "/api/kelas", "/api/cpmk"];
 
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
-  // --- CEK 1: Apakah ini halaman public? ---
-  // Jika ya, biarkan lewat.
+  // --- CEK 1: Public Path ---
   if (publicPaths.some((p) => path.startsWith(p)) || path === "/" || path.startsWith("/_next") || path.includes(".")) {
     return NextResponse.next();
   }
 
-  // --- CEK 2: Apakah user punya tiket (session cookie)? ---
+  // --- CEK 2: Ada Cookie? ---
   const sessionCookie = req.cookies.get("session")?.value;
 
   if (!sessionCookie) {
-    // Jika tidak ada tiket, tendang ke halaman login
-    // (Kecuali jika ini request API, kasih error JSON)
     if (path.startsWith("/api/")) {
       return NextResponse.json({ error: "Anda belum login" }, { status: 401 });
     }
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // --- CEK 3: Apakah tiketnya valid? ---
+  // --- CEK 3: Validasi Isi Session ---
   const session = await decrypt(sessionCookie);
 
+  // Middleware kakak mewajibkan 'userId'. 
+  // Karena Login Route di atas sudah mengirim 'userId', baris ini sekarang akan LOLOS (TRUE).
   if (!session?.userId) {
-    // Tiket palsu/kadaluarsa -> Hapus tiket & tendang ke login
+    console.log("Session invalid: userId missing"); // Debugging
     const response = NextResponse.redirect(new URL("/login", req.url));
     response.cookies.delete("session");
     return response;
   }
 
-  // --- CEK 4: Otorisasi Role (Admin vs Dosen) ---
-  const userRole = session.role;
+  // --- CEK 4: Role ---
+  const userRole = session.role; // Harusnya "USER"
 
-  // Jika user mencoba akses halaman ADMIN
+  // Cek Akses Halaman Admin
   if (adminPaths.some((p) => path.startsWith(p))) {
-    if (userRole !== "ADMIN") {
-      // Jika bukan admin, tolak!
+    // Kita izinkan ADMIN atau USER
+    if (userRole !== "ADMIN" && userRole !== "USER") { 
       if (path.startsWith("/api/")) {
-        return NextResponse.json({ error: "Akses ditolak: Khusus Admin" }, { status: 403 });
+        return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
       }
-      // Redirect ke halaman yang sesuai role-nya (misal dashboard dosen)
       return NextResponse.redirect(new URL("/unauthorized", req.url)); 
     }
   }
 
-  // Jika user mencoba akses halaman DOSEN
+  // Cek Akses Halaman Dosen
   if (dosenPaths.some((p) => path.startsWith(p))) {
-    if (userRole !== "DOSEN" && userRole !== "ADMIN") { // Admin biasanya boleh akses semua
-      if (path.startsWith("/api/")) {
-        return NextResponse.json({ error: "Akses ditolak: Khusus Dosen" }, { status: 403 });
-      }
-      return NextResponse.redirect(new URL("/unauthorized", req.url));
-    }
+     // Izinkan DOSEN, ADMIN, atau USER
+     if (userRole !== "DOSEN" && userRole !== "ADMIN" && userRole !== "USER") {
+       if (path.startsWith("/api/")) {
+         return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
+       }
+       return NextResponse.redirect(new URL("/unauthorized", req.url));
+     }
   }
 
-  // Jika lolos semua pengecekan, silakan masuk
   return NextResponse.next();
 }
 
-// Konfigurasi: Middleware ini berjalan di semua rute kecuali file statis
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|logo-unhas.png).*)"],
 };
