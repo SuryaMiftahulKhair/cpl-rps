@@ -185,12 +185,6 @@ export default function Sidebar() {
                                 Data Kelas
                             </SubMenuItem>
                             <SubMenuItem 
-                                href="/penilaian/datanilai" 
-                                isActive={currentPath === "/penilaian/datanilai"}
-                            >
-                                Data Nilai
-                            </SubMenuItem>
-                            <SubMenuItem 
                                 href="/penilaian/portofolio" 
                                 isActive={currentPath === "/penilaian/portofolio"}
                             >
