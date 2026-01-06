@@ -36,7 +36,6 @@ model Kurikulum {
 
   mataKuliah    MataKuliah[]
   cpl           CPL[]
-  piGroups      PIGroup[]
   AssasmentArea AssasmentArea[]
 
   @@map("kurikulum")
@@ -53,42 +52,14 @@ model MataKuliah {
   kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
   kurikulum_id Int
   
+  cpl_dibebankan CPL[] @relation("CPL_MataKuliah")
   kelas Kelas[]
   rps RPS?
   rpsid Int?
 
   @@map("mata_kuliah")
   
-}
-
-model PIGroup {
-  id        Int    @id @default(autoincrement())
-  kode_grup String
-
-  kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
-  kurikulum_id Int
-
-  assasment    AssasmentArea @relation(fields: [assesment_id], references: [id])
-  assesment_id Int
-
-  indicators PerformanceIndicator[]
-
-  @@map("pi_group")
-}
-
-model PerformanceIndicator {
-  id        Int    @id @default(autoincrement())
-  deskripsi String @db.Text
-
-  piGroup     PIGroup @relation(fields: [pi_group_id], references: [id])
-  pi_group_id Int
-
-  cpl    CPL     @relation(fields: [cpl_id], references: [id])
-  cpl_id Int
-
-  cpmkMap CPMK_PI_Map[]
-
-  @@map("performance_indicator")
+  cpls CPL[]
 }
 
 model CPL {
@@ -98,9 +69,10 @@ model CPL {
 
   kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
   kurikulum_id Int
-  PerformanceIndicator PerformanceIndicator[]
+  mataKuliah MataKuliah[]
 
   @@map("cpl")
+  mataKuliahs MataKuliah[] @relation("CPL_MataKuliah")
 }
 
 model AssasmentArea {
@@ -109,7 +81,6 @@ model AssasmentArea {
 
   kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
   kurikulum_id Int
-  PIGroup      PIGroup[]
 
   @@map("assasment_area")
 }
@@ -257,22 +228,13 @@ model CPMK {
   // kelas_id Int
 
   komponenPenilaian KomponenPenilaian[]
-  piMap             CPMK_PI_Map[]
+
 
   @@map("cpmk")
   kelas Kelas[]
   rps RPS[]
 }
 
-model CPMK_PI_Map {
-  cpmk    CPMK                 @relation(fields: [cpmk_id], references: [id])
-  cpmk_id Int
-  pi      PerformanceIndicator @relation(fields: [pi_id], references: [id])
-  pi_id   Int
-
-  @@id([cpmk_id, pi_id])
-  @@map("cpmk_pi_map")
-}
 
 model KomponenPenilaian {
   id    Int    @id @default(autoincrement())
