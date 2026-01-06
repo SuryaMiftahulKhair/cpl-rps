@@ -1,3 +1,5 @@
+// src/app/api/kurikulum/[id]/route.ts
+
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/../lib/prisma";
 
@@ -21,11 +23,16 @@ function parseId(paramsId: string | undefined, nextUrl?: any) {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id?: string } } // <-- PERBAIKAN: Pakai 'id'
+  // 1. Definisikan params sebagai Promise
+  { params }: { params: Promise<{ id: string }> } 
 ) {
   try {
-    // Gunakan 'request' di parseId
-    const id = parseId(params.id, (request as any).nextUrl); // <-- PERBAIKAN: Pakai 'params.id'
+    // 2. Await params terlebih dahulu (Wajib di Next.js 15)
+    const { id: idString } = await params;
+    
+    // 3. Konversi ke Number
+    const id = Number(idString);
+
     if (Number.isNaN(id)) {
       return NextResponse.json({ error: "ID Kurikulum tidak valid" }, { status: 400 });
     }

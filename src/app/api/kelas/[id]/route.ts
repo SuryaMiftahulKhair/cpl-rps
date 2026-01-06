@@ -29,10 +29,10 @@ export async function GET(
         },
         peserta_kelas: {
           include: {
-            mahasiswa: true, 
+            users: true, 
           },
           orderBy: {
-            mahasiswa: { username: "asc" }, // Biasanya sorting by NIM (username) bukan ID
+            nim: "asc" , // Biasanya sorting by NIM (username) bukan ID
           },
         },
       },

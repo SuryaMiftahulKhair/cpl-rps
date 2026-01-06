@@ -52,8 +52,13 @@ model MataKuliah {
 
   kurikulum    Kurikulum @relation(fields: [kurikulum_id], references: [id])
   kurikulum_id Int
+  
+  kelas Kelas[]
+  rps RPS?
+  rpsid Int?
 
   @@map("mata_kuliah")
+  
 }
 
 model PIGroup {
@@ -142,9 +147,13 @@ model Kelas {
   tahun_ajaran_id Int
   tahun_ajaran    TahunAjaran @relation(fields: [tahun_ajaran_id], references: [id])
   
+  matakuliah_id   Int?     // ← BISA NULLABLE DULU
+  matakuliah      MataKuliah? @relation(fields: [matakuliah_id], references: [id])
   // Relasi ke Dosen & Mahasiswa (Persiapan untuk fitur selanjutnya)
   dosen_pengampu DosenPengampu[]
   peserta_kelas  PesertaKelas[]
+
+  cpmk            CPMK[]   // Relasi one-to-many ke CPMK
 
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
@@ -154,7 +163,6 @@ model Kelas {
   @@index([kode_mk])
 
   @@map("kelas")
-  rps RPS[]
 }
 
 model DosenPengampu {
@@ -196,14 +204,20 @@ model RPS {
   materi_pembelajaran String?  @db.Text // Materi/Bahan Kajian
   pustaka_utama       String?  @db.Text // Referensi Utama
   pustaka_pendukung   String?  @db.Text // Referensi Pendukung
+  nomor_dokumen       String?  // <--- INI YG BIKIN ERROR
+  tanggal_penyusunan  DateTime @default(now())
+  
+  nama_penyusun       String?
+  nama_koordinator    String?
+  nama_kaprodi        String?
   
   // Status
   is_locked           Boolean  @default(false)
   file_path           String?  // Jika ada file upload manual (opsional)
 
-  // Relasi ke Kelas (One-to-One: 1 Kelas punya 1 RPS spesifik)
-  kelas_id            Int      @unique
-  kelas               Kelas    @relation(fields: [kelas_id], references: [id])
+ // GANTI dengan relasi ke Mata Kuliah
+  matakuliah_id Int        @unique // @unique memastikan 1 Matkul cuma punya 1 RPS
+  matakuliah    MataKuliah @relation(fields: [matakuliah_id], references: [id])
 
   // Relasi ke Pertemuan Mingguan
   pertemuan           RPSPertemuan[]
@@ -212,6 +226,8 @@ model RPS {
   updatedAt           DateTime @updatedAt
 
   @@map("rps")
+  cpmk CPMK[]
+  
 }
 
 model RPSPertemuan {
@@ -244,6 +260,8 @@ model CPMK {
   piMap             CPMK_PI_Map[]
 
   @@map("cpmk")
+  kelas Kelas[]
+  rps RPS[]
 }
 
 model CPMK_PI_Map {

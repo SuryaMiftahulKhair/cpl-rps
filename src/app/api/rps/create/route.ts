@@ -6,46 +6,65 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { matakuliah_id, tahun, semester, keterangan } = body;
 
-    // 1. Cari atau Buat Tahun Ajaran
-    // Kita cek dulu apakah Tahun/Semester ini sudah ada di database
-    let tahunAjaran = await prisma.tahunAjaran.findFirst({
-      where: {
-        tahun: tahun,
-        semester: semester === "1" ? "GANJIL" : "GENAP",
-      },
-    });
-
-    if (!tahunAjaran) {
-      tahunAjaran = await prisma.tahunAjaran.create({
-        data: {
-          tahun: tahun,
-          semester: semester === "1" ? "GANJIL" : "GENAP",
-        },
-      });
+    // 1. Validasi Input
+    if (!matakuliah_id) {
+      return NextResponse.json({ error: "ID Mata Kuliah wajib ada" }, { status: 400 });
     }
 
-    // 2. Buat Kelas Baru (Ini representasi Versi RPS)
-    const newKelas = await prisma.kelas.create({
-      data: {
-        nama_kelas: keterangan || `Kelas ${tahun}`, // Nama kelas otomatis atau dari keterangan
-        mata_kuliah_id: Number(matakuliah_id),
-        tahun_ajaran_id: tahunAjaran.id,
-      },
+    // 2. Cari Data Mata Kuliah (Untuk memastikan ID valid & ambil Kode MK)
+    const mk = await prisma.mataKuliah.findUnique({ 
+      where: { id: Number(matakuliah_id) } 
     });
 
-    // 3. Buat Entry RPS kosong untuk kelas ini
-    await prisma.rPS.create({
+    if (!mk) {
+      return NextResponse.json({ error: "Mata kuliah tidak ditemukan" }, { status: 404 });
+    }
+
+    // 3. Generate Nomor Dokumen Otomatis (Opsional)
+    // Contoh format: RPS-[KODE_MK]-[TAHUN]
+    const docNumber = `RPS-${mk.kode_mk}-${tahun || new Date().getFullYear()}`;
+
+    // 4. LANGSUNG BUAT RPS (Tanpa Buat Kelas)
+    const newRPS = await prisma.rPS.create({
       data: {
-        file_path: "", // Belum ada file upload
-        is_locked: false,
-        kelas_id: newKelas.id
+        // Relasi langsung ke Mata Kuliah
+        matakuliah_id: mk.id, 
+        
+        // Metadata RPS
+        nomor_dokumen: docNumber,
+        tanggal_penyusunan: new Date(),
+        
+        // Isi default kosong (agar tidak error null)
+        deskripsi: keterangan || `RPS untuk ${mk.nama}`,
+        materi_pembelajaran: "",
+        pustaka_utama: "",
+        pustaka_pendukung: "",
+        
+        // Otorisasi Default (Bisa diedit nanti)
+        nama_penyusun: "Tim Dosen",
+        nama_koordinator: "Koordinator MK",
+        nama_kaprodi: "Ketua Prodi"
       }
     });
 
-    return NextResponse.json(newKelas, { status: 201 });
+    // 5. Response Sukses
+    return NextResponse.json(
+      { 
+        success: true,
+        message: "RPS berhasil dibuat",
+        data: newRPS // Mengembalikan object RPS yang baru dibuat
+      }, 
+      { status: 201 }
+    );
 
   } catch (err: any) {
-    console.error("POST Create RPS Error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("Create RPS Error:", err);
+    return NextResponse.json(
+      { 
+        error: err.message || "Gagal membuat RPS",
+        details: err.meta || {}
+      }, 
+      { status: 500 }
+    );
   }
 }
