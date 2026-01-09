@@ -2,6 +2,7 @@
 
 datasource db {
   provider = "postgresql"
+  // url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -15,10 +16,13 @@ model User {
   nama          String
   role          UserRole
 
-  dosenPengampu DosenPengampu[]
-  pesertaKelas  PesertaKelas[]
+  prodi_id      Int?
+  programStudi  ProgramStudi? @relation("UserToProgramStudi", fields: [prodi_id], references: [id])
 
+  dosenPengampu DosenPengampu[]
+  pesertaKelas PesertaKelas[]
   @@map("users")
+  programStudis ProgramStudi[] @relation("UserToProgramStudis")
 }
 
 enum UserRole {
@@ -26,6 +30,29 @@ enum UserRole {
   DOSEN
   USER
 }
+
+enum Jenjang{
+  S1
+  S2
+  S3
+}
+
+model ProgramStudi {
+  id        Int      @id @default(autoincrement())
+  kode_prodi String   @unique
+  jenjang   Jenjang
+  nama      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kurikulum Kurikulum[]
+  users     User[] @relation("UserToProgramStudi")
+  userPrograms User[] @relation("UserToProgramStudis")
+
+  @@map("program_studi")
+}
+
 
 model Kurikulum {
   id        Int      @id @default(autoincrement())
@@ -37,6 +64,8 @@ model Kurikulum {
   mataKuliah    MataKuliah[]
   cpl           CPL[]
   AssasmentArea AssasmentArea[]
+  programStudi  ProgramStudi? @relation(fields: [prodi_id], references: [id])
+  prodi_id      Int?
 
   @@map("kurikulum")
 }
@@ -54,8 +83,7 @@ model MataKuliah {
   
   cpl CPL[]
   kelas Kelas[]
-  rps RPS?
-  rpsid Int?
+  rps RPS[]
   @@map("mata_kuliah")
 }
 
@@ -131,6 +159,7 @@ model Kelas {
   @@index([kode_mk])
 
   @@map("kelas")
+  komponenNilai KomponenNilai[]
 }
 
 model DosenPengampu {
@@ -147,23 +176,8 @@ model DosenPengampu {
   @@map("dosen_pengampu")
 }
 
-model PesertaKelas {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
 
-  kelas     Kelas @relation(fields: [kelas_id], references: [id])
-  kelas_id  Int
-
-  nim       String
-
-  nilai_angka Float? // Nilai Akhir
-  nilai_huruf String? // Nilai Huruf
-
-  @@unique([kelas_id, nim])
-  @@map("peserta_kelas")
-  users User[]
-  nilais Nilai[]
-}
+  
 
 model RPS {
   id                  Int      @id @default(autoincrement())
@@ -224,7 +238,7 @@ model CPMK {
   // kelas    Kelas @relation(fields: [kelas_id], references: [id])
   // kelas_id Int
 
-  komponenPenilaian KomponenPenilaian[]
+  // komponenNilai KomponenNilai[]
 
 
   @@map("cpmk")
@@ -232,30 +246,48 @@ model CPMK {
   rps RPS[]
 }
 
+model PesertaKelas {
+  id        Int      @id @default(autoincrement())
+  nim       String
+  nama      String
+  createdAt DateTime @default(now())
 
-model KomponenPenilaian {
-  id    Int    @id @default(autoincrement())
-  nama  String
-  bobot Float
-
-  cpmk    CPMK @relation(fields: [cpmk_id], references: [id])
-  cpmk_id Int
-
+  kelas_id  Int
+  kelas     Kelas @relation(fields: [kelas_id], references: [id])
+  
   nilai Nilai[]
+  nilai_angka Float?  @default(0)
+  nilai_huruf String? 
 
-  @@map("komponen_penilaian")
+  @@unique([kelas_id, nim])
+  @@map("peserta_kelas")
+
+  users User[]
+}
+
+model KomponenNilai {
+  id        Int    @id @default(autoincrement())
+  nama      String
+  bobot     Float
+
+  kelas_id  Int
+  kelas    Kelas @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
+
+  @@map("komponen_nilai")
+  nilai Nilai[] @relation("NilaiToKomponen")
 }
 
 model Nilai {
   id                    Int    @id @default(autoincrement())
   nilai_angka           Float
 
-  pesertaKelas          PesertaKelas @relation(fields: [peserta_kelas_id], references: [id])
   peserta_kelas_id      Int
+  pesertaKelas          PesertaKelas @relation(fields: [peserta_kelas_id], references: [id], onDelete: Cascade)
+  
 
-  komponenPenilaian     KomponenPenilaian @relation(fields: [komponen_penilaian_id], references: [id])
-  komponen_penilaian_id Int
+  komponen_nilai_id      Int
+  komponen KomponenNilai @relation("NilaiToKomponen", fields: [komponen_nilai_id], references: [id], onDelete: Cascade)
 
-  @@unique([peserta_kelas_id, komponen_penilaian_id])
+  @@unique([peserta_kelas_id, komponen_nilai_id])
   @@map("nilai")
 }
