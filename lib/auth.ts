@@ -1,53 +1,42 @@
-// lib/auth.ts
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 
-const secretKey = process.env.JWT_SECRET_KEY || "rahasia-default"; 
+const secretKey = "rahasia-dapur-kita"; // Ganti dengan string acak yang panjang di .env
 const key = new TextEncoder().encode(secretKey);
 
-// Enkripsi data jadi Token
-export async function encrypt(payload: any) {
-  return await new SignJWT(payload)
+// 1. Fungsi Membuat Session (Dipanggil saat Login sukses)
+export async function createSession(payload: any) {
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 Hari
+  const session = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("24h") 
+    .setExpirationTime("1day")
     .sign(key);
+
+  // Simpan ke Cookies
+  (await cookies()).set("session", session, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    expires,
+    sameSite: "lax",
+    path: "/",
+  });
 }
 
-// Dekripsi Token
-export async function decrypt(input: string): Promise<any> {
+// 2. Fungsi Mengambil Data User dari Session (Dipanggil di API/Page)
+export async function getSession() {
+  const session = (await cookies()).get("session")?.value;
+  if (!session) return null;
   try {
-    const { payload } = await jwtVerify(input, key, { algorithms: ["HS256"] });
+    const { payload } = await jwtVerify(session, key);
     return payload;
   } catch (error) {
     return null;
   }
 }
 
-// Simpan Sesi (Termasuk Token Kampus)
-export async function createSession(payload: {
-  userId: number;
-  username: string;
-  role: string;
-  accessToken: string; // <-- Kita simpan token kampus di sini
-}) {
-  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); 
-  const session = await encrypt(payload);
-
-  (await cookies()).set("session", session, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    expires: expires,
-    path: "/",
-  });
-}
-
-export async function getSession() {
-  const sessionCookie = (await cookies()).get("session")?.value;
-  if (!sessionCookie) return null;
-  return await decrypt(sessionCookie);
-}
-
-export async function deleteSession() {
-  (await cookies()).set("session", "", { expires: new Date(0), path: "/" });
+// 3. Fungsi Logout
+export async function logout() {
+  (await cookies()).delete("session");
 }

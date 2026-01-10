@@ -1,5 +1,7 @@
 // src/app/api/kurikulum/route.ts
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getSession } from "@/../lib/auth";
 import prisma from "@/../lib/prisma";
 import { z } from "zod";
 
@@ -11,45 +13,44 @@ const postSchema = z.object({
 });
 
 // === GET: ambil daftar kurikulum ===
-export async function GET(request: Request) {
+ // Fungsi untuk ambil session
+
+export async function GET(req: NextRequest) {
+  // 1. Ambil User dari Session
+  const session = await getSession();
+  
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Ambil prodiId dari session (pastikan di login route tadi sudah disimpan)
+  const userProdiId = Number(session.prodiId);
+
+  // 2. Query Database dengan Filter Prodi
   try {
-    const url = new URL(request.url);
-    const page = Number(url.searchParams.get("page") || 1);
-    const limit = Math.min(Number(url.searchParams.get("limit") || 10), 100);
-    const q = url.searchParams.get("q") || "";
-    const skip = (page - 1) * limit;
+    // ... kode atas sama ...
 
-    const [data, total] = await Promise.all([
-      prisma.kurikulum.findMany({
-        where: { nama: { contains: q, mode: "insensitive" } },
-        include: {
-          mataKuliah: { select: { id: true } },
+    // 2. Query Database dengan Filter Prodi
+    const data = await prisma.kurikulum.findMany({
+      where: {
+        prodi_id: userProdiId 
+      },
+      include: {
+        _count: {
+          // PERBAIKAN DI SINI:
+          // Ganti 'matakuliah' menjadi 'mataKuliah' (atau 'mata_kuliah' cek schema.prisma)
+          select: { mataKuliah: true } 
         },
-        skip,
-        take: limit,
-        orderBy: { tahun: "desc" },
-      }),
-      prisma.kurikulum.count({
-        where: { nama: { contains: q, mode: "insensitive" } },
-      }),
-    ]);
+        program_studi: true 
+      },
+      orderBy: {
+        tahun: 'desc'
+      }
+    });
 
-    const mapped = data.map((k) => ({
-      id: k.id,
-      nama: k.nama,
-      tahun: k.tahun,
-      mataKuliahCount: k.mataKuliah.length,
-      createdAt: k.createdAt,
-      updatedAt: k.updatedAt,
-    }));
-
-    return NextResponse.json({ data: mapped, meta: { page, limit, total } });
+    return NextResponse.json(data);
   } catch (err) {
-    console.error("GET /api/kurikulum error:", err);
-    return NextResponse.json(
-      { error: "Gagal mengambil data kurikulum" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Gagal mengambil data" }, { status: 500 });
   }
 }
 

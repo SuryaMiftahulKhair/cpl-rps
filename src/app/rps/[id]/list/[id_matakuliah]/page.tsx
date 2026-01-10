@@ -54,7 +54,7 @@ function AddRPSModal({ isOpen, onClose, onSubmit, isProcessing }: AddRPSModalPro
                 <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
                     <div className="flex items-center justify-between p-6 border-b border-gray-200">
                         <h3 className="text-xl font-bold text-gray-800">Buat RPS Baru</h3>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg">
+                        <button title="Tutup" onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg">
                             <X size={24} />
                         </button>
                     </div>

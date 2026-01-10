@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/../lib/prisma";
+import { getSession } from "@/../lib/auth"; 
 import { z } from "zod";
 
 // Skema Zod
@@ -25,29 +26,53 @@ function parseId(paramsId: string | undefined, nextUrl?: any) {
   }
 }
 
+
+
+
 export async function GET(
-  request: NextRequest,
-  { params }: { params:Promise < { id?: string } >} // <-- PERBAIKAN: Pakai 'id'
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // --- PERBAIKAN: Baca 'params.id' ---
-    const kurikulumId = parseId((await params).id, (request as any).nextUrl);
-    if (Number.isNaN(kurikulumId)) {
-      return NextResponse.json({ error: "kurikulum id tidak valid (harus integer)" }, { status: 400 });
-    }
+    // 1. Ambil ID Kurikulum dari URL
+    const { id } = await params;
+    const kurikulumId = Number(id);
 
-    const list = await prisma.mataKuliah.findMany({
-      where: { kurikulum_id: kurikulumId },
-      orderBy: { semester: "asc" },
+    // 2. Cek Session User
+    const session = await getSession();
+    if (!session || !session.prodiId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    const userProdiId = Number(session.prodiId);
+
+    // 3. Query Mata Kuliah dengan Filter Ganda
+    const data = await prisma.mataKuliah.findMany({
+      where: {
+        kurikulum_id: kurikulumId, // Filter 1: Harus sesuai Kurikulum yang diklik
+        
+        // Filter 2 (SECURITY): Pastikan Kurikulum induknya MEMANG milik Prodi User ini
+        // Jadi Admin S1 tidak bisa iseng tembak ID Kurikulum S2 lewat URL/Postman
+        kurikulum: {
+            prodi_id: userProdiId
+        }
+      },
+      include: {
+        // Hitung jumlah RPS yang sudah dibuat (Opsional, buat tampilan dashboard)
+        _count: {
+            select: { rps: true } 
+        }
+      },
+      orderBy: {
+        kode_mk: 'asc'
+      }
     });
 
-    return NextResponse.json(list);
+    return NextResponse.json(data);
+
   } catch (err: any) {
-    console.error("GET /api/kurikulum/[id]/matakuliah error:", err);
-    return NextResponse.json(
-      { error: "Terjadi kesalahan pada server.", detail: err?.message ?? String(err) },
-      { status: 500 }
-    );
+    console.error("API Matkul Error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
