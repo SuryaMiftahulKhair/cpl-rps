@@ -1,140 +1,93 @@
 import { NextResponse, NextRequest } from "next/server";
-import prisma from "@/../lib/prisma";
-import { getSession } from "@/../lib/auth"; 
-import { z } from "zod";
+import prisma from "@/../lib/prisma"; // Sesuaikan path import prisma kakak
 
-// Skema Zod
-const createSchema = z.object({
-  kode_mk: z.string().min(1, "Kode mata kuliah wajib diisi"),
-  nama: z.string().min(1, "Nama mata kuliah wajib diisi"),
-  sks: z.number().int().nonnegative("SKS harus >= 0"),
-  sifat: z.string(), // Dibuat wajib
-  semester: z.number().int().positive(), // Dibuat wajib
-});
-
-// Fungsi parseId
-function parseId(paramsId: string | undefined, nextUrl?: any) {
-  if (paramsId) return Number(paramsId);
-  try {
-    const url = nextUrl?.pathname ?? "";
-    const segments = url.split('/');
-    const idIndex = segments.indexOf('kurikulum') + 1; 
-    const id = segments[idIndex];
-    return id ? Number(id) : NaN;
-  } catch {
-    return NaN;
-  }
-}
-
-
-
-
+// --- 1. GET: Ambil Daftar Mata Kuliah (Fix Error _count) ---
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // 1. Ambil ID Kurikulum dari URL
     const { id } = await params;
     const kurikulumId = Number(id);
 
-    // 2. Cek Session User
-    const session = await getSession();
-    if (!session || !session.prodiId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    
-    const userProdiId = Number(session.prodiId);
-
-    // 3. Query Mata Kuliah dengan Filter Ganda
     const data = await prisma.mataKuliah.findMany({
       where: {
-        kurikulum_id: kurikulumId, // Filter 1: Harus sesuai Kurikulum yang diklik
-        
-        // Filter 2 (SECURITY): Pastikan Kurikulum induknya MEMANG milik Prodi User ini
-        // Jadi Admin S1 tidak bisa iseng tembak ID Kurikulum S2 lewat URL/Postman
-        kurikulum: {
-            prodi_id: userProdiId
-        }
+        kurikulum_id: kurikulumId,
       },
       include: {
-        // Hitung jumlah RPS yang sudah dibuat (Opsional, buat tampilan dashboard)
+        // PERBAIKAN: Jangan count 'rps'. Cukup include 'rps' biasa atau ambil ID-nya saja.
+        rps: {
+          select: { id: true, is_locked: true } // Cek apakah RPS ada & statusnya
+        },
+        cpl: true, // Include data CPL biar bisa dilihat matkul ini dukung CPL apa aja
         _count: {
-            select: { rps: true } 
+          select: {
+            kelas: true, // Ini BISA dicount karena array
+            cpl: true    // Ini BISA dicount karena array
+            // rps: true <--- INI PENYEBAB ERROR KAKAK TADI (HAPUS BARIS INI)
+          }
         }
       },
       orderBy: {
-        kode_mk: 'asc'
+        semester: 'asc' // Urutkan berdasarkan semester dulu
+        // kode_mk: 'asc'
       }
     });
 
-    return NextResponse.json(data);
+    return NextResponse.json({ success: true, data });
 
   } catch (err: any) {
-    console.error("API Matkul Error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("API GET Matkul Error:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
 
+// --- 2. POST: Tambah Mata Kuliah dengan Multi CPL ---
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { id?: string } } // <-- PERBAIKAN: Pakai 'id'
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // --- PERBAIKAN: Baca 'params.id' ---
-    const kurikulumId = parseId(params.id, (request as any).nextUrl);
-    if (Number.isNaN(kurikulumId)) {
-      return NextResponse.json({ error: "kurikulum id tidak valid (harus integer)" }, { status: 400 });
-    }
+    const { id } = await params;
+    const kurikulumId = Number(id);
 
-    const kur = await prisma.kurikulum.findUnique({ where: { id: kurikulumId } });
-    if (!kur) {
-      return NextResponse.json({ error: "Kurikulum tidak ditemukan." }, { status: 404 });
-    }
-
-    const raw = await request.json().catch(() => ({}));
+    const body = await req.json();
     
-    const parsed = createSchema.safeParse({
-      kode_mk: String(raw.kode_mk ?? "").trim(),
-      nama: String(raw.nama ?? "").trim(),
-      sks: Number(raw.sks ?? 0),
-      sifat: String(raw.sifat ?? ""), // Wajib
-      semester: Number(raw.semester ?? 0), // Wajib
-    });
+    // cpl_ids adalah Array angka, misal: [1, 4, 5]
+    const { kode_mk, nama, sks, semester, sifat, cpl_ids } = body; 
 
-    if (!parsed.success) {
-      const msg = parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; ");
-      return NextResponse.json({ error: msg }, { status: 400 });
-    }
-     if (!parsed.data.sifat) {
-        return NextResponse.json({ error: "Sifat wajib diisi" }, { status: 400 });
-     }
-     if (!parsed.data.semester || parsed.data.semester <= 0) {
-        return NextResponse.json({ error: "Semester wajib diisi" }, { status: 400 });
-     }
-
-    const exist = await prisma.mataKuliah.findUnique({
-      where: { kode_mk: parsed.data.kode_mk },
-    });
-    if (exist) {
-      return NextResponse.json({ error: `Kode MK '${parsed.data.kode_mk}' sudah ada.` }, { status: 409 });
+    // Validasi sederhana
+    if (!kode_mk || !nama) {
+        return NextResponse.json({ error: "Kode dan Nama MK wajib diisi" }, { status: 400 });
     }
 
-    const created = await prisma.mataKuliah.create({
+    // Logic Simpan dengan Relasi Many-to-Many (Connect)
+    const newMatkul = await prisma.mataKuliah.create({
       data: {
-        kode_mk: parsed.data.kode_mk,
-        nama: parsed.data.nama,
-        sks: parsed.data.sks,
-        sifat: parsed.data.sifat,
-        semester: parsed.data.semester,
+        kode_mk,
+        nama,
+        sks: Number(sks),
+        semester: Number(semester),
+        sifat, // "Wajib" atau "Pilihan"
         kurikulum_id: kurikulumId,
-      },
+        
+        // FITUR UTAMA: Hubungkan ke banyak CPL sekaligus
+        cpl: {
+            connect: Array.isArray(cpl_ids) 
+                ? cpl_ids.map((cplId: number) => ({ id: Number(cplId) })) 
+                : [] 
+        }
+      }
     });
 
-    return NextResponse.json(created, { status: 201 });
+    return NextResponse.json({ success: true, data: newMatkul });
+
   } catch (err: any) {
-    console.error("POST /api/kurikulum/[id]/matakuliah error:", err);
-    if (err?.code === "P2002") return NextResponse.json({ error: "Conflict: Kode MK sudah ada." }, { status: 409 });
-    return NextResponse.json({ error: "Terjadi kesalahan pada server.", detail: err?.message ?? String(err) }, { status: 500 });
+    // Handle error duplicate kode_mk
+    if (err.code === 'P2002') {
+        return NextResponse.json({ error: "Kode Mata Kuliah sudah ada!" }, { status: 400 });
+    }
+    console.error("API POST Matkul Error:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

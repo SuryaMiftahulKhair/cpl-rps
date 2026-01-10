@@ -11,7 +11,7 @@ export async function createSession(payload: any) {
   const session = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("1day")
+    .setExpirationTime("24h")
     .sign(key);
 
   // Simpan ke Cookies

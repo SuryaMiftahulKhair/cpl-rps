@@ -77,6 +77,7 @@ model CPL {
 
   @@map("cpl")
   ikas Ik[] @relation("IkaToCPL")
+  iks Ik[]
 }
 
 model AssasmentArea {
@@ -195,11 +196,14 @@ model Ik{
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   rps       RPS[]    @relation("IkaToRPS")
-  cpl       CPL[]    @relation("IkaToCPL")
+
+  cpl_id    Int
+  cpl       CPL      @relation(fields: [cpl_id], references: [id])
   cpmk      CPMK[]   @relation("IkaToCPMK")
 
 
   @@map("ik")
+  cpls CPL[] @relation("IkaToCPL")
 }
 
 model PesertaKelas {

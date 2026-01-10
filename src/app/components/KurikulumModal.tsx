@@ -5,7 +5,7 @@ import { X, Layers } from "lucide-react";
 interface KurikulumModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (namaKurikulum: string) => Promise<void> | void;
+  onSubmit: (namaKurikulum: string, tahun: number) => Promise<void> | void;
   submitting?: boolean;
 }
 
@@ -18,9 +18,10 @@ export function KurikulumModal({ isOpen, onClose, onSubmit, submitting }: Kuriku
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const namaKurikulum = formData.get("namaKurikulum");
+    const tahun = formData.get("tahun") ? Number(formData.get("tahun")) : new Date().getFullYear();
 
-    if (typeof namaKurikulum === "string" && namaKurikulum.trim()) {
-      await onSubmit(namaKurikulum.trim());
+    if (typeof namaKurikulum === "string" && namaKurikulum.trim() && tahun) {
+      await onSubmit(namaKurikulum.trim(), Number(tahun));
     }
   };
 
@@ -58,10 +59,30 @@ export function KurikulumModal({ isOpen, onClose, onSubmit, submitting }: Kuriku
               name="namaKurikulum"
               required
               placeholder="e.g., Kurikulum Sarjana K-24"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-blue-700"
             />
             <p className="mt-1.5 text-xs text-gray-500">
               Masukkan nama kurikulum yang akan ditambahkan
+            </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor="TahunKurikulum"
+              className="block text-sm font-semibold text-gray-700 mb-2"
+            >
+              Tahun Kurikulum <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="TahunKurikulum"
+              name="TahunKurikulum"
+              required
+              placeholder="e.g., 2025"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none text-blue-700"
+            />
+            <p className="mt-1.5 text-xs text-gray-500">
+              Masukkan tahun kurikulum yang akan ditambahkan
             </p>
           </div>
 

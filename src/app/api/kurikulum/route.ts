@@ -1,80 +1,79 @@
-// src/app/api/kurikulum/route.ts
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getSession } from "@/../lib/auth";
-import prisma from "@/../lib/prisma";
-import { z } from "zod";
-
-// === Validasi untuk POST ===
-const postSchema = z.object({
-  nama: z.string().min(2),
-  tahun: z.number().int().optional(),
-  program_studi_id: z.number().int().optional(),
-});
-
-// === GET: ambil daftar kurikulum ===
- // Fungsi untuk ambil session
+import { NextResponse, NextRequest } from "next/server";
+import prisma from "@/../lib/prisma"; // Sesuaikan path jika perlu (misal @/lib/prisma)
+import { getSession } from "@/../lib/auth"; // Sesuaikan path auth
 
 export async function GET(req: NextRequest) {
-  // 1. Ambil User dari Session
-  const session = await getSession();
-  
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Ambil prodiId dari session (pastikan di login route tadi sudah disimpan)
-  const userProdiId = Number(session.prodiId);
-
-  // 2. Query Database dengan Filter Prodi
   try {
-    // ... kode atas sama ...
+    // 1. Cek Session
+    const session = await getSession();
+    
+    // Debugging: Cek apakah session terbaca
+    console.log("Session Data:", session);
 
-    // 2. Query Database dengan Filter Prodi
+    if (!session || !session.prodiId) {
+      console.log("Error: User tidak punya prodiId");
+      return NextResponse.json({ error: "Unauthorized: Prodi ID missing" }, { status: 401 });
+    }
+
+    const userProdiId = Number(session.prodiId);
+
+    // 2. Query Database
+    // Pastikan nama relasi '_count' sesuai dengan schema.prisma terakhir
     const data = await prisma.kurikulum.findMany({
       where: {
         prodi_id: userProdiId 
       },
       include: {
         _count: {
-          // PERBAIKAN DI SINI:
-          // Ganti 'matakuliah' menjadi 'mataKuliah' (atau 'mata_kuliah' cek schema.prisma)
-          select: { mataKuliah: true } 
+          select: { 
+            cpl: true,       // Pastikan di schema namanya 'cpl'
+            mataKuliah: true // Pastikan di schema namanya 'mataKuliah' (camelCase)
+          }
         },
-        program_studi: true 
+        programStudi: true   // Pastikan di schema namanya 'programStudi'
       },
       orderBy: {
         tahun: 'desc'
       }
     });
 
-    return NextResponse.json(data);
-  } catch (err) {
-    return NextResponse.json({ error: "Gagal mengambil data" }, { status: 500 });
+    return NextResponse.json({ success: true, data });
+
+  } catch (err: any) {
+    // INI PENTING: Lihat error aslinya di Terminal VSCode
+    console.error("API Kurikulum Error:", err); 
+    
+    return NextResponse.json({ 
+      success: false, 
+      error: "Server Error", 
+      detail: err.message 
+    }, { status: 500 });
   }
 }
 
-// === POST: tambah kurikulum baru ===
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
-    const parsed = postSchema.parse(body);
+    const session = await getSession();
+    if (!session || !session.prodiId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userProdiId = Number(session.prodiId);
 
-    const tahun = parsed.tahun ?? new Date().getFullYear();
+    const body = await req.json();
+    const { nama, tahun } = body;
 
-    const created = await prisma.kurikulum.create({
+    const newKurikulum = await prisma.kurikulum.create({
       data: {
-        nama: parsed.nama,
-        tahun,
+        nama,
+        tahun: Number(tahun),
+        prodi_id: userProdiId
       }
     });
 
-    return NextResponse.json(created, { status: 201 });
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: err.issues }, { status: 400 });
-    }
-    console.error("POST /api/kurikulum error:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ success: true, data: newKurikulum });
+
+  } catch (err: any) {
+    console.error("Create Kurikulum Error:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

@@ -23,9 +23,9 @@ export async function middleware(request: NextRequest) {
     try {
       await jwtVerify(sessionCookie, key);
       // Token valid, lanjut
-      // Jika user sudah login tapi buka halaman /login, lempar ke /rps
+      // Jika user sudah login tapi buka halaman /login, lempar ke /home
       if (request.nextUrl.pathname === '/login') {
-         return NextResponse.redirect(new URL('/rps', request.url));
+         return NextResponse.redirect(new URL('/home', request.url));
       }
     } catch (err) {
       // Token tidak valid/expired -> Hapus cookie & Tendang ke Login

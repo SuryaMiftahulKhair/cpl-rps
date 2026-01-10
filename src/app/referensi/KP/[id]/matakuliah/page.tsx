@@ -53,47 +53,32 @@ export default function MatakuliahListPage() {
   // --- PERBAIKAN: Sederhanakan loadData, tidak perlu 'newExtras' ---
   const loadData = async () => {
     setLoading(true);
-    setError(null);
     try {
-      if (Number.isNaN(kurikulumId)) {
-        setData([]);
-        setError("kurikulum id tidak tersedia atau tidak valid.");
-        return;
-      }
+      if (Number.isNaN(kurikulumId)) return;
 
       const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`, { cache: "no-store" });
       if (!res.ok) {
-         const errText = await parseApiError(res);
-         if (errText.includes("kurikulum id tidak valid")) {
-            setError("Error API: Kurikulum ID tidak valid. Coba Hapus folder .next dan restart server.");
-         } else {
-            setError(errText || `HTTP ${res.status}`);
-         }
-         setData([]);
+         // handle error...
          return;
       }
 
       const json = await res.json();
       const list = Array.isArray(json) ? json : json?.data ?? [];
 
-      // --- PERBAIKAN: Mapping data langsung dari API ---
-      const mapped: Matakuliah[] = list.map((r: any) => {
-        return {
-          id: Number(r.id),
-          kode_mk: r.kode_mk ?? "",
-          nama: r.nama ?? "",
-          sks: Number(r.sks ?? 0),
-          kurikulum_id: Number(r.kurikulum_id ?? kurikulumId),
-          // --- PERBAIKAN: Baca langsung dari 'r' (response API) ---
-          semester: r.semester ?? null,
-          sifat: r.sifat ?? null,
-        };
-      });
+      const mapped: Matakuliah[] = list.map((r: any) => ({
+        id: Number(r.id),
+        kode_mk: r.kode_mk ?? "",
+        nama: r.nama ?? "",
+        sks: Number(r.sks ?? 0),
+        kurikulum_id: Number(r.kurikulum_id ?? kurikulumId),
+        semester: r.semester ?? null,
+        sifat: r.sifat ?? null,
+        cpl: r.cpl ?? [] // Mapping Array CPL dari API
+      }));
+      
       setData(mapped);
     } catch (err: any) {
-      console.error("GET matakuliah error:", err);
-      setError(err?.message ?? "Terjadi kesalahan saat memuat data.");
-      setData([]);
+      // log error
     } finally {
       setLoading(false);
     }
@@ -107,17 +92,15 @@ export default function MatakuliahListPage() {
 
   const handleAddMatakuliah = async (payload: MatakuliahModalData) => {
     setSubmitting(true);
-    setError(null);
     try {
-      if (Number.isNaN(kurikulumId)) throw new Error("kurikulum id tidak valid.");
-      
-      // --- PERBAIKAN: Kirim 'semester' dan 'sifat' ke API ---
+      // Payload sekarang sudah include cpl_ids dari Modal
       const body = {
         kode_mk: payload.kode_mk,
         nama: payload.nama,
         sks: Number(payload.sks ?? 0),
         semester: payload.semester ?? null,
         sifat: payload.sifat ?? null,
+        cpl_ids: payload.cpl_ids ?? [] // Kirim array ID CPL
       };
 
       const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah`, {
@@ -128,17 +111,12 @@ export default function MatakuliahListPage() {
 
       if (!res.ok) {
         const txt = await parseApiError(res);
-        throw new Error(txt || `HTTP ${res.status}`);
+        throw new Error(txt);
       }
 
-      // --- PERBAIKAN: Hapus logika 'setExtras' ---
-      
-      // --- PERBAIKAN: Panggil loadData() biasa ---
       await loadData();
-      
       setIsModalOpen(false);
     } catch (err: any) {
-      console.error("POST matakuliah error:", err);
       setError(err?.message ?? "Gagal menambahkan mata kuliah.");
     } finally {
       setSubmitting(false);
@@ -293,12 +271,24 @@ export default function MatakuliahListPage() {
                   <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">Memuat data...</td></tr>
                 ) : data.length === 0 ? (
                   <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">Tidak ada mata kuliah</td></tr>
-                ) : (
+                ) : 
+                
+                (
                   data.map((item) => (
                     <tr key={item.id} className="hover:bg-indigo-50/50 transition">
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500">{item.id}</td>
                       <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-700">{item.kode_mk}</td>
-                      <td className="px-4 py-3 font-medium text-gray-800">{item.nama}</td>
+                      <td className="px-4 py-3 font-medium text-gray-800">{item.nama}
+                        {item.cpl && item.cpl.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                    {item.cpl.map(c => (
+                        <span key={c.id} className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded border border-green-200">
+                            {c.kode_cpl}
+                        </span>
+                    ))}
+                </div>
+            )}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-600">{item.semester ?? "-"}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-600">{item.sks}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-600">{item.sifat ?? "-"}</td>

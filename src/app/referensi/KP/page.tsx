@@ -1,37 +1,21 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Eye, Layers, Plus, X, RefreshCw } from "lucide-react";
+import { Eye, Layers, Plus, Book, Calendar } from "lucide-react"; // Hapus RefreshCw
 import DashboardLayout from "@/app/components/DashboardLayout";
-import { KurikulumModal } from "@/app/components/KurikulumModal";
+import { KurikulumModal } from "@/app/components/KurikulumModal"; // Sesuaikan path import
 
 interface Kurikulum {
   id: string | number;
   nama: string;
-  tahun?: number;
+  tahun: number; // Tahun wajib ada
+  _count?: {     // Tambahan untuk statistik (opsional)
+     cpl: number;
+     mataKuliah: number;
+  }
 }
 
-// === Helper untuk handle error response ===
-async function parseApiError(res: Response): Promise<string> {
-  const text = await res.text();
-  let parsed: any = null;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    /* not json */
-  }
-
-  if (parsed?.error) {
-    if (Array.isArray(parsed.error)) return parsed.error.join(", ");
-    if (typeof parsed.error === "string") return parsed.error;
-    return JSON.stringify(parsed.error);
-  }
-
-  return text || `HTTP ${res.status}`;
-}
-
-// === Komponen utama ===
 export default function KurikulumProdiPage() {
   const [kurikulums, setKurikulums] = useState<Kurikulum[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,110 +23,67 @@ export default function KurikulumProdiPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- Fetch daftar kurikulum ---
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/kurikulum?page=1&limit=50");
-        if (!res.ok) throw new Error(await parseApiError(res));
+  // --- Fetch Data ---
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/kurikulum"); // Tidak perlu paging dulu utk awal
+      const json = await res.json();
 
-        const json = await res.json();
-        const data = Array.isArray(json) ? json : json?.data ?? [];
-
-        if (mounted)
-          setKurikulums(
-            data.map((d: any) => ({
-              id: d.id,
-              nama: d.nama,
-              tahun: d.tahun,
-            }))
-          );
-      } catch (err: any) {
-        console.error("Fetch kurikulum error:", err);
-        if (mounted)
-          setError(err?.message || "Gagal memuat data kurikulum.");
-      } finally {
-        if (mounted) setLoading(false);
+      if (json.success) {
+        setKurikulums(json.data);
+      } else {
+        throw new Error(json.error || "Gagal memuat data");
       }
-    };
-    load();
-    return () => {
-      mounted = false;
-    };
+    } catch (err: any) {
+      console.error("Fetch error:", err);
+      setError(err?.message || "Gagal koneksi ke server");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
-  // --- Handler tambah kurikulum baru ---
-  const handleAddKurikulum = async (nama: string) => {
+  // --- Handle Tambah (Updated) ---
+  const handleAddKurikulum = async (nama: string, tahun: number) => {
     setSubmitting(true);
     setError(null);
 
-    const optimisticId = `temp-${Date.now()}`;
-    const optimisticItem: Kurikulum = { id: optimisticId, nama };
-    setKurikulums((prev) => [optimisticItem, ...prev]);
-    setIsModalOpen(false);
-
     try {
-      const payload = { nama };
+      const payload = { nama, tahun };
+      
       const res = await fetch("/api/kurikulum", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error(await parseApiError(res));
+      const json = await res.json();
 
-      const created = await res.json();
-      setKurikulums((prev) =>
-        prev.map((p) =>
-          p.id === optimisticId
-            ? {
-                id: created.id ?? createdId(created),
-                nama: created.nama ?? nama,
-                tahun: created.tahun,
-              }
-            : p
-        )
-      );
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Gagal menyimpan");
+      }
+
+      // Refresh data setelah simpan sukses
+      await loadData();
+      setIsModalOpen(false);
+
     } catch (err: any) {
-      console.error("Create kurikulum error:", err);
-      setError(err?.message || "Gagal menambahkan kurikulum. Coba lagi.");
-      setKurikulums((prev) => prev.filter((p) => p.id !== optimisticId));
+      console.error("Create error:", err);
+      setError(err?.message || "Terjadi kesalahan saat menyimpan.");
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const createdId = (obj: any) =>
-    obj?.id ? String(obj.id) : `id-${Date.now()}`;
-
-  // --- Refresh data (Sinkronisasi) ---
-  const handleRefresh = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/kurikulum?page=1&limit=50");
-      if (!res.ok) throw new Error(await parseApiError(res));
-
-      const json = await res.json();
-      const data = Array.isArray(json) ? json : json?.data ?? [];
-      setKurikulums(
-        data.map((d: any) => ({ id: d.id, nama: d.nama, tahun: d.tahun }))
-      );
-    } catch (err: any) {
-      console.error("Refresh kurikulum error:", err);
-      setError(err?.message || "Gagal memuat data.");
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8">
-        {/* Header Halaman */}
+        {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-100 rounded-lg">
@@ -153,142 +94,96 @@ export default function KurikulumProdiPage() {
                 Kurikulum Program Studi
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                Kelola data kurikulum program studi
+                Kelola data kurikulum secara mandiri
               </p>
             </div>
           </div>
 
-          {/* Tombol Aksi */}
+          {/* Tombol Aksi (Sync Dihapus) */}
           <div className="flex gap-3">
-            <button
-              onClick={handleRefresh}
-              className="flex items-center gap-2 bg-sky-600 text-white px-4 py-2.5 rounded-lg shadow-sm hover:bg-sky-700 transition-all duration-200 font-medium text-sm hover:shadow-md"
-            >
-              <RefreshCw size={18} />
-              <span className="hidden sm:inline">Sinkronisasi Neosia</span>
-              <span className="sm:hidden">Sync</span>
-            </button>
-
             <button
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-lg shadow-sm hover:bg-green-700 transition-all duration-200 font-medium text-sm hover:shadow-md"
             >
               <Plus size={18} />
-              <span>Tambah</span>
+              <span>Tambah Kurikulum</span>
             </button>
           </div>
         </div>
 
-        {/* Pesan Error */}
+        {/* Error Message */}
         {error && (
-          <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">
+          <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">
             {error}
           </div>
         )}
 
-        {/* Tabel Data Kurikulum */}
+        {/* Tabel */}
         <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="text-lg font-semibold text-gray-800">
-              Daftar Kurikulum
-            </h2>
-          </div>
-
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gradient-to-r from-indigo-50 to-indigo-100">
                 <tr>
-                  <th className="w-16 px-6 py-4 text-left font-semibold text-xs text-indigo-800 uppercase tracking-wider">
-                    No
-                  </th>
-                  <th className="w-28 px-6 py-4 text-left font-semibold text-xs text-indigo-800 uppercase tracking-wider">
-                    ID
-                  </th>
-                  <th className="px-6 py-4 text-left font-semibold text-xs text-indigo-800 uppercase tracking-wider">
-                    Nama Kurikulum
-                  </th>
-                  <th className="px-6 py-4 text-center font-semibold text-xs text-indigo-800 uppercase tracking-wider">
-                    Aksi
-                  </th>
+                  <th className="w-16 px-6 py-4 text-left font-semibold text-xs text-indigo-800 uppercase">No</th>
+                  <th className="px-6 py-4 text-left font-semibold text-xs text-indigo-800 uppercase">Tahun</th>
+                  <th className="px-6 py-4 text-left font-semibold text-xs text-indigo-800 uppercase">Nama Kurikulum</th>
+                  <th className="px-6 py-4 text-left font-semibold text-xs text-indigo-800 uppercase">Statistik</th>
+                  <th className="px-6 py-4 text-center font-semibold text-xs text-indigo-800 uppercase">Aksi</th>
                 </tr>
               </thead>
 
               <tbody className="bg-white divide-y divide-gray-100">
                 {loading ? (
                   <tr>
-                    <td
-                      colSpan={4}
-                      className="px-6 py-12 text-center text-sm text-gray-500"
-                    >
-                      Memuat data...
+                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
+                      <div className="flex justify-center items-center gap-2">
+                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div> Memuat data...
+                      </div>
                     </td>
                   </tr>
                 ) : kurikulums.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={4}
-                      className="px-6 py-12 text-center text-sm text-gray-500"
-                    >
-                      Tidak ada kurikulum
+                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
+                      Belum ada data kurikulum. Silakan tambah baru.
                     </td>
                   </tr>
                 ) : (
                   kurikulums.map((item, index) => (
-                    <tr
-                      key={String(item.id)}
-                      className={`hover:bg-indigo-50/30 transition-colors duration-150 ${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                      }`}
-                    >
-                      <td className="px-6 py-4 text-sm text-gray-600 font-medium">
-                        {index + 1}
-                      </td>
+                    <tr key={String(item.id)} className={`hover:bg-indigo-50/30 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                      <td className="px-6 py-4 text-sm text-gray-600 font-medium">{index + 1}</td>
+                      
+                      {/* Kolom Tahun (Baru) */}
                       <td className="px-6 py-4 text-sm">
-                        <span className="font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                          {item.id}
+                        <span className="flex items-center gap-1 font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded w-fit">
+                           <Calendar size={12}/> {item.tahun}
                         </span>
                       </td>
+
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-800">
-                            {item.nama}
-                          </span>
-                          {index === 0 && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800 rounded-full">
-                              Aktif
-                            </span>
-                          )}
-                        </div>
+                        <span className="font-bold text-gray-800">{item.nama}</span>
                       </td>
+                        
+                      {/* Kolom Statistik (Baru - Optional) */}
+                      <td className="px-6 py-4 text-xs text-gray-500">
+                         {item._count ? (
+                             <div className="flex gap-2">
+                                 <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">{item._count.cpl} CPL</span>
+                                 <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded border border-orange-100">{item._count.mataKuliah} MK</span>
+                             </div>
+                         ) : "-"}
+                      </td>
+
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2 flex-wrap">
-                          <Link
-                            href={`/referensi/KP/${item.id}/VMCPL`}
-                            className="inline-flex items-center gap-1 bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-green-700 hover:shadow-md"
-                          >
+                          <Link href={`/referensi/KP/${item.id}/VMCPL`} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-green-700">
                             Visi, Misi, CPL
                           </Link>
-
-                          <Link
-                            href={`/referensi/KP/${item.id}/matakuliah`}
-                            className="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-indigo-700 hover:shadow-md"
-                          >
+                          <Link href={`/referensi/KP/${item.id}/matakuliah`} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700">
                             Matakuliah
                           </Link>
-
-                          <Link
-                            href={`/referensi/KP/${item.id}/rubrik`}
-                            className="inline-flex items-center gap-1 bg-cyan-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-cyan-700 hover:shadow-md"
-                          >
-                            Rubrik Penilaian
+                          <Link href={`/referensi/KP/${item.id}/rubrik`} className="bg-cyan-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-cyan-700">
+                            Rubrik
                           </Link>
-
-                          <button
-                            className="inline-flex items-center justify-center p-2 bg-red-600 text-white rounded-lg transition-all hover:bg-red-700 hover:shadow-md"
-                            title="Lihat Detail"
-                          >
-                            <Eye size={16} />
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -297,31 +192,9 @@ export default function KurikulumProdiPage() {
               </tbody>
             </table>
           </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold">{kurikulums.length}</span>{" "}
-                kurikulum ditemukan
-              </p>
-              <div className="flex gap-2">
-                <button className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700">
-                  Sebelumnya
-                </button>
-                <button className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium">
-                  1
-                </button>
-                <button className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700">
-                  Selanjutnya
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Modal */}
       <KurikulumModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

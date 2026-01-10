@@ -1,98 +1,49 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/../lib/prisma";
-import { CPL, PerformanceIndicator } from "@prisma/client";
-
-type PIRow = {
-  area: string;       
-  piCode: string;     
-  iloCode: string;    
-  ilo: string;        
-  indicators: string[]; 
-};
-
-// Fungsi parseId baru
-function parseId(paramsId: string | undefined, nextUrl?: any) {
-  if (paramsId) return Number(paramsId);
-  try {
-    const url = nextUrl?.pathname ?? "";
-    const segments = url.split('/');
-    const idIndex = segments.indexOf('kurikulum') + 1; 
-    const id = segments[idIndex];
-    return id ? Number(id) : NaN;
-  } catch {
-    return NaN;
-  }
-}
+import { getSession } from "@/../lib/auth";
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id?: string } } // <-- PERBAIKAN: Pakai 'id'
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // --- PERBAIKAN: Baca 'params.id' ---
-    const kurikulumId = parseId(params.id, (request as any).nextUrl);
-    
-    if (Number.isNaN(kurikulumId)) {
-      return NextResponse.json(
-        { error: "kurikulum id tidak valid (harus integer)" },
-        { status: 400 }
-      );
+    const { id } = await params;
+    const kurikulumId = Number(id);
+
+    // 1. Cek Session
+    const session = await getSession();
+    if (!session || !session.prodiId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const groups = await prisma.pIGroup.findMany({
-      where: { kurikulum_id: kurikulumId },
+    // 2. Ambil Data Kurikulum beserta CPL, IK, dan Assessment Area
+    const kurikulum = await prisma.kurikulum.findUnique({
+      where: { id: kurikulumId },
       include: {
-        assasment: true,
-        indicators: {
+        cpl: {
           include: {
-            cpl: true,
+            iks: true, // Ambil IK di dalam CPL
           },
-          orderBy: { id: 'asc' },
+          orderBy: { kode_cpl: 'asc' }
         },
-      },
-      orderBy: { id: "asc" },
-    });
-
-    const rows: PIRow[] = groups.flatMap((g) => {
-      const area = g.assasment?.nama ?? "-";
-      const piCode = g.kode_grup;
-      const cplGroupMap = new Map<number, { cpl: CPL, indicators: PerformanceIndicator[] }>();
-      for (const indicator of g.indicators) {
-        if (indicator.cpl) {
-          const cpl = indicator.cpl;
-          if (!cplGroupMap.has(cpl.id)) {
-            cplGroupMap.set(cpl.id, { cpl: cpl, indicators: [] });
-          }
-          cplGroupMap.get(cpl.id)!.indicators.push(indicator);
+        AssasmentArea: {
+          orderBy: { nama: 'asc' }
         }
       }
-      if (cplGroupMap.size === 0) {
-        return [{
-          area,
-          piCode,
-          iloCode: "-",
-          ilo: "-",
-          indicators: g.indicators.map(ind => ind.deskripsi), 
-        }];
-      }
-      return Array.from(cplGroupMap.values()).map(grouped => ({
-        area,
-        piCode,
-        iloCode: grouped.cpl.kode_cpl,
-        ilo: grouped.cpl.deskripsi,
-        indicators: grouped.indicators.map(ind => ind.deskripsi),
-      }));
     });
 
-    return NextResponse.json(rows, {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
+    if (!kurikulum) {
+      return NextResponse.json({ error: "Kurikulum tidak ditemukan" }, { status: 404 });
+    }
+
+    // Security: Pastikan kurikulum ini milik prodi user yg login
+    if (kurikulum.prodi_id !== Number(session.prodiId)) {
+      return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
+    }
+
+    return NextResponse.json({ success: true, data: kurikulum });
+
   } catch (err: any) {
-    console.error("GET /api/kurikulum/[id]/VMCPL error:", err);
-    return NextResponse.json(
-      { error: "Terjadi kesalahan pada server.", detail: err?.message ?? String(err) },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
