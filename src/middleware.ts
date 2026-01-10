@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get('session')?.value;
 
   // 2. Daftar halaman yang diproteksi (tambah sesuai kebutuhan)
-  const protectedRoutes = ['/dashboard', '/rps', '/admin']; 
+  const protectedRoutes = ['/home', '/rps', '/referensi', '/kurikulum', '/matakuliah', '/penilaian', '/laporan', ]; 
   const isProtected = protectedRoutes.some(path => request.nextUrl.pathname.startsWith(path));
 
   // 3. Jika halaman diproteksi tapi tidak ada session -> Tendang ke Login
