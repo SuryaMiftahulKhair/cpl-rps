@@ -4,34 +4,34 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // url      = env("DATABASE_URL")
 }
 
 model User {
-  id                                Int             @id @default(autoincrement())
-  username                          String          @unique
-  password_hash                     String
-  nama                              String
-  role                              UserRole
-  prodi_id                          Int?
-  dosenPengampu                     DosenPengampu[]
-  programStudi                      ProgramStudi?   @relation("UserToProgramStudi", fields: [prodi_id], references: [id])
-  pesertaKelas                      PesertaKelas[]  @relation("PesertaKelasToUser")
-  program_studi_UserToProgramStudis ProgramStudi[]  @relation("UserToProgramStudis")
+  id            Int             @id @default(autoincrement())
+  username      String          @unique
+  password_hash String
+  nama          String
+  role          UserRole
+  prodi_id      Int?
+  dosenPengampu DosenPengampu[]
+  programStudi  ProgramStudi?   @relation("UserToProgramStudi", fields: [prodi_id], references: [id])
+  pesertaKelas  PesertaKelas[]  @relation("PesertaKelasToUser")
+  programStudis ProgramStudi[]  @relation("UserToProgramStudis")
 
   @@map("users")
 }
 
 model ProgramStudi {
-  id                        Int         @id @default(autoincrement())
-  kode_prodi                String      @unique
-  jenjang                   Jenjang
-  nama                      String
-  createdAt                 DateTime    @default(now())
-  updatedAt                 DateTime    @updatedAt
-  kurikulum                 Kurikulum[]
-  users                     User[]      @relation("UserToProgramStudi")
-  users_UserToProgramStudis User[]      @relation("UserToProgramStudis")
+  id           Int         @id @default(autoincrement())
+  kode_prodi   String      @unique
+  jenjang      Jenjang
+  nama         String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  kurikulum    Kurikulum[]
+  users        User[]      @relation("UserToProgramStudi")
+  userPrograms User[]      @relation("UserToProgramStudis")
 
   @@map("program_studi")
 }
@@ -74,9 +74,9 @@ model CPL {
   kurikulum_id Int
   kurikulum    Kurikulum    @relation(fields: [kurikulum_id], references: [id])
   mataKuliah   MataKuliah[] @relation("CPLToMataKuliah")
-  ika          ik[]         @relation("IkaToCPL")
 
   @@map("cpl")
+  ikas Ik[] @relation("IkaToCPL")
 }
 
 model AssasmentArea {
@@ -102,22 +102,22 @@ model TahunAjaran {
 }
 
 model Kelas {
-  id              Int              @id @default(autoincrement())
+  id              Int             @id @default(autoincrement())
   nama_kelas      String
   tahun_ajaran_id Int
-  neosia_id       String?          @unique
-  sks             Int              @default(0)
+  neosia_id       String?         @unique
+  sks             Int             @default(0)
   kode_mk         String
   nama_mk         String
-  created_at      DateTime         @default(now())
-  updated_at      DateTime         @updatedAt
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
   matakuliah_id   Int?
   dosen_pengampu  DosenPengampu[]
-  matakuliah      MataKuliah?      @relation(fields: [matakuliah_id], references: [id])
-  tahun_ajaran    TahunAjaran      @relation(fields: [tahun_ajaran_id], references: [id])
-  komponen_nilai  komponen_nilai[]
+  matakuliah      MataKuliah?     @relation(fields: [matakuliah_id], references: [id])
+  tahun_ajaran    TahunAjaran     @relation(fields: [tahun_ajaran_id], references: [id])
+  komponenNilai   KomponenNilai[]
   peserta_kelas   PesertaKelas[]
-  cpmk            CPMK[]           @relation("CPMKToKelas")
+  cpmk            CPMK[]          @relation("CPMKToKelas")
 
   @@index([tahun_ajaran_id])
   @@index([kode_mk])
@@ -134,22 +134,6 @@ model DosenPengampu {
 
   @@unique([kelas_id, dosen_id])
   @@map("dosen_pengampu")
-}
-
-model PesertaKelas {
-  id          Int      @id @default(autoincrement())
-  kelas_id    Int
-  createdAt   DateTime @default(now())
-  nilai_huruf String?
-  nim         String
-  nilai_angka Float?   @default(0)
-  nama        String
-  nilais      Nilai[]
-  kelas       Kelas    @relation(fields: [kelas_id], references: [id])
-  users       User[]   @relation("PesertaKelasToUser")
-
-  @@unique([kelas_id, nim])
-  @@map("peserta_kelas")
 }
 
 model RPS {
@@ -171,9 +155,9 @@ model RPS {
   matakuliah          MataKuliah     @relation(fields: [matakuliah_id], references: [id])
   pertemuan           RPSPertemuan[]
   cpmk                CPMK[]         @relation("CPMKToRPS")
-  rps                 ik[]           @relation("IkaToRPS")
 
   @@map("rps")
+  ikas Ik[] @relation("IkaToRPS")
 }
 
 model RPSPertemuan {
@@ -199,41 +183,62 @@ model CPMK {
   deskripsi String
   kelas     Kelas[] @relation("CPMKToKelas")
   rps       RPS[]   @relation("CPMKToRPS")
-  ika       ik[]    @relation("IkaToCPMK")
 
   @@map("cpmk")
+  ik Ik[] @relation("IkaToCPMK")
 }
 
-model Nilai {
-  id                Int            @id @default(autoincrement())
-  nilai_angka       Float
-  peserta_kelas_id  Int
-  komponen_nilai_id Int
-  komponen_nilai    komponen_nilai @relation(fields: [komponen_nilai_id], references: [id], onDelete: Cascade)
-  pesertaKelas      PesertaKelas   @relation(fields: [peserta_kelas_id], references: [id], onDelete: Cascade)
+model Ik{
+  id         Int     @id @default(autoincrement())
+  kode_ik  String   @unique
+  deskripsi String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  rps       RPS[]    @relation("IkaToRPS")
+  cpl       CPL[]    @relation("IkaToCPL")
+  cpmk      CPMK[]   @relation("IkaToCPMK")
 
-  @@unique([peserta_kelas_id, komponen_nilai_id])
-  @@map("nilai")
+
+  @@map("ik")
 }
 
-model komponen_nilai {
+model PesertaKelas {
+  id          Int      @id @default(autoincrement())
+  kelas_id    Int
+  createdAt   DateTime @default(now())
+  nilai_huruf String?
+  nim         String
+  nilai_angka Float?   @default(0)
+  nama        String
+  nilai       Nilai[]
+  kelas       Kelas    @relation(fields: [kelas_id], references: [id])
+  users       User[]   @relation("PesertaKelasToUser")
+
+  @@unique([kelas_id, nim])
+  @@map("peserta_kelas")
+}
+
+model KomponenNilai {
   id       Int     @id @default(autoincrement())
   nama     String
   bobot    Float
   kelas_id Int
   kelas    Kelas   @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
-  nilai    Nilai[]
+  nilai    Nilai[] @relation("NilaiToKomponen")
+
+  @@map("komponen_nilai")
 }
 
-model ik {
-  id        Int      @id @default(autoincrement())
-  kode_ik   String   @unique
-  deskripsi String
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-  cpl       CPL[]    @relation("IkaToCPL")
-  cpmk      CPMK[]   @relation("IkaToCPMK")
-  ika       RPS[]    @relation("IkaToRPS")
+model Nilai {
+  id                Int           @id @default(autoincrement())
+  nilai_angka       Float
+  peserta_kelas_id  Int
+  komponen_nilai_id Int
+  komponen          KomponenNilai @relation("NilaiToKomponen", fields: [komponen_nilai_id], references: [id], onDelete: Cascade)
+  pesertaKelas      PesertaKelas  @relation(fields: [peserta_kelas_id], references: [id], onDelete: Cascade)
+
+  @@unique([peserta_kelas_id, komponen_nilai_id])
+  @@map("nilai")
 }
 
 enum UserRole {
