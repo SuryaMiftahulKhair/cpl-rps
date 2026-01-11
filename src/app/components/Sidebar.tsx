@@ -18,6 +18,7 @@ import {
     LucideIcon,
     BarChart3, // Ikon untuk Laporan
 } from "lucide-react";
+import LogoutButton from "./LogOutButton";
 
 // --- Konfigurasi Warna & Style ---
 const primaryColor = "text-indigo-600";
@@ -290,9 +291,14 @@ export default function Sidebar() {
 
             {/* --- Footer / Settings --- */}
             <div className="p-3 border-t border-gray-100 bg-gray-50/50">
+
+                <LogoutButton />
+
                 <MenuItem href="/settings" icon={Settings} isActive={currentPath === "/settings"}>
                     Pengaturan
                 </MenuItem>
+
+                
                 
                 <div className="mt-3 px-3 py-2 text-center">
                     <p className="text-xs text-gray-400">v1.0.0</p>

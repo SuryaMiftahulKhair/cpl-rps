@@ -43,16 +43,32 @@ export default function MataKuliahListPage({ params }: { params: Promise<{ id: s
       try {
         // 1. Ambil Info Kurikulum
         const kurRes = await fetch(`/api/kurikulum/${id}`);
-        if (kurRes.ok) setKurikulum(await kurRes.json());
+        if (kurRes.ok) {
+            const kurJson = await kurRes.json();
+            // Pastikan ambil .data jika API kurikulum juga dibungkus
+            setKurikulum(kurJson.data || kurJson); 
+        }
 
         // 2. Ambil Daftar Mata Kuliah
         const mkRes = await fetch(`/api/kurikulum/${id}/matakuliah`);
         if (mkRes.ok) {
-            const data = await mkRes.json();
-            setMatkulList(data);
+            const json = await mkRes.json();
+            
+            // --- PERBAIKAN DI SINI ---
+            // Ambil json.data, jangan json mentah-mentah
+            if (json.success && Array.isArray(json.data)) {
+                setMatkulList(json.data);
+            } else if (Array.isArray(json)) {
+                // Jaga-jaga kalau API mengembalikan array langsung
+                setMatkulList(json);
+            } else {
+                setMatkulList([]); // Fallback biar gak error .map
+            }
+            // -------------------------
         }
       } catch (err) {
         console.error("Gagal memuat data:", err);
+        setMatkulList([]); // Safety agar tidak null
       } finally {
         setLoading(false);
       }
@@ -60,7 +76,6 @@ export default function MataKuliahListPage({ params }: { params: Promise<{ id: s
 
     fetchData();
   }, [id]);
-
   if (loading) {
     return (
       <DashboardLayout>

@@ -116,7 +116,8 @@ export default function RPSVersionHistoryPage({
                 // Disini saya asumsikan kita ambil dari API List RPS saja, lalu ambil nama matkul dari response list (kalau backend kirim include matkul)
                 // Atau fetch terpisah:
                 
-                const resList = await fetch(`/api/rps/riwayat/${id_matakuliah}`);
+                // Tambahkan ?mode=history agar API tahu kita minta LIST, bukan detail
+                const resList = await fetch(`/api/rps/matakuliah/${id_matakuliah}?mode=history`);
                 const jsonList = await resList.json();
 
                 if (jsonList.success && Array.isArray(jsonList.data)) {

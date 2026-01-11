@@ -37,6 +37,7 @@ export async function getSession() {
 }
 
 // 3. Fungsi Logout
-export async function logout() {
-  (await cookies()).delete("session");
+export async function deleteSession() {
+  const cookieStore = await cookies();
+  cookieStore.delete("session");
 }
