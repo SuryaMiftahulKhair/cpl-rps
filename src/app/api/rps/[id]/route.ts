@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/../lib/prisma";
 
+// GET: Ambil Data RPS Lengkap
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -9,36 +10,28 @@ export async function GET(
     const { id } = await params;
     const rpsId = Number(id);
 
-    // 1. Ambil Data RPS Lengkap (termasuk Matkul & CPL untuk referensi IK)
     const rps = await prisma.rPS.findUnique({
       where: { id: rpsId },
       include: {
-        // Include komponen RPS
+        // Ambil CPMK & IK-nya
         cpmk: {
-          include: { ik: true }, // Ambil IK yang sudah dipilih di CPMK
+          include: { ik: true }, 
           orderBy: { kode_cpmk: 'asc' }
         },
-        pertemuan: {
-          orderBy: { pekan_ke: 'asc' }
-        },
-        // Include Matkul -> CPL -> IK (Untuk opsi dropdown "Pilih IK")
+        pertemuan: { orderBy: { pekan_ke: 'asc' } },
         matakuliah: {
           include: {
-            cpl: {
-              include: { iks: true } 
-            }
+            cpl: { include: { iks: true } } // Ambil Master IK dari CPL Matkul
           }
         }
       }
     });
 
-    if (!rps) {
-      return NextResponse.json({ error: "RPS tidak ditemukan" }, { status: 404 });
-    }
+    if (!rps) return NextResponse.json({ error: "RPS tidak ditemukan" }, { status: 404 });
 
-    // 2. Siapkan Daftar "Available IKs" (Semua IK dari CPL Matkul ini)
+    // Ratakan list IK yang tersedia untuk dropdown (Berasal dari CPL Matkul)
     const availableIks: any[] = [];
-    if (rps.matakuliah && rps.matakuliah.cpl) {
+    if (rps.matakuliah?.cpl) {
       rps.matakuliah.cpl.forEach(c => {
         if (c.iks) {
           c.iks.forEach(ik => {
@@ -53,43 +46,14 @@ export async function GET(
       });
     }
 
-    // 3. Rapikan Data untuk Frontend
-    const data = {
-      id: rps.id,
-      nomor_dokumen: rps.nomor_dokumen,
-      deskripsi: rps.deskripsi,
-      materi_pembelajaran: rps.materi_pembelajaran,
-      pustaka_utama: rps.pustaka_utama,
-      pustaka_pendukung: rps.pustaka_pendukung,
-      created_at: rps.createdAt, // Perhatikan casing 'createdAt' vs 'created_at' di prisma kakak
-      otorisasi: {
-        penyusun: rps.nama_penyusun,
-        koordinator: rps.nama_koordinator,
-        kaprodi: rps.nama_kaprodi,
-        tanggal: rps.tanggal_penyusunan
-      },
-      // Data Relasi
-      matakuliah: {
-        nama: rps.matakuliah?.nama,
-        kode_mk: rps.matakuliah?.kode_mk,
-        sks: rps.matakuliah?.sks,
-        semester: rps.matakuliah?.semester,
-        sifat: rps.matakuliah?.sifat,
-      },
-      cpmk: rps.cpmk,
-      pertemuan: rps.pertemuan,
-      available_iks: availableIks // Ini yang dipakai dropdown
-    };
-
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: { ...rps, available_iks: availableIks } });
 
   } catch (err: any) {
-    console.error("GET RPS Detail Error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// Handler untuk UPDATE RPS (Header, Deskripsi, Otorisasi, dll)
+// PUT: Update Data (Otorisasi, Deskripsi, dll)
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -101,7 +65,7 @@ export async function PUT(
 
     let updateData: any = {};
 
-    // Mapping update berdasarkan section yang diedit di frontend
+    // MAPPING SESUAI SCHEMA KAKAK
     if (section === 'otorisasi') {
       updateData = {
         nama_penyusun: data.penyusun,
@@ -114,8 +78,8 @@ export async function PUT(
       updateData = { materi_pembelajaran: data };
     } else if (section === 'pustaka') {
       updateData = { 
-        pustaka_utama: data.utama,
-        pustaka_pendukung: data.pendukung
+        pustaka_utama: data.utama, 
+        pustaka_pendukung: data.pendukung 
       };
     }
 

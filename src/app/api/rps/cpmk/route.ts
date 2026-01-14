@@ -4,24 +4,28 @@ import prisma from "@/../lib/prisma";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { rps_id, kode_cpmk, deskripsi, ik_ids } = body; // ik_ids adalah array [1, 2, 5]
+    const { rps_id, kode_cpmk, deskripsi, ik_id } = body;
 
-    // Validasi
+    // 1. Validasi
     if (!rps_id || !kode_cpmk) {
         return NextResponse.json({ error: "Data wajib diisi" }, { status: 400 });
     }
 
+    // 2. Simpan ke Database (FIXED)
     const newCpmk = await prisma.cPMK.create({
       data: {
-        rps_id: Number(rps_id),
+        // HAPUS rps_id KARENA TIDAK ADA KOLOMNYA
         kode_cpmk,
         deskripsi,
-        // MAGIC NYA DISINI: Hubungkan CPMK ke banyak IK sekaligus
-        ik: {
-            connect: Array.isArray(ik_ids) 
-                ? ik_ids.map((id: number) => ({ id: Number(id) })) 
-                : []
-        }
+        
+        // HUBUNGKAN KE RPS (Relasi Many-to-Many)
+        rps: {
+            connect: { id: Number(rps_id) }
+        },
+
+        // HUBUNGKAN KE IK (Relasi Many-to-Many)
+        // Gunakan Array [{ id: ... }] 
+        ik: ik_id ? { connect: [{ id: Number(ik_id) }] } : undefined
       }
     });
 

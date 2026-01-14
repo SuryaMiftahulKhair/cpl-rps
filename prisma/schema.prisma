@@ -73,11 +73,10 @@ model CPL {
   deskripsi    String
   kurikulum_id Int
   kurikulum    Kurikulum    @relation(fields: [kurikulum_id], references: [id])
+  iks          Ik[]
   mataKuliah   MataKuliah[] @relation("CPLToMataKuliah")
 
   @@map("cpl")
-  ikas Ik[] @relation("IkaToCPL")
-  iks Ik[]
 }
 
 model AssasmentArea {
@@ -156,9 +155,9 @@ model RPS {
   matakuliah          MataKuliah     @relation(fields: [matakuliah_id], references: [id])
   pertemuan           RPSPertemuan[]
   cpmk                CPMK[]         @relation("CPMKToRPS")
+  ikas                Ik[]           @relation("IkaToRPS")
 
   @@map("rps")
-  ikas Ik[] @relation("IkaToRPS")
 }
 
 model RPSPertemuan {
@@ -184,26 +183,23 @@ model CPMK {
   deskripsi String
   kelas     Kelas[] @relation("CPMKToKelas")
   rps       RPS[]   @relation("CPMKToRPS")
+  ik        Ik[]    @relation("IkaToCPMK")
 
   @@map("cpmk")
-  ik Ik[] @relation("IkaToCPMK")
 }
 
-model Ik{
-  id         Int     @id @default(autoincrement())
-  kode_ik  String   @unique
+model Ik {
+  id        Int      @id @default(autoincrement())
+  kode_ik   String   @unique
   deskripsi String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  rps       RPS[]    @relation("IkaToRPS")
-
   cpl_id    Int
   cpl       CPL      @relation(fields: [cpl_id], references: [id])
   cpmk      CPMK[]   @relation("IkaToCPMK")
-
+  rps       RPS[]    @relation("IkaToRPS")
 
   @@map("ik")
-  cpls CPL[] @relation("IkaToCPL")
 }
 
 model PesertaKelas {
