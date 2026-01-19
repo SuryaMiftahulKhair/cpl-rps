@@ -6,7 +6,6 @@ import { ArrowLeft, Loader2, Search, RefreshCw, Plus } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 import KelasModal from "@/app/components/KelasModal";
 
-// --- Types ---
 interface PageParams {
   semesterid: string;
 }
@@ -19,7 +18,6 @@ interface MatakuliahKelas {
   sks: number;
 }
 
-// --- Helper Error ---
 async function parseApiError(res: Response): Promise<string> {
   const text = await res.text();
   try {
@@ -40,7 +38,6 @@ export default function SemesterMatakuliahListPage({
   // State Data
   const [matakuliahList, setMatakuliahList] = useState<MatakuliahKelas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // State Modal Manual & Search
@@ -68,7 +65,7 @@ export default function SemesterMatakuliahListPage({
     if (semesterid) fetchData();
   }, [semesterid]);
 
-  // Handler Create Kelas Manual (Opsional)
+  // Handler Create Kelas Manual 
   const handleCreateKelas = async (data: { kode_mk: string; nama_mk: string; nama_kelas: string; sks: number }) => {
     setSubmitting(true);
     try {
@@ -91,46 +88,6 @@ export default function SemesterMatakuliahListPage({
       alert(`Gagal: ${err.message}`);
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  // --- HANDLER SINKRONISASI NEOSIA ---
-  const handleSyncNeosia = async () => {
-    if (!confirm("Ambil data kelas terbaru dari Neosia?")) return;
-
-    setIsSyncing(true);
-    try {
-      // 1. Cek Semester punya Kode Neosia tidak?
-      const semRes = await fetch(`/api/tahunAjaran/${semesterid}`);
-      const semData = await semRes.json();
-
-      if (!semData.kode_neosia) {
-        alert("Semester ini belum punya Kode Neosia (cth: 20241). Edit semester dulu.");
-        setIsSyncing(false);
-        return;
-      }
-
-      // 2. Panggil API Sync
-      const res = await fetch("/api/kelas/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          semesterId: semesterid,
-          kodeNeosia: semData.kode_neosia,
-          prodiId: "18" // Default Informatika
-        })
-      });
-
-      if (!res.ok) throw new Error(await parseApiError(res));
-      const result = await res.json();
-      
-      alert(`Berhasil! ${result.total} kelas telah disinkronisasi.`);
-      fetchData(); // Refresh tabel
-
-    } catch (err: any) {
-      alert(`Sync Gagal: ${err.message}`);
-    } finally {
-      setIsSyncing(false);
     }
   };
 
@@ -161,18 +118,6 @@ export default function SemesterMatakuliahListPage({
                     className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-cyan-700 transition-colors shadow flex items-center gap-2"
                 >
                     <Plus size={16} /> Baru
-                </button>
-                
-                {/* TOMBOL SYNC NEOSIA */}
-                <button 
-                    onClick={handleSyncNeosia}
-                    disabled={isSyncing}
-                    className={`text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow flex items-center gap-2 ${
-                        isSyncing ? "bg-orange-400 cursor-not-allowed" : "bg-orange-600 hover:bg-orange-700"
-                    }`}
-                >
-                    <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
-                    {isSyncing ? "Sync..." : "Sync Neosia"}
                 </button>
 
                 <Link href="/penilaian/datakelas">
