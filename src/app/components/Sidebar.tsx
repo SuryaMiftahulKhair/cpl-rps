@@ -16,7 +16,8 @@ import {
     LayoutPanelTop,
     ScrollText,
     LucideIcon,
-    BarChart3, // Ikon untuk Laporan
+    BarChart3,
+    UsersIcon, // Ikon untuk Laporan
 } from "lucide-react";
 import LogoutButton from "./LogOutButton";
 
@@ -287,6 +288,10 @@ export default function Sidebar() {
                         </div>
                     </div>
                 </div>
+                {/* Monitoring Univ */}
+                <MenuItem href="/manajemenuser" icon={UsersIcon} isActive={currentPath === "/manajemenuser"}>
+                    Manajemen User
+                </MenuItem>
             </nav>
 
             {/* --- Footer / Settings --- */}
@@ -294,7 +299,7 @@ export default function Sidebar() {
 
                 <LogoutButton />
 
-                <MenuItem href="/settings" icon={Settings} isActive={currentPath === "/settings"}>
+                <MenuItem href="/pengaturan" icon={Settings} isActive={currentPath === "/pengaturan"}>
                     Pengaturan
                 </MenuItem>
 

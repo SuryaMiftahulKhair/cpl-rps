@@ -156,15 +156,6 @@ export default function DataNilaiPage() {
                         <p className="text-sm text-gray-500">
                           Tahun Ajaran {semester.tahun}
                         </p>
-                        {semester.kode_neosia ? (
-                          <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium border border-green-200">
-                          Terhubung Neosia: {semester.kode_neosia}
-                          </span>
-                        ) : (
-                          <span className="inline-block mt-2 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-md font-medium border border-yellow-200">
-                            Belum Link Neosia
-                          </span>
-    )}
                       </div>
                       <Eye
                         size={24}

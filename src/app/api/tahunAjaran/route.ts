@@ -10,7 +10,6 @@ import { z } from "zod";
 const postSchema = z.object({
   tahun: z.string().min(4, "Tahun harus diisi"), // misal: "2024/2025"
   semester: z.enum(["GANJIL", "GENAP"]),
-  kode_neosia: z.string().min(1, "Kode neosia harus diisi"),
 });
 
 // === GET: Ambil daftar Tahun Ajaran ===
@@ -65,7 +64,6 @@ export async function POST(request: Request) {
       data: {
         tahun: parsed.tahun,
         semester: parsed.semester,
-        kode_neosia: parsed.kode_neosia || "",
       },
     });
 
