@@ -1,7 +1,7 @@
+//file: src/app/api/kurikulum/[id]/matakuliah/route.ts
 import { NextResponse, NextRequest } from "next/server";
-import prisma from "@/../lib/prisma"; // Sesuaikan path import prisma kakak
+import prisma from "@/../lib/prisma"; 
 
-// --- 1. GET: Ambil Daftar Mata Kuliah (Fix Error _count) ---
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -15,22 +15,20 @@ export async function GET(
         kurikulum_id: kurikulumId,
       },
       include: {
-        // PERBAIKAN: Jangan count 'rps'. Cukup include 'rps' biasa atau ambil ID-nya saja.
         rps: {
-          select: { id: true, is_locked: true } // Cek apakah RPS ada & statusnya
+          select: { id: true, is_locked: true } 
         },
-        cpl: true, // Include data CPL biar bisa dilihat matkul ini dukung CPL apa aja
+        cpl: true, 
         _count: {
           select: {
-            kelas: true, // Ini BISA dicount karena array
-            cpl: true    // Ini BISA dicount karena array
-            // rps: true <--- INI PENYEBAB ERROR KAKAK TADI (HAPUS BARIS INI)
+            kelas: true, 
+            cpl: true    
+      
           }
         }
       },
       orderBy: {
-        semester: 'asc' // Urutkan berdasarkan semester dulu
-        // kode_mk: 'asc'
+        semester: 'asc' 
       }
     });
 
