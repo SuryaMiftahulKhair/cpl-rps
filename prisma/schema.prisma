@@ -185,7 +185,6 @@ model RPSPertemuan {
 }
 
 model CPMK {
-<<<<<<< HEAD
   id                     Int                      @id @default(autoincrement())
   kode_cpmk              String
   is_locked              Boolean                  @default(false)
@@ -194,17 +193,6 @@ model CPMK {
   kelas                  Kelas[]                  @relation("CPMKToKelas")
   rps                    RPS[]                    @relation("CPMKToRPS")
   ik                     Ik[]                     @relation("IkaToCPMK")
-=======
-  id                    Int                    @id @default(autoincrement())
-  kode_cpmk             String
-  is_locked             Boolean                @default(false)
-  deskripsi             String
-  kelas                 Kelas[]                @relation("CPMKToKelas")
-  rps                   RPS[]                  @relation("CPMKToRPS")
-  ik                    Ik[]                   @relation("IkaToCPMK")
-  pemetaanKomponenCPMKs PemetaanKomponenCPMK[]
->>>>>>> 613aa0f1036f9b3f36ecf6b6763de9df5ba5c345
-
   @@map("cpmk")
 }
 
@@ -239,7 +227,6 @@ model PesertaKelas {
 }
 
 model KomponenNilai {
-<<<<<<< HEAD
   id                     Int                      @id @default(autoincrement())
   nama                   String
   bobot                  Float
@@ -247,16 +234,6 @@ model KomponenNilai {
   kelas                  Kelas                    @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
   nilai                  Nilai[]                  @relation("NilaiToKomponen")
   pemetaan_komponen_cpmk pemetaan_komponen_cpmk[]
-=======
-  id            Int                    @id @default(autoincrement())
-  nama          String
-  bobot         Float
-  kelas_id      Int
-  kelas         Kelas                  @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
-  nilai         Nilai[]                @relation("NilaiToKomponen")
-  pemetaan_cpmk PemetaanKomponenCPMK[]
->>>>>>> 613aa0f1036f9b3f36ecf6b6763de9df5ba5c345
-
   @@map("komponen_nilai")
 }
 
@@ -272,7 +249,6 @@ model Nilai {
   @@map("nilai")
 }
 
-<<<<<<< HEAD
 model pemetaan_komponen_cpmk {
   id                Int           @id @default(autoincrement())
   komponen_nilai_id Int
@@ -292,21 +268,8 @@ model Rubrik {
   pertemuan   RPSPertemuan[] @relation("RubrikToPertemuan")
 
   @@map("rubrik")
-=======
-model PemetaanKomponenCPMK {
-  id Int @id @default(autoincrement())
-
-  komponen_nilai_id Int
-  komponen_nilai    KomponenNilai @relation(fields: [komponen_nilai_id], references: [id], onDelete: Cascade)
-
-  cpmk_id Int
-  cpmk    CPMK @relation(fields: [cpmk_id], references: [id], onDelete: Cascade)
-
-  bobot Float
-
-  @@map("pemetaan_komponen_cpmk")
->>>>>>> 613aa0f1036f9b3f36ecf6b6763de9df5ba5c345
 }
+
 
 enum UserRole {
   ADMIN
