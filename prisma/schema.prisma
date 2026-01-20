@@ -105,7 +105,6 @@ model Kelas {
   id              Int             @id @default(autoincrement())
   nama_kelas      String
   tahun_ajaran_id Int
-  neosia_id       String?         @unique
   sks             Int             @default(0)
   kode_mk         String
   nama_mk         String
