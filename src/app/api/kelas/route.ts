@@ -1,129 +1,66 @@
 // file: src/app/api/kelas/route.ts
-
 import { NextResponse } from "next/server";
 import prisma from "@/../lib/prisma";
-import { z } from "zod";
 
-// === Skema Validasi untuk POST (Disesuaikan dengan tabel Kelas baru) ===
-const createKelasSchema = z.object({
-  tahun_ajaran_id: z.number().int({ message: "ID Tahun Ajaran harus berupa angka integer" }),
-  nama_kelas: z.string().min(1, "Nama kelas wajib diisi"),
-  // Tambahan field baru karena tabel MataKuliah sudah tidak ada
-  kode_mk: z.string().min(1, "Kode MK wajib diisi"),
-  nama_mk: z.string().min(1, "Nama MK wajib diisi"),
-  sks: z.number().int().min(0, "SKS harus angka positif"),
-});
-
-/**
- * Handler untuk GET /api/kelas
- * Mengambil daftar kelas berdasarkan 'semesterId'.
- */
+// GET: Ambil daftar kelas
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const semesterId = searchParams.get("semesterId");
+    const taId = searchParams.get("tahun_ajaran_id");
 
-    // Validasi: Pastikan semesterId ada
-    if (!semesterId) {
-      return NextResponse.json(
-        { error: "Query parameter 'semesterId' wajib diisi." },
-        { status: 400 }
-      );
-    }
+    const where = taId ? { tahun_ajaran_id: Number(taId) } : {};
 
-    const id = parseInt(semesterId, 10);
-    if (isNaN(id)) {
-      return NextResponse.json(
-        { error: "Query parameter 'semesterId' harus berupa angka." },
-        { status: 400 }
-      );
-    }
-
-    // 1. Ambil data Kelas dari database
-    const kelasList = await prisma.kelas.findMany({
-      where: {
-        tahun_ajaran_id: id,
+    const data = await prisma.kelas.findMany({
+      where,
+      include: {
+        matakuliah: true,
+        dosen_pengampu: { include: { dosen: true } }
       },
-      // HAPUS include: { mataKuliah: true } karena relasi sudah tidak ada
-      orderBy: {
-        nama_kelas: "asc",
-      },
+      orderBy: { nama_kelas: 'asc' }
     });
 
-    // 2. Map data (Sesuaikan dengan kolom langsung di tabel Kelas)
-    const mappedData = kelasList.map((kelas) => ({
-      id: kelas.id,
-      semesterKur: 0, // Placeholder karena data kurikulum_id hilang/tidak ada di tabel kelas saat ini
-      namaKelas: kelas.nama_kelas,
-      
-      // PERBAIKAN: Akses langsung field dari tabel Kelas
-      kodeMatakuliah: kelas.kode_mk, 
-      namaMatakuliah: kelas.nama_mk,
-      sks: kelas.sks,
-    }));
-
-    return NextResponse.json(mappedData, { status: 200 });
-
-  } catch (err) {
-    console.error("GET /api/kelas error:", err);
-    return NextResponse.json(
-      { error: "Gagal mengambil data kelas" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-/**
- * Handler untuk POST /api/kelas
- * Membuat kelas baru.
- */
-export async function POST(request: Request) {
+// POST: Tambah Kelas Baru (Manual Tanpa Neosia)
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
+    const body = await req.json();
     
-    // 1. Validasi input menggunakan Zod
-    const parsed = createKelasSchema.parse(body);
+    // Validasi input dasar
+    if (!body.tahun_ajaran_id || !body.kode_mk || !body.nama_kelas) {
+      return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
+    }
 
-    // 2. Cek Duplikasi
-    // Cek berdasarkan Kode MK + Nama Kelas + Tahun Ajaran
-    const existing = await prisma.kelas.findFirst({
-      where: {
-        kode_mk: parsed.kode_mk, // Cek Kode MK
-        tahun_ajaran_id: parsed.tahun_ajaran_id,
-        nama_kelas: { equals: parsed.nama_kelas, mode: "insensitive" }
+    // --- BAGIAN INI DIHAPUS (Tidak perlu ID unik manual lagi) ---
+    // const manualNeosiaId = `MANUAL-${body.kode_mk}-...`;
+
+    // 2. Simpan ke Database
+    const newKelas = await prisma.kelas.create({
+      data: {
+        tahun_ajaran_id: Number(body.tahun_ajaran_id),
+        nama_kelas: body.nama_kelas, 
+        kode_mk: body.kode_mk,       
+        nama_mk: body.nama_mk,       
+        sks: Number(body.sks || 0),
+        
+        matakuliah_id: body.matakuliah_id ? Number(body.matakuliah_id) : null,
+
+        // HAPUS BARIS INI:
+        // neosia_id: manualNeosiaId 
       }
     });
 
-    if (existing) {
-      return NextResponse.json(
-        { error: `Kelas '${parsed.nama_kelas}' untuk MK '${parsed.nama_mk}' sudah ada di semester ini.` },
-        { status: 409 }
-      );
-    }
+    return NextResponse.json({ success: true, data: newKelas });
 
-    // 3. Simpan ke database (Tanpa mata_kuliah_id)
-    const newKelas = await prisma.kelas.create({
-      data: {
-        tahun_ajaran_id: parsed.tahun_ajaran_id,
-        nama_kelas: parsed.nama_kelas,
-        // Isi data MK manual
-        kode_mk: parsed.kode_mk,
-        nama_mk: parsed.nama_mk,
-        sks: parsed.sks,
-        // Buat ID unik untuk neosia_id agar konsisten (opsional jika manual)
-        neosia_id: `MANUAL-${parsed.kode_mk}-${parsed.nama_kelas}-${Date.now()}`
-      },
-    });
-
-    return NextResponse.json(newKelas, { status: 201 });
-
-  } catch (err) {
-    // Handle Error Validasi Zod
-    if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: err.issues[0].message }, { status: 400 });
-    }
-    
-    console.error("POST /api/kelas error:", err);
-    return NextResponse.json({ error: "Gagal membuat kelas" }, { status: 500 });
+  } catch (err: any) {
+    console.error("POST Kelas Error:", err);
+    return NextResponse.json({ 
+      success: false, 
+      error: err.message || "Gagal menyimpan kelas" 
+    }, { status: 500 });
   }
 }
