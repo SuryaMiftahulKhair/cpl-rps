@@ -6,9 +6,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const mataKuliahId = Number(id);
 
-    // Ambil Parameter URL (Contoh: ?mode=history)
     const { searchParams } = new URL(req.url);
     const mode = searchParams.get('mode');
+    const tahun = searchParams.get('tahun') || new Date().getFullYear().toString();
+    const semester = searchParams.get('semester') || "1";
 
     // ==========================================
     // KONDISI 1: JIKA MINTA HISTORY (LIST DATA)
@@ -21,12 +22,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           matakuliah: { select: { nama: true, kode_mk: true } }
         }
       });
-      // Mengembalikan ARRAY
       return NextResponse.json({ success: true, data: listRps });
     }
 
     // ==========================================
-    // KONDISI 2: DEFAULT (DETAIL / UPSERT)
+    // KONDISI 2: DEFAULT (DETAIL / GET OR CREATE)
     // ==========================================
     
     // 1. Cek Matkul
@@ -37,19 +37,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     });
 
-    if (!matkul) {
-      return NextResponse.json({ error: "Mata kuliah tidak ditemukan" }, { status: 404 });
-    }
+    if (!matkul) return NextResponse.json({ error: "Mata kuliah tidak ditemukan" }, { status: 404 });
 
-    // 2. Upsert RPS (Cari atau Buat Baru)
-    const rps = await prisma.rPS.upsert({
-      where: { matakuliah_id: mataKuliahId },
-      create: {
+    // 2. Cari RPS yang sesuai dengan Matkul + Tahun + Semester (Untuk Laporan)
+    // Kita tidak pakai upsert, tapi findFirst. Jika tidak ada, baru create.
+    let rps = await prisma.rPS.findFirst({
+      where: { 
         matakuliah_id: mataKuliahId,
-        nomor_dokumen: `RPS-${matkul.kode_mk}-${new Date().getFullYear()}`,
-        deskripsi: "Rencana Pembelajaran Semester...",
+        // Kita bisa tambahkan filter tahun di sini nanti jika field sudah ada
       },
-      update: {},
       include: {
         cpmk: {
           include: { ik: true },
@@ -58,7 +54,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     });
 
-    // 3. Mapping Available IKs
+    // 3. Jika belum ada RPS sama sekali, buatkan satu sebagai draft
+    if (!rps) {
+      rps = await prisma.rPS.create({
+        data: {
+          matakuliah_id: mataKuliahId,
+          nomor_dokumen: `RPS-${matkul.kode_mk}-${tahun}-${semester}`,
+          deskripsi: "Rencana Pembelajaran Semester...",
+          nama_penyusun: "Dosen Pengampu",
+        },
+        include: {
+          cpmk: { include: { ik: true }, orderBy: { kode_cpmk: 'asc' } }
+        }
+      });
+    }
+
+    // 4. Mapping Available IKs (Untuk Dropdown di Frontend)
     const availableIks: any[] = [];
     matkul.cpl.forEach(c => {
       if (c.iks) {
@@ -73,14 +84,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     });
 
-    // Mengembalikan OBJECT Single
     return NextResponse.json({
       success: true,
       data: {
-        rps_id: rps.id,
-        nomor_dokumen: rps.nomor_dokumen,
-        deskripsi: rps.deskripsi,
-        cpmk_list: rps.cpmk,
+        ...rps, // Mengembalikan object rps lengkap (termasuk id, nomor_dokumen, dll)
         available_iks: availableIks
       }
     });
