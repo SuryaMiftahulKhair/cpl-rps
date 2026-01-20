@@ -294,7 +294,7 @@ export default function Sidebar() {
 
                 <LogoutButton />
 
-                <MenuItem href="/settings" icon={Settings} isActive={currentPath === "/settings"}>
+                <MenuItem href="/pengaturan" icon={Settings} isActive={currentPath === "/pengaturan"}>
                     Pengaturan
                 </MenuItem>
 
