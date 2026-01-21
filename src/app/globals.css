@@ -3,14 +3,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Icon URLs: put icon files under /public/icons and adjust names as needed */
+  --icon-visi: url('/icons/visi.svg');
+  --icon-matkul: url('/icons/matakuliah.svg');
+  --icon-rubrik: url('/icons/rubrik.svg');
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -23,4 +21,96 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
 }
+
+/* Page container */
+.container {
+  max-width: 1100px;
+  margin: 2.5rem auto;
+  padding: 0 1rem;
+}
+
+/* Header */
+.page-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:1rem;
+  margin-bottom:1.25rem;
+}
+.page-header .title {
+  font-size:2rem;
+  font-weight:700;
+  color:#0f172a;
+  margin:0;
+}
+.page-header .subtitle {
+  color:#6b7280;
+  margin-top:0.25rem;
+  font-size:0.95rem;
+}
+
+/* Card / table wrapper */
+.card {
+  background: linear-gradient(180deg,#ffffff,#fbfdff);
+  border-radius:12px;
+  box-shadow: 0 6px 18px rgba(16,24,40,0.06);
+  padding: 1rem;
+}
+
+/* Table styles */
+.table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:0.95rem;
+}
+.table thead th {
+  background: #eef2ff;
+  color:#4338ca;
+  text-transform:uppercase;
+  font-weight:600;
+  padding:1rem;
+  text-align:left;
+  border-bottom: none;
+}
+.table tbody td {
+  padding: 0.85rem 1rem;
+  border-bottom:1px solid #f3f4f6;
+  vertical-align:middle;
+}
+.table tbody tr:last-child td { border-bottom: none; }
+
+/* Row and badges */
+.row-number { color:#6b7280; font-weight:700; }
+.pill { background:#f1f5f9; padding:.35rem .6rem; border-radius:8px; display:inline-flex; align-items:center; gap:.4rem; font-weight:700; color:#334155; }
+.badge { display:inline-block; padding: .25rem .6rem; border-radius:999px; font-size:0.8rem; font-weight:700; margin-right:.5rem; background:#eef2ff; color:#1e293b; }
+.badge.mk { background:#fff4e6; color:#92400e; }
+
+/* Action buttons */
+.actions { display:flex; gap:.5rem; }
+.btn { padding:.48rem .9rem; border-radius:999px; border:none; cursor:pointer; font-weight:700; box-shadow: 0 6px 12px rgba(99,102,241,0.08); display:inline-flex; align-items:center; gap:.6rem; }
+.btn.green { background:#10b981; color:white; }
+.btn.purple { background:#6d28d9; color:white; }
+.btn.teal { background:#0ea5a4; color:white; }
+.btn.ghost { background:transparent; color:#334155; box-shadow:none; border:1px solid rgba(15,23,42,0.06); }
+
+/* Icon support for buttons: use button classes `.visi`, `.matkul`, `.rubrik` */
+.btn::before { content: ''; width:18px; height:18px; display:inline-block; background-size:contain; background-repeat:no-repeat; background-position:center; flex:0 0 18px; }
+.btn.visi::before { background-image: var(--icon-visi); }
+.btn.matkul::before { background-image: var(--icon-matkul); }
+.btn.rubrik::before { background-image: var(--icon-rubrik); }
+
+/* Small helper */
+.year-pill { background:#f8fafc; padding:.4rem .6rem; border-radius:8px; display:inline-flex; align-items:center; gap:.5rem; color:#334155; font-weight:700; }
+
+/* Responsive tweaks */
+@media (max-width:768px) {
+  .container { padding:0 1rem; }
+  .page-header { flex-direction:column; align-items:flex-start; }
+  .page-header .title { font-size:1.25rem; }
+  .table thead { display:none; }
+  .table tbody td { display:block; width:100%; box-sizing:border-box; }
+  .table tbody tr { margin-bottom:0.75rem; display:block; background:#fff; border-radius:8px; padding:.75rem; box-shadow:0 4px 10px rgba(2,6,23,0.04); }
+ }
