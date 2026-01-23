@@ -1,31 +1,52 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-    ChevronLeft, Edit, FileText, BookOpen, Target,
-    ClipboardList, Loader2, Printer, Trash2, Copy, Plus, X, Save,
-    Book, CheckSquare, GraduationCap, PieChart, FileDown, ArrowLeft
+    Edit, Target, Loader2, Plus, X, Save,
+    CheckSquare, PieChart, FileDown, ArrowLeft,
+    ScrollText, Info
 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
 // --- KOMPONEN HELPER ---
+function InfoRow({ label, value }: any) {
+    return (
+        <div className="flex py-3 border-b border-gray-100 last:border-0">
+            <div className="w-1/3 font-bold text-gray-500 text-[10px] uppercase tracking-wider">{label}</div>
+            <div className="w-2/3 text-gray-800 text-sm font-semibold">{value || "-"}</div>
+        </div>
+    );
+}
+
+function SectionWrapper({ title, icon, action, children, bgColor = "bg-slate-700" }: any) {
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+            <div className={`${bgColor} text-white px-6 py-4 flex justify-between items-center`}>
+                <h3 className="font-bold text-sm flex items-center gap-3 uppercase tracking-widest">
+                    {icon} {title}
+                </h3>
+                {action}
+            </div>
+            <div className="p-6">{children}</div>
+        </div>
+    );
+}
 
 function Modal({ isOpen, onClose, title, children, onSave, isSaving }: any) {
     if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 print:hidden animate-in fade-in duration-200">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b border-gray-100 shrink-0 bg-white sticky top-0 z-10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div className="flex justify-between items-center p-4 border-b shrink-0 bg-white">
                     <h3 className="font-bold text-lg text-gray-800">{title}</h3>
-                    <button title="Tutup" onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full text-gray-500"><X size={20}/></button>
+                    <button title="Buka" onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full text-gray-500"><X size={20}/></button>
                 </div>
-                <div className="p-6 overflow-y-auto grow">{children}</div>
-                <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-xl shrink-0 sticky bottom-0 z-10">
+                <div className="p-6 overflow-y-auto grow bg-white">{children}</div>
+                <div className="p-4 border-t flex justify-end gap-3 bg-gray-50 shrink-0">
                     <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-lg">Batal</button>
-                    <button onClick={onSave} disabled={isSaving} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2 disabled:opacity-50">
-                        {isSaving ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} Simpan
+                    <button onClick={onSave} disabled={isSaving} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-2">
+                        {isSaving ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} Simpan Data
                     </button>
                 </div>
             </div>
@@ -33,372 +54,219 @@ function Modal({ isOpen, onClose, title, children, onSave, isSaving }: any) {
     );
 }
 
-function SectionHeader({ title, icon, onEdit, action }: any) {
-    return (
-        <div className="flex items-center justify-between bg-slate-600 text-white px-4 py-3 rounded-t-lg print:bg-white print:text-black print:border-b print:border-black">
-            <h3 className="font-bold text-sm flex items-center gap-2 uppercase tracking-wide">{icon} {title}</h3>
-            <div className="flex items-center gap-2">{action}{onEdit && <button title="Edit" onClick={onEdit} className="p-1.5 hover:bg-slate-700 rounded print:hidden"><Edit size={16}/></button>}</div>
-        </div>
-    );
-}
-
-function InfoRow({ label, value }: any) {
-    return <div className="flex py-2 border-b border-gray-100"><div className="w-1/3 font-semibold text-gray-700 text-sm">{label}</div><div className="w-2/3 text-gray-800 text-sm">{value}</div></div>;
-}
-
 // --- MAIN PAGE ---
-export default function DetailRPSPage({ params }: { params: Promise<{ id: string; id_matakuliah: string; id_rps: string }> }) {
-    const { id, id_matakuliah, id_rps } = use(params);
+export default function DetailRPSPage({ params }: { params: Promise<{ id_rps: string }> }) {
+    const { id_rps } = use(params);
     const router = useRouter();
     
-    // State Data Utama
-    const [activeTab, setActiveTab] = useState<"pertemuan" | "rubrik" | "evaluasi">("pertemuan");
     const [rpsData, setRpsData] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    // State Modals & Form
-    const [editingSection, setEditingSection] = useState<string | null>(null);
-    const [formData, setFormData] = useState<any>({});
     const [isSaving, setIsSaving] = useState(false);
-    
-    const [showPertemuanModal, setShowPertemuanModal] = useState(false);
-    const [pertemuanForm, setPertemuanForm] = useState<any>({});
-    const [isEditPertemuan, setIsEditPertemuan] = useState(false);
-    const [selectedCpmkId, setSelectedCpmkId] = useState<string>(""); 
 
+    // Modal Visibility
     const [showCpmkModal, setShowCpmkModal] = useState(false);
-    const [cpmkForm, setCpmkForm] = useState<any>({ kode: "", deskripsi: "", ik_id: "" });
+    const [showPertemuanModal, setShowPertemuanModal] = useState(false);
+    const [editingSection, setEditingSection] = useState<string | null>(null);
+    
+    // Form States
+    const [cpmkForm, setCpmkForm] = useState({ kode: "", deskripsi: "", ik_id: "" });
+    const [pertemuanForm, setPertemuanForm] = useState<any>({ pekan_ke: "1", bobot_nilai: 0, cpmk_id: "", kemampuan_akhir: "", kriteria_penilaian: "", metode_pembelajaran: "" });
+    const [otorisasiForm, setOtorisasiForm] = useState<any>({ penyusun: [""], koordinator: "", kaprodi: "" });
 
-    const [showRubrikModal, setShowRubrikModal] = useState(false);
-    const [rubrikForm, setRubrikForm] = useState({ kode: "", nama: "", deskripsi: "" });
-
-    // --- FETCH DATA ---
     const fetchRPSData = async () => {
         try {
             const res = await fetch(`/api/rps/${id_rps}`); 
             const json = await res.json();
-            if (json.success) setRpsData(json.data);
-            else throw new Error(json.error);
-        } catch (err: any) { setError(err.message); } finally { setLoading(false); }
+            if (json.success) {
+                setRpsData(json.data);
+                setOtorisasiForm({
+                    penyusun: json.data.nama_penyusun ? json.data.nama_penyusun.split(', ') : [""],
+                    koordinator: json.data.nama_koordinator || "",
+                    kaprodi: json.data.nama_kaprodi || ""
+                });
+            }
+        } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
     useEffect(() => { fetchRPSData(); }, [id_rps]);
 
-    // --- LOGIC RUBRIK ---
-    const openAddRubrik = () => {
-        const nextNo = rpsData.rubriks?.length ? rpsData.rubriks.length + 1 : 1;
-        setRubrikForm({ kode: `R-${nextNo}`, nama: "", deskripsi: "" });
-        setShowRubrikModal(true);
-    };
-
-    const handleSaveRubrik = async () => {
+    const handleSave = async (endpoint: string, data: any, closeModal: any) => {
         setIsSaving(true);
         try {
-            const res = await fetch("/api/rps/rubrik", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ rps_id: Number(id_rps), kode_rubrik: rubrikForm.kode, nama_rubrik: rubrikForm.nama, deskripsi: rubrikForm.deskripsi })
-            });
-            if (res.ok) { await fetchRPSData(); setShowRubrikModal(false); } 
-            else alert("Gagal simpan Rubrik");
-        } catch (e) { alert("Error sistem"); } finally { setIsSaving(false); }
-    };
+            const payload = endpoint.includes("otorisasi") 
+                ? { ...data, penyusun: data.penyusun.join(', '), rps_id: Number(id_rps) }
+                : { ...data, rps_id: Number(id_rps) };
 
-    // --- LOGIC CPMK ---
-    const openAddCpmk = () => {
-        const nextNo = rpsData.cpmk ? rpsData.cpmk.length + 1 : 1;
-        setCpmkForm({ kode: `CPMK-${nextNo}`, deskripsi: "", ik_id: "" });
-        setShowCpmkModal(true);
-    };
-
-    const handleSaveCpmk = async () => {
-        setIsSaving(true);
-        try {
-            const res = await fetch("/api/rps/cpmk", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ rps_id: Number(id_rps), kode_cpmk: cpmkForm.kode, deskripsi: cpmkForm.deskripsi, ik_id: cpmkForm.ik_id })
-            });
-            if (res.ok) { await fetchRPSData(); setShowCpmkModal(false); } 
-            else alert("Gagal simpan CPMK");
-        } catch (e) { alert("Error sistem"); } finally { setIsSaving(false); }
-    };
-
-    // --- LOGIC PERTEMUAN (AUTO FILL & RUBRIK) ---
-    const handleCpmkSelectForPertemuan = (cpmkId: string) => {
-        setSelectedCpmkId(cpmkId);
-        if(!cpmkId) return;
-        const selected = rpsData.cpmk.find((c: any) => c.id === Number(cpmkId));
-        if(selected) {
-            const ik = selected.ik && selected.ik.length > 0 ? selected.ik[0] : null;
-            setPertemuanForm((prev: any) => ({
-                ...prev,
-                kemampuan_akhir: selected.deskripsi, 
-                kriteria_penilaian: ik ? `Indikator: ${ik.kode_ik} - ${ik.deskripsi}\nKriteria: Ketepatan dan Penguasaan.` : "Belum ada IK diset"
-            }));
-        }
-    };
-
-    const openAddPertemuan = () => {
-        const nextPekan = rpsData.pertemuan?.length > 0 ? Math.max(...rpsData.pertemuan.map((p: any) => p.pekan_ke)) + 1 : 1;
-        setPertemuanForm({ pekan_ke: nextPekan, metode_pembelajaran: "Kuliah & Diskusi", waktu: "TM: 2x50'", bobot_nilai: 0, kemampuan_akhir: "", kriteria_penilaian: "", rubrik_id: "" });
-        setSelectedCpmkId(""); setIsEditPertemuan(false); setShowPertemuanModal(true);
-    };
-
-    const handleSavePertemuan = async () => {
-        setIsSaving(true);
-        try {
-            const url = isEditPertemuan ? `/api/rps/pertemuan/${pertemuanForm.id}` : `/api/rps/pertemuan`;
-            const payload = { ...pertemuanForm, rps_id: Number(id_rps), bobot_nilai: Number(pertemuanForm.bobot_nilai), pekan_ke: Number(pertemuanForm.pekan_ke), rubrik_id: pertemuanForm.rubrik_id ? Number(pertemuanForm.rubrik_id) : null };
-            const res = await fetch(url, { method: isEditPertemuan ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (res.ok) { await fetchRPSData(); setShowPertemuanModal(false); } else throw new Error("Gagal simpan");
-        } catch (error: any) { alert(`Error: ${error.message}`); } finally { setIsSaving(false); }
-    };
-
-    const handleSaveGeneral = async () => {
-        setIsSaving(true);
-        try {
-            const res = await fetch(`/api/rps/${id_rps}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ section: editingSection, data: formData }) });
-            if (res.ok) { await fetchRPSData(); setEditingSection(null); }
-        } catch (error: any) { alert(`Gagal: ${error.message}`); } finally { setIsSaving(false); }
+            const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            if (res.ok) { await fetchRPSData(); closeModal(false); }
+        } finally { setIsSaving(false); }
     };
 
     if (loading) return <DashboardLayout><div className="flex justify-center h-screen items-center"><Loader2 className="animate-spin text-indigo-600" size={40} /></div></DashboardLayout>;
-    if (error) return <DashboardLayout><div className="p-6 text-red-600 bg-red-50">{error}</div></DashboardLayout>;
-    if (!rpsData) return null;
-
-    const matkul = rpsData.matakuliah || {};
-    const totalBobot = rpsData.pertemuan ? rpsData.pertemuan.reduce((acc: number, curr: any) => acc + (curr.bobot_nilai || 0), 0) : 0;
-
-    function handleGeneratePDF(id: any): void {
-    // Membuka tab baru yang langsung memicu download PDF dari API
-    window.open(`/api/rps/export/${id}`, '_blank');
-    }
+    const totalBobot = rpsData?.pertemuan?.reduce((acc: number, curr: any) => acc + (curr.bobot_nilai || 0), 0) || 0;
 
     return (
         <DashboardLayout>
-            <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div className="p-8 bg-gray-50 min-h-screen">
+                
+                {/* --- HEADER --- */}
+                <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800">Detail Master RPS</h1>
-                        <p className="text-slate-500 text-sm">Nomor Dokumen: {rpsData.nomor_dokumen}</p>
+                        <h1 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Detail Master RPS</h1>
+                        <p className="text-slate-500 text-sm font-medium">Nomor Dokumen: {rpsData?.nomor_dokumen || "-"}</p>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                        {/* Tombol Cetak PDF */}
-                        <button 
-                        onClick={() => handleGeneratePDF(rpsData.id)}
-                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-red-100"
-                        >
-                        <FileDown size={20} />
-                        Cetak PDF Resmi
-                        </button>
-
-                        <button 
-                        onClick={() => router.back()}
-                        className="flex items-center gap-2 bg-white border-2 border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition-all"
-                        >
-                        <ArrowLeft size={18} />
-                        Kembali
-                        </button>
-                    </div>
+                    <button onClick={() => router.back()} className="flex items-center gap-2 bg-white border-2 px-4 py-2 rounded-xl font-bold text-slate-600"><ArrowLeft size={18} /> Kembali</button>
                 </div>
 
-                {/* INFO & OTORISASI (Grid) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-2">
-                        <InfoRow label="MATA KULIAH" value={matkul.nama} />
-                        <InfoRow label="KODE" value={matkul.kode_mk} />
-                        <InfoRow label="BOBOT (SKS)" value={matkul.sks} />
-                        <InfoRow label="SEMESTER" value={matkul.semester} />
+                {/* 1. INFO MATA KULIAH & TIM PENGESAHAN */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div className="bg-white rounded-xl shadow-sm border p-6">
+                        <h3 className="font-bold text-xs uppercase text-indigo-600 mb-4 border-b pb-2 flex gap-2"><Info size={16}/> Informasi Mata Kuliah</h3>
+                        <InfoRow label="Mata Kuliah" value={rpsData?.matakuliah?.nama} />
+                        <InfoRow label="Kode/SKS" value={`${rpsData?.matakuliah?.kode_mk} / ${rpsData?.matakuliah?.sks} SKS`} />
+                        <InfoRow label="Semester" value={rpsData?.matakuliah?.semester} />
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <SectionHeader title="Otorisasi" onEdit={() => { setFormData({ penyusun: rpsData.nama_penyusun, koordinator: rpsData.nama_koordinator, kaprodi: rpsData.nama_kaprodi }); setEditingSection('otorisasi'); }} />
-                        <div className="p-4 grid grid-cols-3 gap-2 text-center text-[10px]">
-                            <div className="border p-2 rounded"><strong>Penyusun:</strong> <p>{rpsData.nama_penyusun || "-"}</p></div>
-                            <div className="border p-2 rounded"><strong>Koordinator:</strong> <p>{rpsData.nama_koordinator || "-"}</p></div>
-                            <div className="border p-2 rounded"><strong>Kaprodi:</strong> <p>{rpsData.nama_kaprodi || "-"}</p></div>
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div className="bg-slate-100 px-6 py-3 border-b flex justify-between items-center">
+                            <h3 className="font-bold text-[10px] text-slate-600 uppercase tracking-widest">Otorisasi</h3>
+                            <button title="Ubah" onClick={() => setEditingSection('otorisasi')} className="text-indigo-600 hover:text-indigo-800"><Edit size={16}/></button>
+                        </div>
+                        <div className="p-6 space-y-3">
+                            <div className="flex flex-col border-b pb-2">
+                                <span className="text-[10px] text-gray-400 font-bold uppercase mb-1">Dosen Penyusun</span>
+                                <div className="flex flex-wrap gap-2">{otorisasiForm.penyusun.map((d: any, i: any) => <span key={i} className="text-xs font-bold bg-gray-100 px-2 py-1 rounded border">{d}</span>)}</div>
+                            </div>
+                            <div className="flex justify-between text-sm"><b>Koordinator:</b> <span>{rpsData?.nama_koordinator || "-"}</span></div>
+                            <div className="flex justify-between text-sm"><b>Kaprodi:</b> <span>{rpsData?.nama_kaprodi || "-"}</span></div>
                         </div>
                     </div>
                 </div>
 
-                {/* CPMK MAPPING */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
-                    <SectionHeader title="CPMK & Referensi IK" icon={<Target size={16}/>} action={<button onClick={openAddCpmk} className="bg-teal-600 text-white px-2 py-1 rounded text-xs flex gap-1"><Plus size={14}/> Tambah</button>} />
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {rpsData.cpmk?.map((item: any) => (
-                            <div key={item.id} className="border border-gray-100 rounded-lg p-4 bg-gray-50/30">
-                                <span className="font-bold text-indigo-700 text-xs bg-indigo-50 px-2 py-1 rounded border border-indigo-100">{item.kode_cpmk}</span>
-                                <p className="text-gray-800 text-sm my-2 leading-relaxed">{item.deskripsi}</p>
-                                <div className="text-[10px] text-green-700 font-medium bg-green-50 p-2 rounded border border-green-100 flex gap-2">
-                                    <CheckSquare size={12}/> {item.ik?.[0] ? `[${item.ik[0].kode_ik}] ${item.ik[0].deskripsi}` : "No IK Mapping"}
+                {/* 2. CPMK (URUTAN PERTAMA) */}
+                <SectionWrapper title="CPMK & Integrasi IK" icon={<Target size={18}/>} bgColor="bg-teal-700" action={<button onClick={() => setShowCpmkModal(true)} className="bg-white/20 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-2"><Plus size={14}/> Tambah CPMK</button>}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {rpsData?.cpmk?.map((item: any) => (
+                            <div key={item.id} className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="bg-teal-600 text-white font-black px-2 py-0.5 rounded text-[10px]">{item.kode_cpmk}</span>
+                                    {item.ik?.[0] && <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">IK: {item.ik[0].kode}</span>}
                                 </div>
+                                <p className="text-sm text-gray-700 leading-relaxed font-medium">{item.deskripsi}</p>
                             </div>
                         ))}
                     </div>
-                </div>
+                </SectionWrapper>
 
-                {/* TABS (PERTEMUAN, RUBRIK, EVALUASI) */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
-                    <div className="flex border-b border-gray-200 bg-gray-50">
-                         <button onClick={() => setActiveTab("pertemuan")} className={`px-6 py-3 text-sm font-semibold transition-all ${activeTab === "pertemuan" ? "bg-white text-indigo-700 border-t-2 border-indigo-500" : "text-gray-500 hover:text-gray-700"}`}>Rencana Mingguan</button>
-                         <button onClick={() => setActiveTab("rubrik")} className={`px-6 py-3 text-sm font-semibold transition-all ${activeTab === "rubrik" ? "bg-white text-indigo-700 border-t-2 border-indigo-500" : "text-gray-500 hover:text-gray-700"}`}>Rubrik Penilaian</button>
-                         <button onClick={() => setActiveTab("evaluasi")} className={`px-6 py-3 text-sm font-semibold transition-all ${activeTab === "evaluasi" ? "bg-white text-indigo-700 border-t-2 border-indigo-500" : "text-gray-500 hover:text-gray-700"}`}>Evaluasi</button>
+                {/* 3. RENCANA MINGGUAN (URUTAN KEDUA) */}
+                <SectionWrapper title="Rencana Pembelajaran Mingguan" icon={<ScrollText size={18}/>} action={<button onClick={() => setShowPertemuanModal(true)} className="bg-white/20 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-2"><Plus size={14}/> Tambah Pertemuan</button>}>
+                    <div className="overflow-x-auto rounded-xl border border-gray-200">
+                        <table className="w-full text-xs text-left">
+                            <thead className="bg-gray-100 text-gray-600 font-bold border-b uppercase">
+                                <tr>
+                                    <th className="p-4 w-12 text-center">MG</th>
+                                    <th className="p-4">KEMAMPUAN AKHIR (SUB-CPMK)</th>
+                                    <th className="p-4">INDIKATOR & KRITERIA PENILAIAN</th>
+                                    <th className="p-4">METODE PEMBELAJARAN</th>
+                                    <th className="p-4 w-20 text-center text-indigo-700">BOBOT</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {rpsData?.pertemuan?.map((p: any) => (
+                                    <tr key={p.id} className={p.bobot_nilai > 0 ? "bg-indigo-50/30" : "hover:bg-gray-50"}>
+                                        <td className="p-4 text-center font-black">{p.pekan_ke}</td>
+                                        <td className="p-4 font-semibold text-gray-800">{p.kemampuan_akhir}</td>
+                                        <td className="p-4 text-gray-500 italic leading-relaxed">{p.kriteria_penilaian || "-"}</td>
+                                        <td className="p-4 text-gray-600">{p.metode_pembelajaran}</td>
+                                        <td className="p-4 text-center font-black text-indigo-700">{p.bobot_nilai}%</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
+                </SectionWrapper>
 
-                    {/* CONTENT: PERTEMUAN */}
-                    {activeTab === 'pertemuan' && (
-                        <div className="p-6">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-xs border-collapse border border-gray-200 mb-4">
-                                    <thead className="bg-gray-100 text-gray-700 uppercase">
-                                        <tr>
-                                            <th className="border p-2 w-10">Mg</th>
-                                            <th className="border p-2">Kemampuan Akhir (Sub-CPMK)</th>
-                                            <th className="border p-2">Indikator & Kriteria</th>
-                                            <th className="border p-2">Metode</th>
-                                            <th className="border p-2 w-16">Bobot</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {rpsData.pertemuan?.map((p: any) => (
-                                            <tr key={p.id} className={`${p.bobot_nilai > 0 ? "bg-indigo-50/40" : "hover:bg-gray-50/50"}`}>
-                                                <td className="border p-2 text-center font-bold">{p.pekan_ke}</td>
-                                                <td className="border p-2">
-                                                    {p.bobot_nilai > 0 && <span className="inline-block bg-indigo-600 text-white text-[9px] px-1.5 py-0.5 rounded mb-1 uppercase font-bold">Asesmen</span>}
-                                                    <p className="text-gray-800 leading-normal">{p.kemampuan_akhir}</p>
-                                                </td>
-                                                <td className="border p-2 text-gray-600 italic whitespace-pre-wrap">{p.kriteria_penilaian}</td>
-                                                <td className="border p-2 text-gray-700">{p.metode_pembelajaran}</td>
-                                                <td className={`border p-2 text-center font-bold ${p.bobot_nilai > 0 ? "text-indigo-700" : "text-gray-400"}`}>{p.bobot_nilai > 0 ? `${p.bobot_nilai}%` : "-"}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <button onClick={openAddPertemuan} className="bg-green-600 text-white px-4 py-2 rounded text-sm flex gap-2 shadow-sm hover:bg-green-700 transition-colors"><Plus size={16}/> Tambah Pertemuan</button>
+                {/* 4. EVALUASI (URUTAN AKHIR) */}
+                <SectionWrapper title="Ringkasan Bobot Nilai" icon={<PieChart size={18}/>} bgColor="bg-indigo-800">
+                    <div className="flex flex-col md:flex-row gap-8 items-center bg-indigo-50/50 p-8 rounded-2xl border border-indigo-100">
+                        <div className="text-center">
+                            <div className={`text-6xl font-black ${totalBobot === 100 ? 'text-green-600' : 'text-orange-500'}`}>{totalBobot}%</div>
+                            <p className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-widest">Total Akumulasi</p>
                         </div>
-                    )}
-
-                    {/* CONTENT: RUBRIK */}
-                    {activeTab === 'rubrik' && (
-                        <div className="p-6">
-                            <div className="flex justify-between items-center mb-6">
-                                <h4 className="font-bold text-gray-800">Rubrik Penilaian</h4>
-                                <button onClick={openAddRubrik} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm flex gap-2 items-center hover:bg-indigo-700 shadow-sm"><Plus size={16}/> Tambah Rubrik</button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {rpsData.rubriks?.length > 0 ? rpsData.rubriks.map((r: any) => (
-                                    <div key={r.id} className="border border-gray-200 rounded-xl p-4 bg-white hover:border-indigo-300 transition-all shadow-sm">
-                                        <div className="flex justify-between items-start border-b border-gray-100 pb-2 mb-2">
-                                            <div>
-                                                <span className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase border border-indigo-100">{r.kode_rubrik}</span>
-                                                <h5 className="font-bold text-gray-800 mt-1">{r.nama_rubrik}</h5>
-                                            </div>
-                                        </div>
-                                        <p className="text-[11px] text-gray-600 whitespace-pre-wrap line-clamp-4 leading-relaxed">{r.deskripsi}</p>
-                                    </div>
-                                )) : (
-                                    <div className="col-span-2 py-10 text-center border-2 border-dashed rounded-xl border-gray-200">
-                                        <BookOpen className="mx-auto text-gray-300 mb-2" size={40}/>
-                                        <p className="text-gray-500 text-sm">Belum ada rubrik penilaian yang dibuat.</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* CONTENT: EVALUASI */}
-                    {activeTab === 'evaluasi' && (
-                        <div className="p-6 flex flex-col md:flex-row gap-6">
-                            <div className="w-full md:w-1/3 bg-gray-50 p-6 rounded-xl text-center border">
-                                <PieChart className="mx-auto text-indigo-500 mb-2" size={48}/>
-                                <div className={`text-5xl font-extrabold ${totalBobot === 100 ? 'text-green-600' : 'text-orange-500'}`}>{totalBobot}%</div>
-                                <p className="text-xs text-gray-500 mt-2">Total Akumulasi Bobot Nilai</p>
-                            </div>
-                            <div className="w-full md:w-2/3">
-                                <h4 className="font-bold mb-4 text-gray-800">Ringkasan Komponen Nilai</h4>
-                                <ul className="text-sm border rounded-xl divide-y overflow-hidden">
-                                    {rpsData.pertemuan?.filter((p:any) => p.bobot_nilai > 0).map((p:any) => (
-                                        <li key={p.id} className="p-3 flex justify-between bg-white hover:bg-gray-50">
-                                            <div className="flex flex-col">
-                                                <span className="font-medium text-gray-800">Minggu {p.pekan_ke}: {p.kemampuan_akhir}</span>
-                                                {p.rubrik && <span className="text-[10px] text-indigo-600 font-bold uppercase mt-1">Rubrik: {p.rubrik.kode_rubrik}</span>}
-                                            </div>
-                                            <span className="font-bold text-indigo-700 text-lg">{p.bobot_nilai}%</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* --- MODALS --- */}
-            {/* Modal Rubrik */}
-            <Modal isOpen={showRubrikModal} onClose={() => setShowRubrikModal(false)} title="Tambah Rubrik Baru" onSave={handleSaveRubrik} isSaving={isSaving}>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="col-span-1"><label className="block text-[10px] font-bold text-gray-500 uppercase">Kode</label><input className="w-full border p-2 rounded-lg bg-gray-50 font-mono text-sm" placeholder="R-1" value={rubrikForm.kode} onChange={(e) => setRubrikForm({...rubrikForm, kode: e.target.value})} /></div>
-                        <div className="col-span-3"><label className="block text-[10px] font-bold text-gray-500 uppercase">Nama Rubrik</label><input className="w-full border p-2 rounded-lg text-sm" placeholder="Contoh: Rubrik Makalah" value={rubrikForm.nama} onChange={(e) => setRubrikForm({...rubrikForm, nama: e.target.value})} /></div>
-                    </div>
-                    <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Deskripsi & Kriteria</label><textarea className="w-full border p-2 h-40 rounded-lg text-sm" placeholder="Masukkan detail kriteria penilaian..." value={rubrikForm.deskripsi} onChange={(e) => setRubrikForm({...rubrikForm, deskripsi: e.target.value})} /></div>
-                </div>
-            </Modal>
-
-            {/* Modal CPMK */}
-            <Modal isOpen={showCpmkModal} onClose={() => setShowCpmkModal(false)} title="Tambah CPMK" onSave={handleSaveCpmk} isSaving={isSaving}>
-                <div className="space-y-4">
-                    <input className="w-full border p-2 rounded-lg text-sm" placeholder="Kode (CPMK-1)" value={cpmkForm.kode} onChange={(e) => setCpmkForm({...cpmkForm, kode: e.target.value})} />
-                    <textarea className="w-full border p-2 h-20 rounded-lg text-sm" placeholder="Deskripsi Capaian..." value={cpmkForm.deskripsi} onChange={(e) => setCpmkForm({...cpmkForm, deskripsi: e.target.value})} />
-                    <div className="border p-3 rounded-xl bg-gray-50">
-                        <p className="text-[10px] font-bold mb-2 text-indigo-700 uppercase">Pilih Indikator Kinerja (IK):</p>
-                        <div className="max-h-40 overflow-y-auto space-y-1">
-                            {rpsData.available_iks?.map((ik: any) => (
-                                <label key={ik.id} className="flex items-start gap-2 p-2 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-gray-200">
-                                    <input type="radio" name="ik_selection" className="mt-1" checked={String(cpmkForm.ik_id) === String(ik.id)} onChange={() => setCpmkForm({...cpmkForm, ik_id: ik.id})} />
-                                    <div className="text-[11px]"><span className="font-bold text-gray-800">[{ik.cpl_kode}] {ik.kode}</span><span className="text-gray-500 block">{ik.deskripsi}</span></div>
-                                </label>
+                        <div className="grow grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {rpsData?.pertemuan?.filter((p:any) => p.bobot_nilai > 0).map((p:any) => (
+                                <div key={p.id} className="bg-white p-3 rounded-xl border flex justify-between items-center shadow-sm">
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase">MG {p.pekan_ke}</span>
+                                    <span className="text-sm font-black text-indigo-700">{p.bobot_nilai}%</span>
+                                </div>
                             ))}
                         </div>
                     </div>
-                </div>
-            </Modal>
+                </SectionWrapper>
+            </div>
 
-            {/* Modal Pertemuan */}
-            <Modal isOpen={showPertemuanModal} onClose={() => setShowPertemuanModal(false)} title="Tambah Pertemuan" onSave={handleSavePertemuan} isSaving={isSaving}>
+            {/* --- MODALS --- */}
+
+            {/* Modal CPMK + IK (Integrasi IK Tetap Ada) */}
+            <Modal isOpen={showCpmkModal} onClose={() => setShowCpmkModal(false)} title="Tambah CPMK" onSave={() => handleSave("/api/rps/cpmk", cpmkForm, setShowCpmkModal)} isSaving={isSaving}>
                 <div className="space-y-4">
-                    <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
-                        <label className="block text-[10px] font-bold text-indigo-700 mb-1 uppercase tracking-wider">Acuan CPMK (Otomatis)</label>
-                        <select className="w-full border p-2 rounded-lg text-sm bg-white" value={selectedCpmkId} onChange={(e) => handleCpmkSelectForPertemuan(e.target.value)}>
-                            <option value="">-- Pilih CPMK --</option>
-                            {rpsData.cpmk?.map((c: any) => <option key={c.id} value={c.id}>{c.kode_cpmk} - {c.deskripsi.substring(0, 40)}...</option>)}
+                    <div><label className="text-[10px] font-bold text-gray-400 uppercase">Kode CPMK</label><input className="w-full border p-3 rounded-xl text-sm" placeholder="CPMK-1" value={cpmkForm.kode} onChange={(e) => setCpmkForm({...cpmkForm, kode: e.target.value})} /></div>
+                    <div>
+                        <label className="text-[10px] font-bold text-indigo-600 uppercase">Pilih Indikator Kinerja (IK)</label>
+                        <select className="w-full border p-3 rounded-xl text-sm bg-indigo-50 outline-none focus:ring-2 focus:ring-indigo-500" value={cpmkForm.ik_id} onChange={(e) => setCpmkForm({...cpmkForm, ik_id: e.target.value})}>
+                            <option value="">-- Hubungkan dengan IK Prodi --</option>
+                            {rpsData?.available_iks?.map((ik: any) => (<option key={ik.id} value={ik.id}>[{ik.kode}] {ik.deskripsi.substring(0, 60)}...</option>))}
                         </select>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-[10px] font-bold text-gray-500 uppercase">Pekan Ke</label><input type="number" className="w-full border p-2 rounded-lg text-sm" value={pertemuanForm.pekan_ke || ''} onChange={(e) => setPertemuanForm({...pertemuanForm, pekan_ke: e.target.value})} /></div>
-                        <div><label className="text-[10px] font-bold text-gray-500 uppercase">Bobot (%)</label><input type="number" className="w-full border p-2 rounded-lg text-sm" value={pertemuanForm.bobot_nilai || ''} onChange={(e) => setPertemuanForm({...pertemuanForm, bobot_nilai: e.target.value})} /></div>
-                    </div>
-                    <div><label className="text-[10px] font-bold text-gray-500 uppercase">Pilih Rubrik (Untuk Evaluasi)</label>
-                        <select className="w-full border p-2 rounded-lg text-sm bg-white" value={pertemuanForm.rubrik_id || ""} onChange={(e) => setPertemuanForm({...pertemuanForm, rubrik_id: e.target.value})}>
-                            <option value="">-- Tanpa Rubrik --</option>
-                            {rpsData.rubriks?.map((r: any) => <option key={r.id} value={r.id}>{r.kode_rubrik} - {r.nama_rubrik}</option>)}
-                        </select>
-                    </div>
-                    <div><label className="text-[10px] font-bold text-gray-500 uppercase">Kemampuan Akhir (Sub-CPMK)</label><textarea className="w-full border p-2 h-16 rounded-lg text-sm" value={pertemuanForm.kemampuan_akhir || ''} onChange={(e) => setPertemuanForm({...pertemuanForm, kemampuan_akhir: e.target.value})} /></div>
-                    <div><label className="text-[10px] font-bold text-gray-500 uppercase">Indikator Penilaian</label><textarea className="w-full border p-2 h-16 rounded-lg text-sm bg-gray-50" value={pertemuanForm.kriteria_penilaian || ''} onChange={(e) => setPertemuanForm({...pertemuanForm, kriteria_penilaian: e.target.value})} /></div>
-                    <div><label className="text-[10px] font-bold text-gray-500 uppercase">Metode Pembelajaran</label><input className="w-full border p-2 rounded-lg text-sm" value={pertemuanForm.metode_pembelajaran || ''} onChange={(e) => setPertemuanForm({...pertemuanForm, metode_pembelajaran: e.target.value})} /></div>
+                    <div><label className="text-[10px] font-bold text-gray-400 uppercase">Deskripsi Capaian</label><textarea className="w-full border p-3 h-32 rounded-xl text-sm" value={cpmkForm.deskripsi} onChange={(e) => setCpmkForm({...cpmkForm, deskripsi: e.target.value})} /></div>
                 </div>
             </Modal>
 
-            {/* Modal Otorisasi (General) */}
-            <Modal isOpen={editingSection === 'otorisasi'} onClose={() => setEditingSection(null)} title="Edit Otorisasi" onSave={handleSaveGeneral} isSaving={isSaving}>
-                <div className="space-y-3">
-                    <input className="w-full border p-2 rounded-lg text-sm" placeholder="Nama Penyusun" value={formData.penyusun || ''} onChange={(e) => setFormData({...formData, penyusun: e.target.value})} />
-                    <input className="w-full border p-2 rounded-lg text-sm" placeholder="Nama Koordinator" value={formData.koordinator || ''} onChange={(e) => setFormData({...formData, koordinator: e.target.value})} />
-                    <input className="w-full border p-2 rounded-lg text-sm" placeholder="Nama Kaprodi" value={formData.kaprodi || ''} onChange={(e) => setFormData({...formData, kaprodi: e.target.value})} />
+            {/* Modal Pertemuan (Dropdown 1-16) */}
+            <Modal isOpen={showPertemuanModal} onClose={() => setShowPertemuanModal(false)} title="Tambah Rencana Mingguan" onSave={() => handleSave("/api/rps/pertemuan", pertemuanForm, setShowPertemuanModal)} isSaving={isSaving}>
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase">Pekan Ke</label>
+                            <select className="w-full border p-3 rounded-xl text-sm bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none" value={pertemuanForm.pekan_ke} onChange={(e) => setPertemuanForm({...pertemuanForm, pekan_ke: e.target.value})}>
+                                {[...Array(16)].map((_, i) => (<option key={i+1} value={i+1}>Minggu ke-{i+1}</option>))}
+                            </select>
+                        </div>
+                        <div><label className="text-[10px] font-bold text-gray-400 uppercase">Bobot Nilai (%)</label><input type="number" className="w-full border p-3 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={pertemuanForm.bobot_nilai} onChange={(e) => setPertemuanForm({...pertemuanForm, bobot_nilai: e.target.value})} /></div>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-indigo-600 uppercase">Acuan CPMK</label>
+                        <select className="w-full border p-3 rounded-xl text-sm bg-indigo-50 outline-none focus:ring-2 focus:ring-indigo-500" value={pertemuanForm.cpmk_id} onChange={(e) => setPertemuanForm({...pertemuanForm, cpmk_id: e.target.value})}>
+                            <option value="">-- Pilih CPMK --</option>
+                            {rpsData?.cpmk?.map((c: any) => (<option key={c.id} value={c.id}>{c.kode_cpmk} - {c.deskripsi.substring(0, 40)}...</option>))}
+                        </select>
+                    </div>
+                    <div><label className="text-[10px] font-bold text-gray-400 uppercase">Kemampuan Akhir (Sub-CPMK)</label><textarea className="w-full border p-3 h-16 rounded-xl text-sm" value={pertemuanForm.kemampuan_akhir} onChange={(e) => setPertemuanForm({...pertemuanForm, kemampuan_akhir: e.target.value})} /></div>
+                    <div><label className="text-[10px] font-bold text-gray-400 uppercase">Kriteria & Indikator Penilaian (Manual)</label><textarea className="w-full border p-3 h-16 rounded-xl text-sm" placeholder="Contoh: Ketepatan analisis dan kerapian laporan..." value={pertemuanForm.kriteria_penilaian} onChange={(e) => setPertemuanForm({...pertemuanForm, kriteria_penilaian: e.target.value})} /></div>
+                    <div><label className="text-[10px] font-bold text-gray-400 uppercase">Metode Pembelajaran</label><input className="w-full border p-3 rounded-xl text-sm" value={pertemuanForm.metode_pembelajaran} onChange={(e) => setPertemuanForm({...pertemuanForm, metode_pembelajaran: e.target.value})} /></div>
+                </div>
+            </Modal>
+
+            {/* Modal Otorisasi (Multi-Dosen) */}
+            <Modal isOpen={editingSection === 'otorisasi'} onClose={() => setEditingSection(null)} title="Edit Tim Pengesahan RPS" onSave={() => handleSave("/api/rps/otorisasi", otorisasiForm, () => setEditingSection(null))} isSaving={isSaving}>
+                <div className="space-y-6">
+                    <div>
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Dosen Penyusun / Pengampu</label>
+                            <button onClick={() => setOtorisasiForm({...otorisasiForm, penyusun: [...otorisasiForm.penyusun, ""]})} className="text-[10px] bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-black flex items-center gap-1"><Plus size={12}/> Tambah Dosen</button>
+                        </div>
+                        <div className="space-y-2">
+                            {otorisasiForm.penyusun.map((nama: string, index: number) => (
+                                <div key={index} className="flex gap-2">
+                                    <input className="w-full border p-2.5 rounded-xl text-sm font-bold" value={nama} onChange={(e) => { const newP = [...otorisasiForm.penyusun]; newP[index] = e.target.value; setOtorisasiForm({...otorisasiForm, penyusun: newP}); }} />
+                                    <button title="Ubah" onClick={() => { const newP = otorisasiForm.penyusun.filter((_: any, i: number) => i !== index); setOtorisasiForm({...otorisasiForm, penyusun: newP}); }} className="text-red-500 p-2 hover:bg-red-50 rounded-xl"><X size={18}/></button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 pt-4 border-t">
+                        <div><label className="text-[10px] font-bold text-gray-400 uppercase">Nama Koordinator</label><input className="w-full border p-2.5 rounded-xl text-sm font-bold" value={otorisasiForm.koordinator} onChange={(e) => setOtorisasiForm({...otorisasiForm, koordinator: e.target.value})} /></div>
+                        <div><label className="text-[10px] font-bold text-gray-400 uppercase">Nama Kaprodi</label><input className="w-full border p-2.5 rounded-xl text-sm font-bold" value={otorisasiForm.kaprodi} onChange={(e) => setOtorisasiForm({...otorisasiForm, kaprodi: e.target.value})} /></div>
+                    </div>
                 </div>
             </Modal>
 
