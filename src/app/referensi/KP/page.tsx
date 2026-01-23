@@ -122,7 +122,7 @@ export default function KurikulumProdiPage() {
         <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gradient-to-r from-indigo-50 to-indigo-100">
+              <thead className="bg-linear-to-r from-indigo-50 to-indigo-100">
                 <tr>
                   <th className="w-16 px-6 py-4 text-left font-semibold text-xs text-indigo-800 uppercase">No</th>
                   <th className="px-6 py-4 text-left font-semibold text-xs text-indigo-800 uppercase">Tahun</th>

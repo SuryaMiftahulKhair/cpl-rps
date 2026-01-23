@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { 
     ChevronLeft, Edit, FileText, BookOpen, Target,
     ClipboardList, Loader2, Printer, Trash2, Copy, Plus, X, Save,
-    Book, CheckSquare, GraduationCap, PieChart
+    Book, CheckSquare, GraduationCap, PieChart, FileDown, ArrowLeft
 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
@@ -171,12 +171,38 @@ export default function DetailRPSPage({ params }: { params: Promise<{ id: string
     const matkul = rpsData.matakuliah || {};
     const totalBobot = rpsData.pertemuan ? rpsData.pertemuan.reduce((acc: number, curr: any) => acc + (curr.bobot_nilai || 0), 0) : 0;
 
+    function handleGeneratePDF(id: any): void {
+    // Membuka tab baru yang langsung memicu download PDF dari API
+    window.open(`/api/rps/export/${id}`, '_blank');
+    }
+
     return (
         <DashboardLayout>
             <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-800">Detail RPS: {matkul.nama}</h1>
-                    <button onClick={() => window.print()} className="bg-gray-700 text-white px-4 py-2 rounded flex gap-2 shadow-sm"><Printer size={16}/> Print</button>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-800">Detail Master RPS</h1>
+                        <p className="text-slate-500 text-sm">Nomor Dokumen: {rpsData.nomor_dokumen}</p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {/* Tombol Cetak PDF */}
+                        <button 
+                        onClick={() => handleGeneratePDF(rpsData.id)}
+                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-red-100"
+                        >
+                        <FileDown size={20} />
+                        Cetak PDF Resmi
+                        </button>
+
+                        <button 
+                        onClick={() => router.back()}
+                        className="flex items-center gap-2 bg-white border-2 border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition-all"
+                        >
+                        <ArrowLeft size={18} />
+                        Kembali
+                        </button>
+                    </div>
                 </div>
 
                 {/* INFO & OTORISASI (Grid) */}
