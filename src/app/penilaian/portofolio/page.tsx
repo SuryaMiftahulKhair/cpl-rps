@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Eye, Plus, RefreshCw, Loader2 } from "lucide-react"; 
 import DashboardLayout from "@/app/components/DashboardLayout";
-import  { TahunAjaranModal } from "@/app/components/TahunAjaranModal";
+import TahunAjaranModal from "@/app/components/TahunAjaranModal";
 
 async function parseApiError(res: Response): Promise<string> {
   const text = await res.text();
