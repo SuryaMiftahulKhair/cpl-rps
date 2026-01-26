@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Eye, Loader2, RefreshCw, Plus } from "lucide-react"; 
 import DashboardLayout from "@/app/components/DashboardLayout";
 
-import {TahunAjaranModal} from "@/app/components/TahunAjaranModal"; 
+import TahunAjaranModal from "@/app/components/TahunAjaranModal";
 
 export enum Semester {
   GANJIL = 'GANJIL',

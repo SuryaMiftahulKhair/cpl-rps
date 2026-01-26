@@ -1,9 +1,9 @@
-// file: src/app/components/KelasModal.tsx
 "use client";
-import { useState, useEffect } from "react";
+
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { X, Save, Loader2 } from "lucide-react";
 
-// Tipe data untuk Mata Kuliah dari Database
 interface MataKuliah {
   id: number;
   kode_mk: string;
@@ -12,161 +12,192 @@ interface MataKuliah {
   semester: number;
 }
 
+interface FormValues {
+  matakuliah_id: string;
+  nama_kelas: string;
+  sks: number;
+}
+
 interface KelasModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // Perhatikan: kita tambahkan matakuliah_id agar relasi database terjaga (opsional tapi disarankan)
-  onSubmit: (data: { kode_mk: string; nama_mk: string; nama_kelas: string; sks: number; matakuliah_id?: number }) => void;
+  onSubmit: (data: {
+    kode_mk: string;
+    nama_mk: string;
+    nama_kelas: string;
+    sks: number;
+    matakuliah_id: number;
+  }) => void;
   submitting: boolean;
 }
 
-export default function KelasModal({ isOpen, onClose, onSubmit, submitting }: KelasModalProps) {
-  // State Form
-  const [selectedMkId, setSelectedMkId] = useState<string>(""); // ID untuk value select
-  const [namaKelas, setNamaKelas] = useState("");
-  const [sks, setSks] = useState(3);
-
-  // State Data Master
+export default function KelasModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  submitting,
+}: KelasModalProps) {
   const [mkList, setMkList] = useState<MataKuliah[]>([]);
-  const [isLoadingMk, setIsLoadingMk] = useState(false);
+  const [loadingMk, setLoadingMk] = useState(false);
 
-  // 1. Fetch Data Mata Kuliah saat Modal Dibuka
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: {
+      matakuliah_id: "",
+      nama_kelas: "",
+      sks: 3,
+    },
+  });
+
+  const selectedMkId = watch("matakuliah_id");
+
+  // ======================
+  // Fetch Mata Kuliah
+  // ======================
   useEffect(() => {
-    if (isOpen) {
-      setIsLoadingMk(true);
-      fetch("/api/matakuliah")
-        .then((res) => res.json())
-        .then((json) => {
-          setMkList(json.data || []);
-        })
-        .catch((err) => console.error("Gagal ambil MK:", err))
-        .finally(() => setIsLoadingMk(false));
-    } else {
-      // Reset form saat tutup
-      setSelectedMkId("");
-      setNamaKelas("");
-      setSks(3);
-    }
+    if (!isOpen) return;
+
+    setLoadingMk(true);
+    fetch("/api/matakuliah")
+      .then((res) => res.json())
+      .then((json) => setMkList(json.data || []))
+      .finally(() => setLoadingMk(false));
   }, [isOpen]);
 
-  // 2. Handle saat User Memilih Mata Kuliah dari Dropdown
-  const handleMkChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    setSelectedMkId(id);
-
-    // Cari detail MK berdasarkan ID yang dipilih untuk auto-fill SKS
-    const selectedMk = mkList.find((mk) => String(mk.id) === id);
-    if (selectedMk) {
-      setSks(selectedMk.sks);
+  // ======================
+  // Auto-fill SKS
+  // ======================
+  useEffect(() => {
+    const mk = mkList.find((m) => String(m.id) === selectedMkId);
+    if (mk) {
+      setValue("sks", mk.sks);
     }
-  };
+  }, [selectedMkId, mkList, setValue]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validasi: Pastikan MK terpilih dari list
-    const selectedMk = mkList.find((mk) => String(mk.id) === selectedMkId);
-    
-    if (!selectedMk) {
-      alert("Silakan pilih Mata Kuliah yang terdaftar!");
-      return;
-    }
+  // ======================
+  // Submit
+  // ======================
+  const submitHandler = (data: FormValues) => {
+    const mk = mkList.find((m) => String(m.id) === data.matakuliah_id);
+    if (!mk) return;
 
-    onSubmit({ 
-      kode_mk: selectedMk.kode_mk, 
-      nama_mk: selectedMk.nama, 
-      nama_kelas: namaKelas, 
-      sks: Number(sks),
-      matakuliah_id: selectedMk.id // Kirim ID untuk relasi backend
+    onSubmit({
+      kode_mk: mk.kode_mk,
+      nama_mk: mk.nama,
+      nama_kelas: data.nama_kelas,
+      sks: Number(data.sks),
+      matakuliah_id: mk.id,
     });
+
+    reset();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-        
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white w-full max-w-md rounded-xl shadow-xl">
+
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b bg-gray-50">
-          <h3 className="text-lg font-bold text-gray-800">Tambah Kelas</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={20} />
+          <h3 className="font-semibold text-lg text-gray-800">
+            Tambah Kelas
+          </h3>
+          <button onClick={onClose}>
+            <X className="text-gray-500 hover:text-gray-700" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          
-          {/* Dropdown Mata Kuliah */}
+        {/* Form */}
+        <form onSubmit={handleSubmit(submitHandler)} className="p-6 space-y-4">
+
+          {/* Mata Kuliah */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Pilih Mata Kuliah <span className="text-red-500">*</span>
+            <label className="text-sm font-medium text-gray-700">
+              Mata Kuliah <span className="text-red-500">*</span>
             </label>
-            <div className="relative">
-              <select 
-                required
-                value={selectedMkId} 
-                onChange={handleMkChange}
-                disabled={isLoadingMk}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white disabled:bg-gray-100"
-              >
-                <option value="">-- Pilih Matakuliah --</option>
-                {mkList.map((mk) => (
-                  <option key={mk.id} value={mk.id}>
-                    {mk.kode_mk} - {mk.nama} (Smt {mk.semester})
-                  </option>
-                ))}
-              </select>
-              
-              {/* Indikator Loading di pojok kanan select */}
-              {isLoadingMk && (
-                <div className="absolute right-8 top-2.5">
-                  <Loader2 size={16} className="animate-spin text-gray-400" />
-                </div>
-              )}
-            </div>
-            {mkList.length === 0 && !isLoadingMk && (
-              <p className="text-xs text-red-500 mt-1">Data mata kuliah kosong atau gagal dimuat.</p>
+
+            <select
+              {...register("matakuliah_id", { required: true })}
+              disabled={loadingMk}
+              className="w-full mt-1 px-3 py-2 border rounded-lg
+                focus:ring-2 focus:ring-indigo-500 outline-none
+                text-gray-900 bg-white"
+            >
+              <option value="">-- Pilih Mata Kuliah --</option>
+              {mkList.map((mk) => (
+                <option key={mk.id} value={mk.id}>
+                  {mk.kode_mk} - {mk.nama} (Smt {mk.semester})
+                </option>
+              ))}
+            </select>
+
+            {errors.matakuliah_id && (
+              <p className="text-xs text-red-500 mt-1">
+                Mata kuliah wajib dipilih
+              </p>
             )}
           </div>
 
+          {/* Nama Kelas & SKS */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Input Nama Kelas */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nama Kelas <span className="text-red-500">*</span>
+              <label className="text-sm font-medium text-gray-700">
+                Nama Kelas
               </label>
-              <input 
-                type="text" required
-                value={namaKelas} onChange={e => setNamaKelas(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none uppercase"
-                placeholder="A, B, C..."
+              <input
+                {...register("nama_kelas", { required: true })}
+                placeholder="A / B / C"
+                className="w-full mt-1 px-3 py-2 border rounded-lg
+                  focus:ring-2 focus:ring-indigo-500 outline-none
+                  text-gray-900 uppercase"
               />
             </div>
 
-            {/* Input SKS (Auto-filled but editable) */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">SKS</label>
-              <input 
-                type="number" min="0" max="6" required
-                value={sks} onChange={e => setSks(Number(e.target.value))}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50"
+              <label className="text-sm font-medium text-gray-700">
+                SKS
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={6}
+                {...register("sks", { required: true })}
+                className="w-full mt-1 px-3 py-2 border rounded-lg
+                  focus:ring-2 focus:ring-indigo-500 outline-none
+                  text-gray-900 bg-gray-50"
               />
             </div>
           </div>
 
-          {/* Footer Buttons */}
+          {/* Footer */}
           <div className="pt-4 flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-100 rounded-lg text-sm"
+            >
               Batal
             </button>
-            <button 
-              type="submit" 
-              disabled={submitting || isLoadingMk || !selectedMkId}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg
+                flex items-center gap-2 disabled:opacity-50"
             >
-              {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              {submitting ? "Menyimpan..." : "Simpan"}
+              {submitting ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <Save size={16} />
+              )}
+              Simpan
             </button>
           </div>
         </form>
