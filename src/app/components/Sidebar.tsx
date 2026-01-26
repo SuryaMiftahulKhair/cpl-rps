@@ -1,23 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
     Home,
     FileText,
     Book,
-    ClipboardList,
     Monitor,
     Settings,
     Layers,
     ChevronDown,
-    ChevronRight,
     LayoutPanelTop,
     ScrollText,
     LucideIcon,
     BarChart3,
-    UsersIcon, // Ikon untuk Laporan
+    UsersIcon,
 } from "lucide-react";
 import LogoutButton from "./LogOutButton";
 
@@ -111,24 +109,52 @@ const SubMenuItem: React.FC<SubMenuItemProps> = ({ href, children, isActive }) =
 
 export default function Sidebar() {
     const [openPenilaian, setOpenPenilaian] = useState(false);
-    const [openLaporan, setOpenLaporan] = useState(false); // New state for Laporan
+    const [openLaporan, setOpenLaporan] = useState(false);
     const [openReferensi, setOpenReferensi] = useState(false);
+    
+    // State untuk menampung data Program Studi secara dinamis
+    const [programInfo, setProgramInfo] = useState({
+        nama: "Memuat...",
+        jenjang: "...",
+    });
 
     const pathname = usePathname();
     const currentPath = pathname || "/";
 
     const isPenilaianActive = currentPath.startsWith("/penilaian");
-    const isLaporanActive = currentPath.startsWith("/laporan"); // New active check
+    const isLaporanActive = currentPath.startsWith("/laporan");
     const isReferensiActive = currentPath.startsWith("/referensi");
-    
-    // Auto-open dropdowns if any sub-item is active
-    if (isPenilaianActive && !openPenilaian) setOpenPenilaian(true);
-    if (isLaporanActive && !openLaporan) setOpenLaporan(true);
-    if (isReferensiActive && !openReferensi) setOpenReferensi(true);
+
+    // Efek untuk mengambil profil user dari API
+    useEffect(() => {
+        const fetchInfo = async () => {
+            try {
+                const res = await fetch('/api/auth/profile');
+                const result = await res.json();
+                
+                if (result.success && result.user.programStudi) {
+                    setProgramInfo({
+                        nama: result.user.programStudi.nama,
+                        jenjang: result.user.programStudi.jenjang
+                    });
+                }
+            } catch (err) {
+                console.error("Gagal sinkronisasi profil sidebar:", err);
+            }
+        };
+        fetchInfo();
+    }, []);
+
+    // Auto-open dropdowns jika sub-item sedang aktif
+    useEffect(() => {
+        if (isPenilaianActive) setOpenPenilaian(true);
+        if (isLaporanActive) setOpenLaporan(true);
+        if (isReferensiActive) setOpenReferensi(true);
+    }, [isPenilaianActive, isLaporanActive, isReferensiActive]);
 
     return (
-        <div className="w-64 h-max-relative bg-white shadow-xl flex flex-col border-r border-gray-200">
-            {/* --- Header / Branding --- (Unchanged) */}
+        <div className="w-64 h-screen sticky top-0 bg-white shadow-xl flex flex-col border-r border-gray-200">
+            {/* --- Header / Branding DINAMIS --- */}
             <div className="relative">
                 <div className="absolute inset-0 bg-linear-to-br from-indigo-500 to-indigo-600 opacity-5"></div>
                 <div className="relative flex flex-col items-start p-5 border-b border-indigo-100">
@@ -137,20 +163,22 @@ export default function Sidebar() {
                             <LayoutPanelTop size={24} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="font-extrabold text-xl text-indigo-700 tracking-tight">
+                            <h1 className="font-extrabold text-xl text-indigo-700 tracking-tight uppercase">
                                 APP-CPL
                             </h1>
-                            <p className="text-xs font-medium text-indigo-600 mt-0.5">
+                            <p className="text-[10px] font-bold text-indigo-600 mt-0.5 leading-none">
                                 Learning Outcomes
                             </p>
                         </div>
                     </div>
-                    <div className="mt-3 w-full">
-                        <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-                            <p className="text-xs font-semibold text-indigo-700">
-                                UNHAS TEKNIK AREA
+                    
+                    {/* Box Dinamis Nama Prodi & Jenjang Sesuai Database */}
+                    <div className="mt-4 w-full">
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 shadow-sm">
+                            <p className="text-xs font-black text-indigo-800 uppercase leading-tight">
+                                {programInfo.nama}
                             </p>
-                            <p className="text-xs text-gray-600 mt-0.5">Program Magister (S2)</p>
+                            
                         </div>
                     </div>
                 </div>
@@ -158,12 +186,11 @@ export default function Sidebar() {
 
             {/* --- Navigasi --- */}
             <nav className="flex-1 p-3 space-y-1 text-sm overflow-y-auto">
-                {/* Home */}
                 <MenuItem href="/home" icon={Home} isActive={currentPath === "/home"}>
                     Home
                 </MenuItem>
 
-                {/* Penilaian (Dropdown) */}
+                {/* Penilaian */}
                 <div className="pt-1">
                     <DropdownToggle
                         icon={FileText}
@@ -174,42 +201,33 @@ export default function Sidebar() {
                         Penilaian
                     </DropdownToggle>
                     <div
-                        className={`
-                            overflow-hidden transition-all duration-300 ease-in-out
-                            ${openPenilaian ? "max-h-60 opacity-100 mt-1" : "max-h-0 opacity-0"}
-                        `}
+                        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                            openPenilaian ? "max-h-60 opacity-100 mt-1" : "max-h-0 opacity-0"
+                        }`}
                     >
                         <div className="ml-5 space-y-1 border-l-2 border-indigo-100 pl-1">
-                            <SubMenuItem 
-                                href="/penilaian/datakelas" 
-                                isActive={currentPath === "/penilaian/datakelas"}
-                            >
+                            <SubMenuItem href="/penilaian/datakelas" isActive={currentPath === "/penilaian/datakelas"}>
                                 Data Kelas
                             </SubMenuItem>
-                            <SubMenuItem 
-                                href="/penilaian/portofolio" 
-                                isActive={currentPath === "/penilaian/portofolio"}
-                            >
-                                Portofolio {/* 🚀 Perubahan: Portofolio ditambahkan */}
+                            <SubMenuItem href="/penilaian/portofolio" isActive={currentPath === "/penilaian/portofolio"}>
+                                Portofolio
                             </SubMenuItem>
                         </div>
                     </div>
                 </div>
 
-                {/* Dokumen Akreditasi */}
                 <MenuItem href="/dokumen" icon={Book} isActive={currentPath === "/dokumen"}>
                     Dokumen Akreditasi
                 </MenuItem>
 
-                {/* RPS Matakuliah */}
                 <MenuItem href="/rps" icon={ScrollText} isActive={currentPath === "/rps"}>
                     RPS Matakuliah
                 </MenuItem>
 
-                {/* Laporan (Dropdown) */}
+                {/* Laporan */}
                 <div className="pt-1">
                     <DropdownToggle
-                        icon={BarChart3} // Ikon yang lebih cocok untuk laporan
+                        icon={BarChart3}
                         isOpen={openLaporan}
                         onClick={() => setOpenLaporan(!openLaporan)}
                         isActive={isLaporanActive}
@@ -217,46 +235,32 @@ export default function Sidebar() {
                         Laporan
                     </DropdownToggle>
                     <div
-                        className={`
-                            overflow-hidden transition-all duration-300 ease-in-out
-                            ${openLaporan ? "max-h-60 opacity-100 mt-1" : "max-h-0 opacity-0"}
-                        `}
+                        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                            openLaporan ? "max-h-60 opacity-100 mt-1" : "max-h-0 opacity-0"
+                        }`}
                     >
                         <div className="ml-5 space-y-1 border-l-2 border-indigo-100 pl-1">
-                            <SubMenuItem 
-                                href="/laporan/cpl-prodi" 
-                                isActive={currentPath === "/laporan/cpl-prodi"}
-                            >
+                            <SubMenuItem href="/laporan/cpl-prodi" isActive={currentPath === "/laporan/cpl-prodi"}>
                                 CPL Prodi
                             </SubMenuItem>
-                            <SubMenuItem 
-                                href="/laporan/cpl-mhswa" 
-                                isActive={currentPath === "/laporan/cpl-mhswa"}
-                            >
+                            <SubMenuItem href="/laporan/cpl-mhswa" isActive={currentPath === "/laporan/cpl-mhswa"}>
                                 CPL Mahasiswa
                             </SubMenuItem>
-                            <SubMenuItem 
-                                href="/laporan/rekap-metode" 
-                                isActive={currentPath.startsWith("/laporan/rekap-metode")}
-                            >
+                            <SubMenuItem href="/laporan/rekap-metode" isActive={currentPath.startsWith("/laporan/rekap-metode")}>
                                 Rekap Metode Penilaian
                             </SubMenuItem>
-                            <SubMenuItem 
-                                href="/laporan/rekap-kuisioner-pembelajaran" 
-                                isActive={currentPath.startsWith("/laporan/rekap-kuisioner-pembelajaran")}
-                            >
+                            <SubMenuItem href="/laporan/rekap-kuisioner-pembelajaran" isActive={currentPath.startsWith("/laporan/rekap-kuisioner-pembelajaran")}>
                                 Rekap Kuisioner Pembelajaran
                             </SubMenuItem>
                         </div>
                     </div>
                 </div>
 
-                {/* Monitoring Univ */}
                 <MenuItem href="/monitoring" icon={Monitor} isActive={currentPath === "/monitoring"}>
                     Monitoring Univ
                 </MenuItem>
 
-                {/* Referensi (Dropdown) */}
+                {/* Referensi */}
                 <div className="pt-1">
                     <DropdownToggle
                         icon={Layers}
@@ -267,46 +271,34 @@ export default function Sidebar() {
                         Referensi
                     </DropdownToggle>
                     <div
-                        className={`
-                            overflow-hidden transition-all duration-300 ease-in-out
-                            ${openReferensi ? "max-h-40 opacity-100 mt-1" : "max-h-0 opacity-0"}
-                        `}
+                        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                            openReferensi ? "max-h-40 opacity-100 mt-1" : "max-h-0 opacity-0"
+                        }`}
                     >
                         <div className="ml-5 space-y-1 border-l-2 border-indigo-100 pl-1">
-                            <SubMenuItem 
-                                href="/referensi/KP" 
-                                isActive={currentPath.startsWith("/referensi/KP")} // Gunakan startsWith untuk halaman detail kurikulum
-                            >
+                            <SubMenuItem href="/referensi/KP" isActive={currentPath.startsWith("/referensi/KP")}>
                                 Kurikulum Prodi
                             </SubMenuItem>
-                            <SubMenuItem 
-                                href="/referensi/JP" 
-                                isActive={currentPath === "/referensi/JP"}
-                            >
+                            <SubMenuItem href="/referensi/JP" isActive={currentPath === "/referensi/JP"}>
                                 Jenis Penilaian
                             </SubMenuItem>
                         </div>
                     </div>
                 </div>
-                {/* Monitoring Univ */}
+
                 <MenuItem href="/manajemenuser" icon={UsersIcon} isActive={currentPath === "/manajemenuser"}>
                     Manajemen User
                 </MenuItem>
             </nav>
 
-            {/* --- Footer / Settings --- */}
+            {/* --- Footer --- */}
             <div className="p-3 border-t border-gray-100 bg-gray-50/50">
-
                 <LogoutButton />
-
                 <MenuItem href="/pengaturan" icon={Settings} isActive={currentPath === "/pengaturan"}>
                     Pengaturan
                 </MenuItem>
-
-                
-                
-                <div className="mt-3 px-3 py-2 text-center">
-                    <p className="text-xs text-gray-400">v1.0.0</p>
+                <div className="mt-3 text-center">
+                    <p className="text-[10px] font-bold text-gray-400 tracking-widest">v1.0.0</p>
                 </div>
             </div>
         </div>

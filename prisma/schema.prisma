@@ -4,20 +4,18 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // url      = env("DATABASE_URL")
 }
 
 model User {
-  id            Int             @id @default(autoincrement())
-  username      String          @unique
+  id            Int            @id @default(autoincrement())
+  username      String         @unique
   password_hash String
   nama          String
   role          UserRole
   prodi_id      Int?
-  dosenPengampu DosenPengampu[]
-  programStudi  ProgramStudi?   @relation("UserToProgramStudi", fields: [prodi_id], references: [id])
-  pesertaKelas  PesertaKelas[]  @relation("PesertaKelasToUser")
-  programStudis ProgramStudi[]  @relation("UserToProgramStudis")
+  programStudi  ProgramStudi?  @relation("UserToProgramStudi", fields: [prodi_id], references: [id])
+  programStudis ProgramStudi[] @relation("UserToProgramStudis")
 
   @@map("users")
 }
@@ -89,16 +87,16 @@ model AssasmentArea {
 }
 
 model TahunAjaran {
-  id          Int      @id @default(autoincrement())
-  tahun       String
-  semester    Semester
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  kelas       Kelas[]
+  id         Int      @id @default(autoincrement())
+  tahun      String
+  semester   Semester
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  kelas      Kelas[]
+  rps        RPS[]
 
   @@unique([tahun, semester])
   @@map("tahun_ajaran")
-  rps RPS[]
 }
 
 model Kelas {
@@ -111,28 +109,17 @@ model Kelas {
   created_at      DateTime        @default(now())
   updated_at      DateTime        @updatedAt
   matakuliah_id   Int?
-  dosen_pengampu  DosenPengampu[]
+  rps_id          Int?
+  peserta_kelas   PesertaKelas[]  
   matakuliah      MataKuliah?     @relation(fields: [matakuliah_id], references: [id])
+  rps             RPS?            @relation(fields: [rps_id], references: [id])
   tahun_ajaran    TahunAjaran     @relation(fields: [tahun_ajaran_id], references: [id])
   komponenNilai   KomponenNilai[]
-  peserta_kelas   PesertaKelas[]
   cpmk            CPMK[]          @relation("CPMKToKelas")
 
   @@index([tahun_ajaran_id])
   @@index([kode_mk])
   @@map("kelas")
-}
-
-model DosenPengampu {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  kelas_id  Int
-  dosen_id  Int
-  dosen     User     @relation(fields: [dosen_id], references: [id])
-  kelas     Kelas    @relation(fields: [kelas_id], references: [id])
-
-  @@unique([kelas_id, dosen_id])
-  @@map("dosen_pengampu")
 }
 
 model RPS {
@@ -151,24 +138,22 @@ model RPS {
   nama_penyusun       String?
   nomor_dokumen       String?
   tanggal_penyusunan  DateTime       @default(now())
-
-  tahun_ajaran_id     Int?
-  tahun_ajaran        TahunAjaran?   @relation(fields: [tahun_ajaran_id], references: [id])
-
-  tahun               String?
   semester            Semester?
-
+  tahun               String?
+  tahun_ajaran_id     Int?
+  kelas               Kelas[]
   matakuliah          MataKuliah     @relation(fields: [matakuliah_id], references: [id])
+  tahun_ajaran        TahunAjaran?   @relation(fields: [tahun_ajaran_id], references: [id])
   pertemuan           RPSPertemuan[]
+  rubriks             Rubrik[]       @relation("RPSToRubrik")
   cpmk                CPMK[]         @relation("CPMKToRPS")
   ikas                Ik[]           @relation("IkaToRPS")
 
   @@map("rps")
-  rubriks Rubrik[] @relation("RPSToRubrik")
 }
 
 model RPSPertemuan {
-  id                  Int     @id @default(autoincrement())
+  id                  Int      @id @default(autoincrement())
   pekan_ke            Int
   kemampuan_akhir     String?
   bahan_kajian        String?
@@ -178,10 +163,11 @@ model RPSPertemuan {
   kriteria_penilaian  String?
   bobot_nilai         Float?
   rps_id              Int
-  rps                 RPS     @relation(fields: [rps_id], references: [id], onDelete: Cascade)
+  cpmk                CPMK[]   @relation("CPMKToPertemuan")
+  rps                 RPS      @relation(fields: [rps_id], references: [id], onDelete: Cascade)
+  rubriks             Rubrik[] @relation("RubrikToPertemuan")
 
   @@map("rps_pertemuan")
-  rubriks Rubrik[] @relation("RubrikToPertemuan")
 }
 
 model CPMK {
@@ -189,10 +175,13 @@ model CPMK {
   kode_cpmk              String
   is_locked              Boolean                  @default(false)
   deskripsi              String
-  pemetaan_komponen_cpmk pemetaan_komponen_cpmk[]
+  pemetaan_komponen_cpmk PemetaanKomponenCpmk[]
+  rps_pertemuan          RPSPertemuan[]           @relation("CPMKToPertemuan")
   kelas                  Kelas[]                  @relation("CPMKToKelas")
   rps                    RPS[]                    @relation("CPMKToRPS")
   ik                     Ik[]                     @relation("IkaToCPMK")
+  
+
   @@map("cpmk")
 }
 
@@ -210,46 +199,61 @@ model Ik {
   @@map("ik")
 }
 
-model PesertaKelas {
-  id          Int      @id @default(autoincrement())
-  kelas_id    Int
-  createdAt   DateTime @default(now())
-  nilai_huruf String?
-  nim         String
-  nilai_angka Float?   @default(0)
-  nama        String
-  nilai       Nilai[]
-  kelas       Kelas    @relation(fields: [kelas_id], references: [id])
-  users       User[]   @relation("PesertaKelasToUser")
-
-  @@unique([kelas_id, nim])
-  @@map("peserta_kelas")
-}
-
 model KomponenNilai {
   id                     Int                      @id @default(autoincrement())
   nama                   String
   bobot                  Float
   kelas_id               Int
   kelas                  Kelas                    @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
-  nilai                  Nilai[]                  @relation("NilaiToKomponen")
-  pemetaan_komponen_cpmk pemetaan_komponen_cpmk[]
+  nilai                  Nilai[]
+  pemetaan_komponen_cpmk PemetaanKomponenCpmk[]
+
   @@map("komponen_nilai")
 }
 
 model Nilai {
   id                Int           @id @default(autoincrement())
-  nilai_angka       Float
+  
+  nilai_komponen    Float
   peserta_kelas_id  Int
-  komponen_nilai_id Int
-  komponen          KomponenNilai @relation("NilaiToKomponen", fields: [komponen_nilai_id], references: [id], onDelete: Cascade)
-  pesertaKelas      PesertaKelas  @relation(fields: [peserta_kelas_id], references: [id], onDelete: Cascade)
+  peserta_kelas     PesertaKelas @relation(fields: [peserta_kelas_id], references: [id], onDelete: Cascade)
 
+
+  komponen_nilai_id Int
+  komponen          KomponenNilai @relation(fields: [komponen_nilai_id], references: [id], onDelete: Cascade)
   @@unique([peserta_kelas_id, komponen_nilai_id])
   @@map("nilai")
 }
 
-model pemetaan_komponen_cpmk {
+model Mahasiswa {
+  id        Int   @id @default(autoincrement())
+  nama      String
+  nim       String  @unique
+
+  created_at DateTime @default(now())
+  peserta_kelas PesertaKelas[] 
+
+  @@map("mahasiswa")
+}
+
+model PesertaKelas {
+  id        Int   @id @default(autoincrement())
+  nilai_akhir_angka Float?
+  nilai_akhir_huruf String?
+
+  created_at DateTime @default(now())
+
+  kelas_id    Int
+  kelas       Kelas    @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
+  mahasiswa_id Int
+  mahasiswa   Mahasiswa @relation(fields: [mahasiswa_id], references: [id], onDelete: Cascade)
+  nilai     Nilai[]
+
+  @@unique([kelas_id, mahasiswa_id])
+  @@map("peserta_kelas")
+}
+
+model PemetaanKomponenCpmk {
   id                Int           @id @default(autoincrement())
   komponen_nilai_id Int
   cpmk_id           Int
@@ -260,16 +264,15 @@ model pemetaan_komponen_cpmk {
 
 model Rubrik {
   id          Int            @id @default(autoincrement())
-  kode_rubrik String         // Contoh: R-1
-  nama_rubrik String         // Contoh: Rubrik Penilaian Makalah
-  deskripsi   String         @db.Text
+  kode_rubrik String
+  nama_rubrik String
+  deskripsi   String
   rps_id      Int
   rps         RPS            @relation("RPSToRubrik", fields: [rps_id], references: [id], onDelete: Cascade)
   pertemuan   RPSPertemuan[] @relation("RubrikToPertemuan")
 
   @@map("rubrik")
 }
-
 
 enum UserRole {
   ADMIN
