@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/../lib/prisma";
-import { compare } from "bcrypt";
+import { compare } from "bcryptjs";
 import { createSession } from "@/../lib/auth"; // <--- Pastikan import ini ada!
 
 export async function POST(req: Request) {

@@ -2,11 +2,13 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
     ChevronLeft, FileText, Plus, Edit, Trash2, X, Loader2, Calendar, Eye 
 } from "lucide-react";
+import { Semester } from "@prisma/client";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
 // --- Data Types ---
@@ -18,7 +20,7 @@ interface RPSVersion {
     deskripsi: string | null;
     is_locked: boolean;
     tahun?: string;
-    semester?: string;
+    semester?: Semester;
 }
 
 interface MataKuliah {
@@ -27,72 +29,116 @@ interface MataKuliah {
     kode_mk: string;
 }
 
-// --- Komponen Modal Form (REVISI LENGKAP) ---
+// --- Form Data Type ---
+interface RPSFormData {
+    keterangan: string;
+    tahun: string;
+    semester: Semester;
+}
+
+// --- Komponen Modal Form dengan React Hook Form ---
 function AddRPSModal({ isOpen, onClose, onSubmit, isProcessing }: any) {
-    const [keterangan, setKeterangan] = useState("");
-    const [tahun, setTahun] = useState("2025/2026");
-    const [semester, setSemester] = useState("GANJIL");
+    const { register, handleSubmit, formState: { errors }, reset } = useForm<RPSFormData>({
+        defaultValues: {
+            tahun: "2025/2026",
+            semester: Semester.GANJIL,
+            keterangan: ""
+        }
+    });
 
-    if (!isOpen) return null;
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Mengirim data lengkap ke fungsi handleAddRPS
+    const onFormSubmit = (data: RPSFormData) => {
         onSubmit({ 
-            keterangan, 
-            new_tahun: tahun, 
-            new_semester: semester,
+            keterangan: data.keterangan, 
+            new_tahun: data.tahun, 
+            new_semester: data.semester,
             is_new_ta: true 
         });
     };
 
+    const handleClose = () => {
+        reset();
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
     return (
         <>
-            <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={onClose} />
+            <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={handleClose} />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
                     <div className="p-6 border-b border-gray-200 flex justify-between items-center">
                         <h3 className="text-xl font-bold text-gray-800">Buat RPS Baru</h3>
-                        <button title="tutup" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
+                        <button title="tutup" onClick={handleClose} className="text-gray-400 hover:text-gray-900">
+                            <X size={24}/>
+                        </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <form onSubmit={handleSubmit(onFormSubmit)} className="p-6 space-y-4">
                         {/* Input Tahun Ajaran */}
                         <div>
-                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Tahun Ajaran</label>
+                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">
+                                Tahun Ajaran
+                            </label>
                             <input 
                                 type="text" 
-                                value={tahun} 
-                                onChange={(e) => setTahun(e.target.value)}
+                                {...register("tahun", { 
+                                    required: "Tahun ajaran wajib diisi",
+                                    pattern: {
+                                        value: /^\d{4}\/\d{4}$/,
+                                        message: "Format: 2025/2026"
+                                    }
+                                })}
                                 placeholder="Contoh: 2025/2026"
-                                className="w-full border-2 border-slate-100 rounded-lg p-2.5 focus:border-indigo-500 outline-none transition-all font-medium"
-                                required
+                                className={`w-full border-2 rounded-lg p-2.5 focus:border-indigo-500 outline-none transition-all font-medium text-gray-900 placeholder:text-gray-400 ${
+                                    errors.tahun ? 'border-red-300' : 'border-slate-100'
+                                }`}
                             />
+                            {errors.tahun && (
+                                <p className="text-red-500 text-xs mt-1">{errors.tahun.message}</p>
+                            )}
                         </div>
 
-                        {/* Dropdown Semester (YANG BARU DITAMBAHKAN) */}
+                        {/* Dropdown Semester */}
                         <div>
-                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Semester</label>
+                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">
+                                Semester
+                            </label>
                             <select 
-                                className="w-full border-2 border-slate-100 rounded-lg p-2.5 bg-white focus:border-indigo-500 outline-none transition-all font-medium"
-                                value={semester}
-                                onChange={(e) => setSemester(e.target.value)}
+                                {...register("semester", { required: "Semester wajib dipilih" })}
+                                className={`w-full border-2 rounded-lg p-2.5 bg-white focus:border-indigo-500 outline-none transition-all font-medium text-gray-900 ${
+                                    errors.semester ? 'border-red-300' : 'border-slate-100'
+                                }`}
                             >
-                                <option value="GANJIL">GANJIL </option>
-                                <option value="GENAP">GENAP </option>
+                                <option value={Semester.GANJIL}>GANJIL</option>
+                                <option value={Semester.GENAP}>GENAP</option>
                             </select>
+                            {errors.semester && (
+                                <p className="text-red-500 text-xs mt-1">{errors.semester.message}</p>
+                            )}
                         </div>
 
                         {/* Input Keterangan */}
                         <div>
-                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Keterangan / Deskripsi</label>
+                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">
+                                Keterangan / Deskripsi
+                            </label>
                             <textarea
-                                value={keterangan}
-                                onChange={(e) => setKeterangan(e.target.value)}
+                                {...register("keterangan", { 
+                                    required: "Keterangan wajib diisi",
+                                    minLength: {
+                                        value: 10,
+                                        message: "Minimal 10 karakter"
+                                    }
+                                })}
                                 placeholder="Contoh: RPS Kurikulum Baru"
-                                className="w-full border-2 border-slate-100 rounded-lg p-2.5 focus:border-indigo-500 outline-none transition-all text-sm min-h-20"
-                                required
+                                className={`w-full border-2 rounded-lg p-2.5 focus:border-indigo-500 outline-none transition-all text-sm min-h-20 text-gray-900 placeholder:text-gray-400 ${
+                                    errors.keterangan ? 'border-red-300' : 'border-slate-100'
+                                }`}
                             />
+                            {errors.keterangan && (
+                                <p className="text-red-500 text-xs mt-1">{errors.keterangan.message}</p>
+                            )}
                         </div>
 
                         <button
@@ -140,7 +186,6 @@ export default function RPSVersionHistoryPage({
         fetchData();
     }, [id_matakuliah]);
 
-    // --- REVISI: Fungsi handleAddRPS yang sinkron dengan API ---
     const handleAddRPS = async (data: any) => {
         setIsProcessing(true);
         try {
@@ -241,10 +286,10 @@ export default function RPSVersionHistoryPage({
                                                     </span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-600 font-medium">
+                                            <td className="px-6 py-4 text-gray-900 font-medium">
                                                 {item.deskripsi || "-"}
                                             </td>
-                                            <td className="px-6 py-4 text-gray-500 whitespace-nowrap flex items-center gap-2">
+                                            <td className="px-6 py-4 text-gray-900 whitespace-nowrap flex items-center gap-2">
                                                 <Calendar size={14}/>
                                                 {new Date(item.updatedAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}
                                             </td>
