@@ -1,15 +1,15 @@
-// File: /src/app/rps/[id]/list/[id_matakuliah]/page.tsx
 "use client";
 
 import { useState, useEffect, use } from "react";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation"; // TAMBAHKAN useSearchParams
 import { 
     ChevronLeft, FileText, Plus, Edit, Trash2, X, Loader2, Calendar, Eye 
 } from "lucide-react";
 import { Semester } from "@prisma/client";
 import DashboardLayout from "@/app/components/DashboardLayout";
+import AddRPSModal from "@/app/components/AddRPSModal";
 
 // --- Data Types ---
 interface RPSVersion {
@@ -37,124 +37,6 @@ interface RPSFormData {
 }
 
 // --- Komponen Modal Form dengan React Hook Form ---
-function AddRPSModal({ isOpen, onClose, onSubmit, isProcessing }: any) {
-    const { register, handleSubmit, formState: { errors }, reset } = useForm<RPSFormData>({
-        defaultValues: {
-            tahun: "2025/2026",
-            semester: Semester.GANJIL,
-            keterangan: ""
-        }
-    });
-
-    const onFormSubmit = (data: RPSFormData) => {
-        onSubmit({ 
-            keterangan: data.keterangan, 
-            new_tahun: data.tahun, 
-            new_semester: data.semester,
-            is_new_ta: true 
-        });
-    };
-
-    const handleClose = () => {
-        reset();
-        onClose();
-    };
-
-    if (!isOpen) return null;
-
-    return (
-        <>
-            <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={handleClose} />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
-                    <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                        <h3 className="text-xl font-bold text-gray-800">Buat RPS Baru</h3>
-                        <button title="tutup" onClick={handleClose} className="text-gray-400 hover:text-gray-900">
-                            <X size={24}/>
-                        </button>
-                    </div>
-
-                    <form onSubmit={handleSubmit(onFormSubmit)} className="p-6 space-y-4">
-                        {/* Input Tahun Ajaran */}
-                        <div>
-                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">
-                                Tahun Ajaran
-                            </label>
-                            <input 
-                                type="text" 
-                                {...register("tahun", { 
-                                    required: "Tahun ajaran wajib diisi",
-                                    pattern: {
-                                        value: /^\d{4}\/\d{4}$/,
-                                        message: "Format: 2025/2026"
-                                    }
-                                })}
-                                placeholder="Contoh: 2025/2026"
-                                className={`w-full border-2 rounded-lg p-2.5 focus:border-indigo-500 outline-none transition-all font-medium text-gray-900 placeholder:text-gray-400 ${
-                                    errors.tahun ? 'border-red-300' : 'border-slate-100'
-                                }`}
-                            />
-                            {errors.tahun && (
-                                <p className="text-red-500 text-xs mt-1">{errors.tahun.message}</p>
-                            )}
-                        </div>
-
-                        {/* Dropdown Semester */}
-                        <div>
-                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">
-                                Semester
-                            </label>
-                            <select 
-                                {...register("semester", { required: "Semester wajib dipilih" })}
-                                className={`w-full border-2 rounded-lg p-2.5 bg-white focus:border-indigo-500 outline-none transition-all font-medium text-gray-900 ${
-                                    errors.semester ? 'border-red-300' : 'border-slate-100'
-                                }`}
-                            >
-                                <option value={Semester.GANJIL}>GANJIL</option>
-                                <option value={Semester.GENAP}>GENAP</option>
-                            </select>
-                            {errors.semester && (
-                                <p className="text-red-500 text-xs mt-1">{errors.semester.message}</p>
-                            )}
-                        </div>
-
-                        {/* Input Keterangan */}
-                        <div>
-                            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">
-                                Keterangan / Deskripsi
-                            </label>
-                            <textarea
-                                {...register("keterangan", { 
-                                    required: "Keterangan wajib diisi",
-                                    minLength: {
-                                        value: 10,
-                                        message: "Minimal 10 karakter"
-                                    }
-                                })}
-                                placeholder="Contoh: RPS Kurikulum Baru"
-                                className={`w-full border-2 rounded-lg p-2.5 focus:border-indigo-500 outline-none transition-all text-sm min-h-20 text-gray-900 placeholder:text-gray-400 ${
-                                    errors.keterangan ? 'border-red-300' : 'border-slate-100'
-                                }`}
-                            />
-                            {errors.keterangan && (
-                                <p className="text-red-500 text-xs mt-1">{errors.keterangan.message}</p>
-                            )}
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={isProcessing}
-                            className="w-full bg-[#00b041] text-white py-3 rounded-lg font-bold hover:bg-[#009637] disabled:opacity-50 flex justify-center items-center gap-2 transition-all shadow-lg shadow-green-100"
-                        >
-                            {isProcessing ? <Loader2 className="animate-spin" size={20}/> : <Plus size={20}/>}
-                            Buat RPS Sekarang
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </>
-    );
-}
 
 // --- Komponen Utama Page ---
 export default function RPSVersionHistoryPage({ 
@@ -164,6 +46,8 @@ export default function RPSVersionHistoryPage({
 }) {
     const { id, id_matakuliah } = use(params);
     const router = useRouter();
+    const searchParams = useSearchParams(); // AMBIL prodiId DARI URL
+    const prodiId = searchParams.get("prodiId");
 
     const [rpsList, setRpsList] = useState<RPSVersion[]>([]);
     const [loading, setLoading] = useState(true);
@@ -172,9 +56,11 @@ export default function RPSVersionHistoryPage({
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!prodiId) return; // Tunggu prodiId dari sidebar
             setLoading(true);
             try {
-                const resList = await fetch(`/api/rps/matakuliah/${id_matakuliah}?mode=history`);
+                // TAMBAHKAN prodiId ke API fetch history
+                const resList = await fetch(`/api/rps/matakuliah/${id_matakuliah}?mode=history&prodiId=${prodiId}`);
                 const jsonList = await resList.json();
                 if (jsonList.success) setRpsList(jsonList.data);
             } catch (err) {
@@ -184,7 +70,7 @@ export default function RPSVersionHistoryPage({
             }
         };
         fetchData();
-    }, [id_matakuliah]);
+    }, [id_matakuliah, prodiId]);
 
     const handleAddRPS = async (data: any) => {
         setIsProcessing(true);
@@ -197,13 +83,15 @@ export default function RPSVersionHistoryPage({
                     keterangan: data.keterangan,
                     is_new_ta: data.is_new_ta,
                     new_tahun: data.new_tahun,
-                    new_semester: data.new_semester
+                    new_semester: data.new_semester,
+                    prodiId: prodiId // KIRIM prodiId saat buat RPS baru
                 })
             });
 
             const json = await res.json();
             if (json.success) {
-                router.push(`/rps/${id}/list/${id_matakuliah}/detail/${json.data.id}`);
+                // Pastikan saat redirect tetap membawa prodiId
+                router.push(`/rps/${id}/list/${id_matakuliah}/detail/${json.data.id}?prodiId=${prodiId}`);
             } else {
                 alert("Gagal: " + json.error);
             }
@@ -233,7 +121,7 @@ export default function RPSVersionHistoryPage({
                         Riwayat Versi RPS
                     </h1>
                     <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg text-sm font-medium">
-                        Mata Kuliah ID: {id_matakuliah}
+                        Prodi ID: {prodiId} | MK ID: {id_matakuliah}
                     </div>
                 </div>
 
@@ -245,7 +133,8 @@ export default function RPSVersionHistoryPage({
                         </div>
                         
                         <div className="flex gap-2">
-                            <Link href={`/rps/${id}/list`}>
+                            {/* Pastikan Link Kembali membawa prodiId */}
+                            <Link href={`/rps/${id}/list?prodiId=${prodiId}`}>
                                 <button className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition font-medium">
                                     <ChevronLeft size={16} /> Kembali
                                 </button>
@@ -289,18 +178,21 @@ export default function RPSVersionHistoryPage({
                                             <td className="px-6 py-4 text-gray-900 font-medium">
                                                 {item.deskripsi || "-"}
                                             </td>
-                                            <td className="px-6 py-4 text-gray-900 whitespace-nowrap flex items-center gap-2">
-                                                <Calendar size={14}/>
-                                                {new Date(item.updatedAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}
+                                            <td className="px-6 py-4 text-gray-900 whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar size={14}/>
+                                                    {new Date(item.updatedAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 <div className="flex justify-center items-center gap-2">
-                                                    <Link href={`/rps/${id}/list/${id_matakuliah}/detail/${item.id}`}>
+                                                    {/* Link Detail dan Edit membawa prodiId */}
+                                                    <Link href={`/rps/${id}/list/${id_matakuliah}/detail/${item.id}?prodiId=${prodiId}`}>
                                                         <button className="p-2 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition" title="Lihat Detail">
                                                             <Eye size={18} />
                                                         </button>
                                                     </Link>
-                                                    <Link href={`/rps/${id}/list/${id_matakuliah}/detail/${item.id}`}>
+                                                    <Link href={`/rps/${id}/list/${id_matakuliah}/detail/${item.id}?prodiId=${prodiId}`}>
                                                         <button className="p-2 text-green-600 bg-green-50 rounded hover:bg-green-100 transition" title="Edit">
                                                             <Edit size={18} />
                                                         </button>

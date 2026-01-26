@@ -1,10 +1,8 @@
-// src/app/rps/[id]/list/page.tsx
-
 "use client";
 
 import { useEffect, useState, use } from "react";
 import DashboardLayout from "@/app/components/DashboardLayout";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation"; // 1. TAMBAH useSearchParams
 import { Loader2, Book, ChevronLeft, ArrowRight, Layers, FileText } from "lucide-react";
 import Link from "next/link";
 
@@ -17,7 +15,7 @@ type MataKuliah = {
   semester: number | null;
   sifat: string | null;
   _count?: {
-    rps: number; // Jumlah RPS yang sudah dibuat (opsional jika API dukung)
+    rps: number; 
   }
 };
 
@@ -30,7 +28,11 @@ type Kurikulum = {
 export default function MataKuliahListPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params); // ID Kurikulum
   const router = useRouter();
+  const searchParams = useSearchParams(); // 2. INISIALISASI useSearchParams
   
+  // 3. TANGKAP prodiId DARI URL
+  const prodiId = searchParams.get("prodiId");
+
   // State
   const [kurikulum, setKurikulum] = useState<Kurikulum | null>(null);
   const [matkulList, setMatkulList] = useState<MataKuliah[]>([]);
@@ -39,43 +41,42 @@ export default function MataKuliahListPage({ params }: { params: Promise<{ id: s
   // Fetch Data
   useEffect(() => {
     const fetchData = async () => {
+      // Jika prodiId belum ada, tunggu sebentar (opsional tapi bagus untuk safety)
+      if (!prodiId) return;
+
       setLoading(true);
       try {
-        // 1. Ambil Info Kurikulum
-        const kurRes = await fetch(`/api/kurikulum/${id}`);
+        // 4. Ambil Info Kurikulum (Tambahkan prodiId agar API bisa validasi)
+        const kurRes = await fetch(`/api/kurikulum/${id}?prodiId=${prodiId}`);
         if (kurRes.ok) {
             const kurJson = await kurRes.json();
-            // Pastikan ambil .data jika API kurikulum juga dibungkus
             setKurikulum(kurJson.data || kurJson); 
         }
 
-        // 2. Ambil Daftar Mata Kuliah
-        const mkRes = await fetch(`/api/kurikulum/${id}/matakuliah`);
+        // 5. Ambil Daftar Mata Kuliah (Tambahkan prodiId ke URL API)
+        const mkRes = await fetch(`/api/kurikulum/${id}/matakuliah?prodiId=${prodiId}`);
         if (mkRes.ok) {
             const json = await mkRes.json();
             
-            // --- PERBAIKAN DI SINI ---
-            // Ambil json.data, jangan json mentah-mentah
             if (json.success && Array.isArray(json.data)) {
                 setMatkulList(json.data);
             } else if (Array.isArray(json)) {
-                // Jaga-jaga kalau API mengembalikan array langsung
                 setMatkulList(json);
             } else {
-                setMatkulList([]); // Fallback biar gak error .map
+                setMatkulList([]); 
             }
-            // -------------------------
         }
       } catch (err) {
         console.error("Gagal memuat data:", err);
-        setMatkulList([]); // Safety agar tidak null
+        setMatkulList([]); 
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [id]);
+  }, [id, prodiId]); // 6. TAMBAHKAN prodiId ke dependency agar re-fetch jika prodi berubah
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -93,7 +94,8 @@ export default function MataKuliahListPage({ params }: { params: Promise<{ id: s
         {/* Header Section */}
         <div className="mb-8">
             <div className="flex items-center gap-2 text-gray-500 text-sm mb-2">
-                <Link href="/rps" className="hover:text-indigo-600 flex items-center">
+                {/* 7. PERBAIKAN: Link Kembali harus membawa prodiId */}
+                <Link href={`/rps?prodiId=${prodiId}`} className="hover:text-indigo-600 flex items-center">
                     <ChevronLeft size={16} /> Pilih Kurikulum
                 </Link>
                 <span>/</span>
@@ -109,6 +111,8 @@ export default function MataKuliahListPage({ params }: { params: Promise<{ id: s
                     <p className="text-gray-500 mt-1">
                         Pilih mata kuliah untuk mengelola dokumen RPS.
                     </p>
+                    {/* Indikator Konteks (Opsional) */}
+                    <p className="text-[10px] text-indigo-500 font-bold uppercase mt-1">Konteks Prodi ID: {prodiId}</p>
                 </div>
                 <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
                     Tahun: {kurikulum?.tahun}
@@ -126,7 +130,8 @@ export default function MataKuliahListPage({ params }: { params: Promise<{ id: s
                 {matkulList.map((mk) => (
                     <Link 
                         key={mk.id} 
-                        href={`list/${mk.id}`} // Link ke Page Riwayat RPS yang baru
+                        // 8. PERBAIKAN: Link ke Detail MK/Riwayat RPS harus membawa prodiId
+                        href={`list/${mk.id}?prodiId=${prodiId}`} 
                         className="group bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-indigo-300 transition-all duration-200 flex flex-col justify-between"
                     >
                         <div>

@@ -1,14 +1,11 @@
-// src/app/rps/page.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
-// import DashboardLayout, { useAuth } from "@/app/components/DashboardLayout"; // <-- Dihapus
-import DashboardLayout from "@/app/components/DashboardLayout"; // <-- Versi Polosan
-import { Loader2, BookCopy, ChevronRight, Layers } from "lucide-react";
+import DashboardLayout from "@/app/components/DashboardLayout"; 
+import { Loader2, ChevronRight, Layers } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation"; 
 
-// Tipe data untuk Kurikulum
 type Kurikulum = {
   id: number;
   nama: string;
@@ -16,30 +13,38 @@ type Kurikulum = {
 };
 
 export default function RpsAdminDashboardPage() {
-  // const { user, loading: authLoading } = useAuth(); // <-- Dihapus
+  const searchParams = useSearchParams();
+  const prodiId = searchParams.get("prodiId"); // Ambil prodiId dari URL Sidebar
+
   const [kurikulumList, setKurikulumList] = useState<Kurikulum[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadKurikulum = async () => {
-      // if (authLoading || !user) return; // <-- Dihapus
-      
+      // Step 1: Validasi prodiId wajib ada agar tidak salah prodi
+      if (!prodiId) {
+        setLoading(false);
+        return;
+      } 
+
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/kurikulum"); 
+        // Step 2: Kirim prodiId ke API Kurikulum untuk filter data S1/S2
+        const res = await fetch(`/api/kurikulum?prodiId=${prodiId}`, {
+           cache: 'no-store' // Pastikan selalu ambil data terbaru
+        }); 
+        
         if (!res.ok) {
           const errData = await res.json();
           throw new Error(errData.error || "Gagal memuat data kurikulum");
         }
         
-        // --- PERBAIKAN DI SINI ---
         const jsonResponse = await res.json(); 
-        const data: Kurikulum[] = jsonResponse.data; // Ambil array 'data'
+        const data: Kurikulum[] = jsonResponse.data; 
         
-        setKurikulumList(data); // Set list dengan array
-        // -------------------------
+        setKurikulumList(data); 
         
       } catch (err: any) {
         setError(err.message);
@@ -49,49 +54,55 @@ export default function RpsAdminDashboardPage() {
     };
 
     loadKurikulum();
-  }, []); // <-- Dihapus dependency [user, authLoading]
-
-  // const isLoading = authLoading || loading; // <-- Dihapus
+  }, [prodiId]); // Re-fetch otomatis jika user ganti prodi di Sidebar
 
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8">
+        {/* Header Section */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">RPS Matakuliah</h1>
-          {/* Info user Dihapus */}
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">RPS Matakuliah</h1>
+            {/* Indikator Konteks agar user tahu sedang mengelola prodi mana */}
+            <p className="text-sm text-indigo-600 font-medium">Konteks Prodi ID: {prodiId || "Memuat..."}</p>
+          </div>
         </div>
 
-        {loading && ( // <-- Diganti dari isLoading
+        {/* Loading State */}
+        {loading && (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="animate-spin text-indigo-600" size={40} />
           </div>
         )}
         
+        {/* Error State */}
         {error && (
-          <div className="mb-4 p-3 text-sm bg-red-50 text-red-700 rounded-lg">
+          <div className="mb-4 p-3 text-sm bg-red-50 text-red-700 rounded-lg border border-red-200">
             {error}
           </div>
         )}
 
-        {!loading && !error && ( // <-- Diganti dari isLoading
+        {/* Content Section */}
+        {!loading && !error && (
           <div>
             <h2 className="text-xl font-semibold text-gray-700 mb-4">Pilih Kurikulum</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               
               {kurikulumList.length === 0 ? (
-                <p className="text-gray-500">Belum ada kurikulum. Silakan tambahkan di halaman "Referensi".</p>
+                <div className="col-span-full p-10 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 text-center">
+                   <p className="text-gray-500 italic">Belum ada data kurikulum untuk prodi ini.</p>
+                </div>
               ) : (
-                kurikulumList.map(kur => ( // Ini sekarang akan aman
+                kurikulumList.map(kur => (
                   <Link 
                     key={kur.id} 
-                    // --- PERBAIKAN: Arahkan ke folder 'list' kakak ---
-                    href={`/rps/${kur.id}/list`} 
-                    // ---------------------------------------------
+                    // Step 3: Navigasi ke List MK dengan membawa kurikulumId DAN prodiId
+                    href={`/rps/${kur.id}/list?prodiId=${prodiId}`} 
                     className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-indigo-300 transition-all duration-300 group flex flex-col justify-between"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-indigo-50 rounded-lg">
-                         <Layers size={24} className="text-indigo-600" />
+                      <div className="p-3 bg-indigo-50 rounded-lg group-hover:bg-indigo-600 transition-colors duration-300">
+                         <Layers size={24} className="text-indigo-600 group-hover:text-white" />
                       </div>
                       <div>
                         <h3 className="text-lg font-bold text-gray-800">{kur.nama}</h3>

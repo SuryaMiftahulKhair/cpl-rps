@@ -2,304 +2,166 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-    Home,
-    FileText,
-    Book,
-    Monitor,
-    Settings,
-    Layers,
-    ChevronDown,
-    LayoutPanelTop,
-    ScrollText,
-    LucideIcon,
-    BarChart3,
-    UsersIcon,
+    Home, FileText, Book, Monitor, Settings, Layers, ChevronDown,
+    LayoutPanelTop, ScrollText, BarChart3, UsersIcon, LucideIcon,
 } from "lucide-react";
 import LogoutButton from "./LogOutButton";
+import { useProdiStore } from "@/store/useProdiStore";
 
-// --- Konfigurasi Warna & Style ---
-const primaryColor = "text-indigo-600";
-const primaryBgHover = "hover:bg-indigo-50";
+// --- Style Helpers ---
 const activeBg = "bg-gradient-to-r from-indigo-100 to-indigo-50 text-indigo-700 font-semibold shadow-sm";
-const dropdownItemActive = "bg-indigo-50 text-indigo-700 font-medium border-l-2 border-indigo-600";
+const primaryBgHover = "hover:bg-indigo-50";
 
-// --- Tipe Props ---
-interface MenuItemProps {
-    href: string;
-    icon: LucideIcon;
-    children: React.ReactNode;
-    isActive: boolean;
-}
+// --- Komponen MenuItem (Otomatis Handle prodiId tanpa dobel tanda tanya) ---
+const MenuItem: React.FC<{ href: string; icon: LucideIcon; children: React.ReactNode; isActive: boolean }> = ({ href, icon: Icon, children, isActive }) => {
+    const { activeProdiId } = useProdiStore();
+    // PERBAIKAN: Gunakan prodiId (I BESAR) dan hindari double tanda tanya
+    const finalHref = activeProdiId ? `${href}?prodiId=${activeProdiId}` : href;
 
-interface DropdownToggleProps {
-    icon: LucideIcon;
-    children: React.ReactNode;
-    isOpen: boolean;
-    onClick: () => void;
-    isActive: boolean;
-}
-
-interface SubMenuItemProps {
-    href: string;
-    children: React.ReactNode;
-    isActive: boolean;
-}
-
-// --- Komponen Reusable MenuItem ---
-const MenuItem: React.FC<MenuItemProps> = ({ href, icon: Icon, children, isActive }) => (
-    <Link
-        href={href}
-        className={`
-      flex items-center gap-3 p-3 rounded-lg transition-all duration-200
-      ${isActive ? activeBg : `text-gray-700 ${primaryBgHover}`}
-      hover:translate-x-1
-    `}
-    >
-        <Icon size={20} className={isActive ? primaryColor : "text-gray-500"} />
-        <span className={isActive ? "font-semibold" : ""}>{children}</span>
-    </Link>
-);
-
-// --- Komponen Reusable DropdownToggle ---
-const DropdownToggle: React.FC<DropdownToggleProps> = ({
-    icon: Icon,
-    children,
-    isOpen,
-    onClick,
-    isActive,
-}) => (
-    <button
-        onClick={onClick}
-        className={`
-      w-full flex items-center justify-between p-3 rounded-lg transition-all duration-200
-      ${isActive ? activeBg : `text-gray-700 ${primaryBgHover}`}
-      group
-    `}
-    >
-        <div className="flex items-center gap-3">
-            <Icon size={20} className={isActive ? primaryColor : "text-gray-500 group-hover:text-indigo-500"} />
-            <span className={isActive ? "font-semibold" : ""}>{children}</span>
-        </div>
-        <div className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
-            <ChevronDown size={16} className="text-gray-400" />
-        </div>
-    </button>
-);
+    return (
+        <Link href={finalHref} className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-200 ${isActive ? activeBg : `text-gray-700 ${primaryBgHover}`} hover:translate-x-1`}>
+            <Icon size={20} className={isActive ? "text-indigo-600" : "text-gray-500"} />
+            <span>{children}</span>
+        </Link>
+    );
+};
 
 // --- Komponen SubMenuItem ---
-const SubMenuItem: React.FC<SubMenuItemProps> = ({ href, children, isActive }) => (
-    <Link
-        href={href}
-        className={`
-      block py-2.5 pl-6 pr-3 rounded-r-lg transition-all duration-200
-      ${isActive 
-        ? dropdownItemActive 
-        : "text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 border-l-2 border-transparent hover:border-indigo-300"
-      }
-    `}
-    >
-        <span className="flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-indigo-600" : "bg-gray-300"}`}></span>
-            {children}
-        </span>
-    </Link>
-);
+const SubMenuItem: React.FC<{ href: string; children: React.ReactNode; isActive: boolean }> = ({ href, children, isActive }) => {
+    const { activeProdiId } = useProdiStore();
+    const finalHref = activeProdiId ? `${href}?prodiId=${activeProdiId}` : href;
+
+    return (
+        <Link href={finalHref} className={`flex items-center gap-3 p-2.5 rounded-lg transition-all duration-200 ${isActive ? activeBg : `text-gray-600 ${primaryBgHover}`} hover:translate-x-1 ml-2`}>
+            <span className="text-xs">{children}</span>
+        </Link>
+    );
+};
 
 export default function Sidebar() {
+    const { activeProdiId, setActiveProdi } = useProdiStore();
     const [openPenilaian, setOpenPenilaian] = useState(false);
     const [openLaporan, setOpenLaporan] = useState(false);
     const [openReferensi, setOpenReferensi] = useState(false);
-    
-    // State untuk menampung data Program Studi secara dinamis
-    const [programInfo, setProgramInfo] = useState({
-        nama: "Memuat...",
-        jenjang: "...",
-    });
+    const [listProgram, setListProgram] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const currentPath = pathname || "/";
 
-    const isPenilaianActive = currentPath.startsWith("/penilaian");
-    const isLaporanActive = currentPath.startsWith("/laporan");
-    const isReferensiActive = currentPath.startsWith("/referensi");
+    const handleProdiChange = (id: string) => {
+        const found = listProgram.find(p => p.id === parseInt(id));
+        if (found) {
+            setActiveProdi(found.id, found.nama);
+            // Push URL bersih: path + ?prodiId=...
+            router.push(`${pathname}?prodiId=${found.id}`);
+        }
+    };
 
-    // Efek untuk mengambil profil user dari API
     useEffect(() => {
-        const fetchInfo = async () => {
+        const fetchProfile = async () => {
             try {
                 const res = await fetch('/api/auth/profile');
                 const result = await res.json();
-                
-                if (result.success && result.user.programStudi) {
-                    setProgramInfo({
-                        nama: result.user.programStudi.nama,
-                        jenjang: result.user.programStudi.jenjang
-                    });
+                if (result.success) {
+                    const prodies = result.user.programStudis;
+                    setListProgram(prodies);
+                    
+                    const urlId = searchParams.get("prodiId");
+                    if (urlId) {
+                        const found = prodies.find((p: any) => p.id === parseInt(urlId));
+                        if (found) setActiveProdi(found.id, found.nama);
+                    } else if (!activeProdiId && prodies.length > 0) {
+                        setActiveProdi(prodies[0].id, prodies[0].nama);
+                    }
                 }
-            } catch (err) {
-                console.error("Gagal sinkronisasi profil sidebar:", err);
-            }
+            } catch (err) { console.error(err); } finally { setLoading(false); }
         };
-        fetchInfo();
+        fetchProfile();
     }, []);
 
-    // Auto-open dropdowns jika sub-item sedang aktif
     useEffect(() => {
-        if (isPenilaianActive) setOpenPenilaian(true);
-        if (isLaporanActive) setOpenLaporan(true);
-        if (isReferensiActive) setOpenReferensi(true);
-    }, [isPenilaianActive, isLaporanActive, isReferensiActive]);
+        if (currentPath.startsWith("/penilaian")) setOpenPenilaian(true);
+        if (currentPath.startsWith("/laporan")) setOpenLaporan(true);
+        if (currentPath.startsWith("/referensi")) setOpenReferensi(true);
+    }, [currentPath]);
 
     return (
         <div className="w-64 h-screen sticky top-0 bg-white shadow-xl flex flex-col border-r border-gray-200">
-            {/* --- Header / Branding DINAMIS --- */}
-            <div className="relative">
-                <div className="absolute inset-0 bg-linear-to-br from-indigo-500 to-indigo-600 opacity-5"></div>
-                <div className="relative flex flex-col items-start p-5 border-b border-indigo-100">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-600 rounded-lg shadow-md">
-                            <LayoutPanelTop size={24} className="text-white" />
-                        </div>
-                        <div>
-                            <h1 className="font-extrabold text-xl text-indigo-700 tracking-tight uppercase">
-                                APP-CPL
-                            </h1>
-                            <p className="text-[10px] font-bold text-indigo-600 mt-0.5 leading-none">
-                                Learning Outcomes
-                            </p>
-                        </div>
-                    </div>
-                    
-                    {/* Box Dinamis Nama Prodi & Jenjang Sesuai Database */}
-                    <div className="mt-4 w-full">
-                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 shadow-sm">
-                            <p className="text-xs font-black text-indigo-800 uppercase leading-tight">
-                                {programInfo.nama}
-                            </p>
-                            
-                        </div>
-                    </div>
+            <div className="p-5 border-b border-indigo-100 bg-indigo-50/30">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-indigo-600 rounded-lg shadow-md"><LayoutPanelTop size={24} className="text-white" /></div>
+                    <div><h1 className="font-extrabold text-xl text-indigo-700 tracking-tight uppercase">APP-CPL</h1></div>
                 </div>
+                
+                <select 
+                    value={activeProdiId || ""} 
+                    onChange={(e) => handleProdiChange(e.target.value)}
+                    className="w-full bg-white border border-indigo-200 rounded-lg p-2 text-xs font-bold text-indigo-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                    {listProgram.map(p => <option key={p.id} value={p.id}> {p.nama}</option>)}
+                </select>
             </div>
 
-            {/* --- Navigasi --- */}
-            <nav className="flex-1 p-3 space-y-1 text-sm overflow-y-auto">
-                <MenuItem href="/home" icon={Home} isActive={currentPath === "/home"}>
-                    Home
-                </MenuItem>
+            <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+                {/* Cukup tulis path saja, prodiId akan nempel otomatis lewat komponen MenuItem */}
+                <MenuItem href="/home" icon={Home} isActive={currentPath === "/home"}>Home</MenuItem>
 
-                {/* Penilaian */}
                 <div className="pt-1">
-                    <DropdownToggle
-                        icon={FileText}
-                        isOpen={openPenilaian}
-                        onClick={() => setOpenPenilaian(!openPenilaian)}
-                        isActive={isPenilaianActive}
-                    >
-                        Penilaian
-                    </DropdownToggle>
-                    <div
-                        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                            openPenilaian ? "max-h-60 opacity-100 mt-1" : "max-h-0 opacity-0"
-                        }`}
-                    >
-                        <div className="ml-5 space-y-1 border-l-2 border-indigo-100 pl-1">
-                            <SubMenuItem href="/penilaian/datakelas" isActive={currentPath === "/penilaian/datakelas"}>
-                                Data Kelas
-                            </SubMenuItem>
-                            <SubMenuItem href="/penilaian/portofolio" isActive={currentPath === "/penilaian/portofolio"}>
-                                Portofolio
-                            </SubMenuItem>
+                    <button onClick={() => setOpenPenilaian(!openPenilaian)} className={`w-full flex items-center justify-between p-3 rounded-lg text-gray-700 hover:bg-indigo-50 ${currentPath.startsWith("/penilaian") ? "bg-indigo-50" : ""}`}>
+                        <div className="flex items-center gap-3"><FileText size={20} /><span className="font-medium">Penilaian</span></div>
+                        <ChevronDown size={16} className={`transition-transform ${openPenilaian ? "rotate-180" : ""}`} />
+                    </button>
+                    {openPenilaian && (
+                        <div className="ml-4 mt-1 border-l-2 border-indigo-100 pl-2 space-y-1">
+                            <SubMenuItem href="/penilaian/datakelas" isActive={currentPath === "/penilaian/datakelas"}>Data Kelas</SubMenuItem>
+                            <SubMenuItem href="/penilaian/portofolio" isActive={currentPath === "/penilaian/portofolio"}>Portofolio</SubMenuItem>
                         </div>
-                    </div>
+                    )}
                 </div>
 
-                <MenuItem href="/dokumen" icon={Book} isActive={currentPath === "/dokumen"}>
-                    Dokumen Akreditasi
-                </MenuItem>
+                <MenuItem href="/dokumen" icon={Book} isActive={currentPath === "/dokumen"}>Dokumen Akreditasi</MenuItem>
+                <MenuItem href="/rps" icon={ScrollText} isActive={currentPath === "/rps"}>RPS Matakuliah</MenuItem>
 
-                <MenuItem href="/rps" icon={ScrollText} isActive={currentPath === "/rps"}>
-                    RPS Matakuliah
-                </MenuItem>
-
-                {/* Laporan */}
                 <div className="pt-1">
-                    <DropdownToggle
-                        icon={BarChart3}
-                        isOpen={openLaporan}
-                        onClick={() => setOpenLaporan(!openLaporan)}
-                        isActive={isLaporanActive}
-                    >
-                        Laporan
-                    </DropdownToggle>
-                    <div
-                        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                            openLaporan ? "max-h-60 opacity-100 mt-1" : "max-h-0 opacity-0"
-                        }`}
-                    >
-                        <div className="ml-5 space-y-1 border-l-2 border-indigo-100 pl-1">
-                            <SubMenuItem href="/laporan/cpl-prodi" isActive={currentPath === "/laporan/cpl-prodi"}>
-                                CPL Prodi
-                            </SubMenuItem>
-                            <SubMenuItem href="/laporan/cpl-mhswa" isActive={currentPath === "/laporan/cpl-mhswa"}>
-                                CPL Mahasiswa
-                            </SubMenuItem>
-                            <SubMenuItem href="/laporan/rekap-metode" isActive={currentPath.startsWith("/laporan/rekap-metode")}>
-                                Rekap Metode Penilaian
-                            </SubMenuItem>
-                            <SubMenuItem href="/laporan/rekap-kuisioner-pembelajaran" isActive={currentPath.startsWith("/laporan/rekap-kuisioner-pembelajaran")}>
-                                Rekap Kuisioner Pembelajaran
-                            </SubMenuItem>
+                    <button onClick={() => setOpenLaporan(!openLaporan)} className={`w-full flex items-center justify-between p-3 rounded-lg text-gray-700 hover:bg-indigo-50 ${currentPath.startsWith("/laporan") ? "bg-indigo-50" : ""}`}>
+                        <div className="flex items-center gap-3"><BarChart3 size={20} /><span className="font-medium">Laporan</span></div>
+                        <ChevronDown size={16} className={`transition-transform ${openLaporan ? "rotate-180" : ""}`} />
+                    </button>
+                    {openLaporan && (
+                        <div className="ml-4 mt-1 border-l-2 border-indigo-100 pl-2 space-y-1">
+                            <SubMenuItem href="/laporan/cpl-prodi" isActive={currentPath === "/laporan/cpl-prodi"}>CPL Prodi</SubMenuItem>
+                            <SubMenuItem href="/laporan/cpl-mhswa" isActive={currentPath === "/laporan/cpl-mhswa"}>CPL Mahasiswa</SubMenuItem>
+                            <SubMenuItem href="/laporan/rekap-metode" isActive={currentPath.startsWith("/laporan/rekap-metode")}>Rekap Metode</SubMenuItem>
                         </div>
-                    </div>
+                    )}
                 </div>
 
-                <MenuItem href="/monitoring" icon={Monitor} isActive={currentPath === "/monitoring"}>
-                    Monitoring Univ
-                </MenuItem>
+                <MenuItem href="/monitoring" icon={Monitor} isActive={currentPath === "/monitoring"}>Monitoring Univ</MenuItem>
 
-                {/* Referensi */}
                 <div className="pt-1">
-                    <DropdownToggle
-                        icon={Layers}
-                        isOpen={openReferensi}
-                        onClick={() => setOpenReferensi(!openReferensi)}
-                        isActive={isReferensiActive}
-                    >
-                        Referensi
-                    </DropdownToggle>
-                    <div
-                        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                            openReferensi ? "max-h-40 opacity-100 mt-1" : "max-h-0 opacity-0"
-                        }`}
-                    >
-                        <div className="ml-5 space-y-1 border-l-2 border-indigo-100 pl-1">
-                            <SubMenuItem href="/referensi/KP" isActive={currentPath.startsWith("/referensi/KP")}>
-                                Kurikulum Prodi
-                            </SubMenuItem>
-                            <SubMenuItem href="/referensi/JP" isActive={currentPath === "/referensi/JP"}>
-                                Jenis Penilaian
-                            </SubMenuItem>
+                    <button onClick={() => setOpenReferensi(!openReferensi)} className={`w-full flex items-center justify-between p-3 rounded-lg text-gray-700 hover:bg-indigo-50 ${currentPath.startsWith("/referensi") ? "bg-indigo-50" : ""}`}>
+                        <div className="flex items-center gap-3"><Layers size={20} /><span className="font-medium">Referensi</span></div>
+                        <ChevronDown size={16} className={`transition-transform ${openReferensi ? "rotate-180" : ""}`} />
+                    </button>
+                    {openReferensi && (
+                        <div className="ml-4 mt-1 border-l-2 border-indigo-100 pl-2 space-y-1">
+                            <SubMenuItem href="/referensi/KP" isActive={currentPath.startsWith("/referensi/KP")}>Kurikulum Prodi</SubMenuItem>
+                            <SubMenuItem href="/referensi/JP" isActive={currentPath === "/referensi/JP"}>Jenis Penilaian</SubMenuItem>
                         </div>
-                    </div>
+                    )}
                 </div>
 
-                <MenuItem href="/manajemenuser" icon={UsersIcon} isActive={currentPath === "/manajemenuser"}>
-                    Manajemen User
-                </MenuItem>
+                <MenuItem href="/manajemenuser" icon={UsersIcon} isActive={currentPath === "/manajemenuser"}>Manajemen User</MenuItem>
             </nav>
 
-            {/* --- Footer --- */}
-            <div className="p-3 border-t border-gray-100 bg-gray-50/50">
+            <div className="p-3 border-t border-gray-100 bg-gray-50/50 mt-auto">
                 <LogoutButton />
-                <MenuItem href="/pengaturan" icon={Settings} isActive={currentPath === "/pengaturan"}>
-                    Pengaturan
-                </MenuItem>
-                <div className="mt-3 text-center">
-                    <p className="text-[10px] font-bold text-gray-400 tracking-widest">v1.0.0</p>
-                </div>
+                <MenuItem href="/pengaturan" icon={Settings} isActive={currentPath === "/pengaturan"}>Pengaturan</MenuItem>
             </div>
         </div>
     );

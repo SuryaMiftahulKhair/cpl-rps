@@ -1,3 +1,5 @@
+// src/app/api/kurikulum/[id]/VMCPL/route.ts
+
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/../lib/prisma";
 import { getSession } from "@/../lib/auth";
@@ -45,5 +47,25 @@ export async function GET(
 
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+// Bagian PATCH untuk Update Visi Misi Kurikulum
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const { visi, misi } = await req.json();
+    const kurikulumId = parseInt(params.id);
+
+    const updated = await prisma.kurikulum.update({
+      where: { id: kurikulumId },
+      data: { 
+        visi: visi, 
+        misi: misi // Simpan array misi langsung ke kolom Json
+      }
+    });
+
+    return NextResponse.json({ success: true, data: updated });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: "Gagal update Visi Misi Kurikulum" }, { status: 500 });
   }
 }

@@ -1,3 +1,4 @@
+// src/app/components/CplIkTab.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -38,9 +39,10 @@ const parseApiError = async (res: Response) => {
 
 interface CplIkTabProps {
   kurikulumId: number;
+  prodiId: string | null; // Tambahkan prodiId di props
 }
 
-export default function CplIkTab({ kurikulumId }: CplIkTabProps) {
+export default function CplIkTab({ kurikulumId, prodiId }: CplIkTabProps) {
   const [data, setData] = useState<VMData | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -54,9 +56,11 @@ export default function CplIkTab({ kurikulumId }: CplIkTabProps) {
     setLoading(true);
     setErr(null);
     try {
-      if (!kurikulumId || Number.isNaN(kurikulumId)) return;
+      if (!kurikulumId || !prodiId) return; // Pastikan prodiId ada
 
-      const res = await fetch(`/api/kurikulum/${kurikulumId}/VMCPL`); // Pastikan route file-nya nama kecil (vmcpl)
+      // PERBAIKAN: Tambahkan query param ?prodiId=...
+      const res = await fetch(`/api/kurikulum/${kurikulumId}/VMCPL?prodiId=${prodiId}`); 
+      
       if (!res.ok) throw new Error(await parseApiError(res));
       
       const json = await res.json();
@@ -64,12 +68,15 @@ export default function CplIkTab({ kurikulumId }: CplIkTabProps) {
          setData(json.data);
       }
     } catch (e: any) {
-      console.error("Fetch Error:", e);
       setErr(e?.message ?? "Gagal memuat data.");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [kurikulumId, prodiId]);
 
   useEffect(() => {
     if (kurikulumId) loadData();
@@ -115,7 +122,7 @@ export default function CplIkTab({ kurikulumId }: CplIkTabProps) {
       <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gradient-to-r from-indigo-50 to-indigo-100">
+            <thead className="bg-linear-to-r from-indigo-50 to-indigo-100">
               <tr>
                 <th className="w-24 px-6 py-4 text-left font-bold text-xs text-indigo-800 uppercase tracking-wider">Kode CPL</th>
                 <th className="px-6 py-4 text-left font-bold text-xs text-indigo-800 uppercase tracking-wider">Deskripsi CPL</th>

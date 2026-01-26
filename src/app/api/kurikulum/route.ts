@@ -1,36 +1,51 @@
 import { NextResponse, NextRequest } from "next/server";
-import prisma from "@/../lib/prisma"; // Sesuaikan path jika perlu (misal @/lib/prisma)
-import { getSession } from "@/../lib/auth"; // Sesuaikan path auth
+import prisma from "@/../lib/prisma"; 
+import { getSession } from "@/../lib/auth"; 
 
 export async function GET(req: NextRequest) {
   try {
-    // 1. Cek Session
-    const session = await getSession();
-    
-    // Debugging: Cek apakah session terbaca
-    console.log("Session Data:", session);
+    const { searchParams } = new URL(req.url);
+    const urlProdiId = searchParams.get("prodiId");
 
-    if (!session || !session.prodiId) {
-      console.log("Error: User tidak punya prodiId");
-      return NextResponse.json({ error: "Unauthorized: Prodi ID missing" }, { status: 401 });
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userProdiId = Number(session.prodiId);
+    // --- PERBAIKAN LOGIKA DI SINI ---
+    // Pastikan kita paksa ambil dari URL dulu. 
+    // Jika URL kosong, baru kita cek session. 
+    // Kalau session juga kosong (misal superadmin), kita beri error atau default.
+    let finalProdiId: number | null = null;
 
-    // 2. Query Database
-    // Pastikan nama relasi '_count' sesuai dengan schema.prisma terakhir
+    if (urlProdiId) {
+      finalProdiId = Number(urlProdiId);
+    } else if (session.prodiId) {
+      finalProdiId = Number(session.prodiId);
+    }
+
+    // Debugging di Terminal VSCode (Cek angka yang muncul di sini!)
+    console.log("API Kurikulum - ProdiID yang digunakan:", finalProdiId);
+
+    if (!finalProdiId) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Prodi ID tidak ditemukan. Pastikan sudah memilih Prodi di Sidebar." 
+      }, { status: 400 });
+    }
+
     const data = await prisma.kurikulum.findMany({
       where: {
-        prodi_id: userProdiId 
+        prodi_id: finalProdiId 
       },
       include: {
         _count: {
           select: { 
-            cpl: true,       // Pastikan di schema namanya 'cpl'
-            mataKuliah: true // Pastikan di schema namanya 'mataKuliah' (camelCase)
+            cpl: true, 
+            mataKuliah: true 
           }
         },
-        programStudi: true   // Pastikan di schema namanya 'programStudi'
+        programStudi: true 
       },
       orderBy: {
         tahun: 'desc'
@@ -40,33 +55,34 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data });
 
   } catch (err: any) {
-    // INI PENTING: Lihat error aslinya di Terminal VSCode
     console.error("API Kurikulum Error:", err); 
-    
-    return NextResponse.json({ 
-      success: false, 
-      error: "Server Error", 
-      detail: err.message 
-    }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Server Error" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || !session.prodiId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const userProdiId = Number(session.prodiId);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { nama, tahun } = body;
+    const { nama, tahun, prodiId } = body; // Ambil prodiId langsung dari body (lebih aman)
+
+    // Prioritas: Body > URL > Session
+    const { searchParams } = new URL(req.url);
+    const urlProdiId = searchParams.get("prodiId");
+    
+    const targetProdiId = prodiId ? Number(prodiId) : (urlProdiId ? Number(urlProdiId) : Number(session.prodiId));
+
+    if (!targetProdiId) {
+       return NextResponse.json({ error: "Gagal menentukan Prodi ID untuk data baru" }, { status: 400 });
+    }
 
     const newKurikulum = await prisma.kurikulum.create({
       data: {
         nama,
         tahun: Number(tahun),
-        prodi_id: userProdiId
+        prodi_id: targetProdiId
       }
     });
 

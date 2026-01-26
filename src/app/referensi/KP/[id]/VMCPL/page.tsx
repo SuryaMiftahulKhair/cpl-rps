@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation"; // TAMBAH useSearchParams
 import { BookOpen, ChevronLeft } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
@@ -12,6 +12,10 @@ import CplIkTab from "@/app/components/CplIkTab";
 
 export default function VisiMisiCPLPage() {
   const params = useParams();
+  const searchParams = useSearchParams(); // Inisialisasi searchParams
+  
+  // 1. Ambil prodiId dari URL
+  const prodiId = searchParams.get("prodiId");
   const kurikulumId = Number((params as any)?.id);
   
   const [activeTab, setActiveTab] = useState<"visi_misi" | "cpl_ik">("cpl_ik");
@@ -27,16 +31,22 @@ export default function VisiMisiCPLPage() {
                 </div>
                 <div>
                     <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">Detail Kurikulum</h1>
-                    <p className="text-sm text-gray-500 mt-1">Kelola data referensi Visi Misi, CPL dan Indikator</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Prodi ID: <span className="font-bold text-indigo-600">{prodiId}</span> | Kelola data referensi Visi Misi, CPL dan Indikator
+                    </p>
                 </div>
             </div>
-            <Link href="/referensi/KP" className="text-sm text-gray-500 hover:text-indigo-600 flex items-center gap-1">
+            {/* 2. PERBAIKAN: Tombol kembali membawa prodiId */}
+            <Link 
+              href={`/referensi/KP?prodiId=${prodiId}`} 
+              className="text-sm text-gray-500 hover:text-indigo-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm transition-all"
+            >
                 <ChevronLeft size={16}/> Kembali ke List
             </Link>
         </div>
       </div>
 
-      {/* TAB NAVIGATION */}
+      {/* TAB NAVIGATION (Tetap Sama) */}
       <div className="px-6 lg:px-8">
         <div className="border-b border-gray-200 bg-white rounded-t-xl shadow-sm">
           <div className="flex space-x-8 px-4 overflow-x-auto">
@@ -64,11 +74,10 @@ export default function VisiMisiCPLPage() {
       <div className="px-6 lg:px-8 pb-8">
         <div className="bg-gray-50 rounded-b-xl shadow-sm border-x border-b border-gray-200">
           
-          {/* Render Komponen berdasarkan Tab */}
-          {activeTab === "visi_misi" && <VisiMisiTab />}
+          {/* 3. PERBAIKAN: Kirim prodiId ke komponen agar Fetching di dalam tab tidak salah data */}
+          {activeTab === "visi_misi" && <VisiMisiTab prodiId={prodiId} kurikulumId={kurikulumId} />}
           
-          {/* Kirim kurikulumId ke komponen CPL IK */}
-          {activeTab === "cpl_ik" && <CplIkTab kurikulumId={kurikulumId} />}
+          {activeTab === "cpl_ik" && <CplIkTab prodiId={prodiId} kurikulumId={kurikulumId} />}
           
         </div>
       </div>
