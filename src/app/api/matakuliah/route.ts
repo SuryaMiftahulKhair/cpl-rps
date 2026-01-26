@@ -11,7 +11,11 @@ export async function GET() {
         kode_mk: true,
         nama: true,
         sks: true,
-        semester: true
+        semester: true,
+        rps: {
+          select: { id: true, tanggal_penyusunan: true},
+          orderBy: { createdAt: 'desc' },
+        }
       }
     });
 

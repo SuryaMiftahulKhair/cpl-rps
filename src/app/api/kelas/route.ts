@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       where,
       include: {
         matakuliah: true,
-        dosen_pengampu: { include: { dosen: true } }
+  
       },
       orderBy: { nama_kelas: 'asc' }
     });
@@ -30,15 +30,10 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // Validasi input dasar
     if (!body.tahun_ajaran_id || !body.kode_mk || !body.nama_kelas) {
       return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
     }
 
-    // --- BAGIAN INI DIHAPUS (Tidak perlu ID unik manual lagi) ---
-    // const manualNeosiaId = `MANUAL-${body.kode_mk}-...`;
-
-    // 2. Simpan ke Database
     const newKelas = await prisma.kelas.create({
       data: {
         tahun_ajaran_id: Number(body.tahun_ajaran_id),
@@ -48,9 +43,7 @@ export async function POST(req: Request) {
         sks: Number(body.sks || 0),
         
         matakuliah_id: body.matakuliah_id ? Number(body.matakuliah_id) : null,
-
-        // HAPUS BARIS INI:
-        // neosia_id: manualNeosiaId 
+        rps_id: body.rps_id ? Number(body.rps_id) : null, 
       }
     });
 

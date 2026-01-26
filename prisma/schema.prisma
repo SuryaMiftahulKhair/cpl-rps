@@ -4,19 +4,21 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id            Int            @id @default(autoincrement())
-  username      String         @unique
-  password_hash String
-  nama          String
-  role          UserRole
-  prodi_id      Int?
-  programStudi  ProgramStudi?  @relation("UserToProgramStudi", fields: [prodi_id], references: [id])
-  programStudis ProgramStudi[] @relation("UserToProgramStudis")
-
+  id              Int            @id @default(autoincrement())
+  username        String         @unique
+  password_hash   String
+  nama            String
+  role            UserRole
+  prodi_id        Int?
+  programStudi    ProgramStudi?  @relation("UserToProgramStudi", fields: [prodi_id], references: [id])
+  programStudis   ProgramStudi[] @relation("UserToProgramStudis")
+  rpsKaprodi      RPS[]          @relation("UserToRPSKaprodi")
+  rpsKoordinator  RPS[]          @relation("UserToRPSKoordinator")
+  rpsPenyusun     RPS[]          @relation("UserToRPSPenyusun")
   @@map("users")
 }
 
@@ -133,17 +135,20 @@ model RPS {
   pustaka_utama       String?
   updatedAt           DateTime       @updatedAt
   matakuliah_id       Int
-  nama_kaprodi        String?
-  nama_koordinator    String?
-  nama_penyusun       String?
   nomor_dokumen       String?
   tanggal_penyusunan  DateTime       @default(now())
   semester            Semester?
   tahun               String?
   tahun_ajaran_id     Int?
-  kelas               Kelas[]
+  kaprodi_id          Int?
+  koordinator_id      Int?
+  penyusun_id         Int?
   matakuliah          MataKuliah     @relation(fields: [matakuliah_id], references: [id])
   tahun_ajaran        TahunAjaran?   @relation(fields: [tahun_ajaran_id], references: [id])
+  kaprodi             User?          @relation("UserToRPSKaprodi", fields: [kaprodi_id], references: [id])
+  koordinator         User?          @relation("UserToRPSKoordinator", fields: [koordinator_id], references: [id])
+  penyusun            User?          @relation("UserToRPSPenyusun", fields: [penyusun_id], references: [id])
+  kelas               Kelas[]
   pertemuan           RPSPertemuan[]
   rubriks             Rubrik[]       @relation("RPSToRubrik")
   cpmk                CPMK[]         @relation("CPMKToRPS")
