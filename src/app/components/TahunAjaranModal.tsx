@@ -8,7 +8,7 @@ import { X } from "lucide-react";
 interface TahunAjaranModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { tahun: string; semester: "GANJIL" | "GENAP" ; kode_neosia : string}) => void;
+  onSubmit: (data: { tahun: string; semester: "GANJIL" | "GENAP" ; }) => void;
   submitting: boolean;
 }
 
@@ -26,12 +26,11 @@ export function TahunAjaranModal({ isOpen, onClose, onSubmit, submitting }: Tahu
       onSubmit({
         tahun: tahun.trim(),
         semester,
-        kode_neosia: kodeNeosia
+        
       });
     }
   };
 
-  const [kodeNeosia, setKodeNeosia] = useState("");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn">
@@ -43,31 +42,16 @@ export function TahunAjaranModal({ isOpen, onClose, onSubmit, submitting }: Tahu
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label htmlFor="tahun" className="block text-sm font-semibold text-gray-700 mb-2">Tahun Ajaran <span className="text-red-500">*</span></label>
-            <input type="text" id="tahun" name="tahun" required placeholder="Contoh: 2024/2025" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+            <input type="text" id="tahun" name="tahun" required placeholder="Contoh: 2024/2025" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-500" />
           </div>
           <div>
             <label htmlFor="semester" className="block text-sm font-semibold text-gray-700 mb-2">Semester <span className="text-red-500">*</span></label>
-            <select id="semester" name="semester" required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+            <select id="semester" name="semester" required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white text-gray-500">
               <option value="GANJIL">GANJIL</option>
               <option value="GENAP">GENAP</option>
             </select>
           </div>
-          <div className="mb-4">
-         <label className="block text-sm font-medium text-gray-700 mb-1">
-           Kode Semester Neosia
-         </label>
-         <input
-           type="text"
-           name="kode_neosia"
-           value={kodeNeosia}
-           onChange={(e) => setKodeNeosia(e.target.value)}
-           placeholder="Contoh: 20241 (Ganjil), 20242 (Genap)"
-           className="w-full px-3 py-2 border rounded-lg focus:ring-indigo-500"
-           required
-         />
-         <p className="text-xs text-gray-500 mt-1">
-           *Kode ini diperlukan untuk sinkronisasi nilai otomatis.
-         </p>
+          <div className="mb-4">       
        </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} disabled={submitting} className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Batal</button>
@@ -81,5 +65,4 @@ export function TahunAjaranModal({ isOpen, onClose, onSubmit, submitting }: Tahu
   );
 }
 
-// Ekspor default agar mudah diimpor di file lain
 export default TahunAjaranModal;

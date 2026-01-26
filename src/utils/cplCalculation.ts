@@ -18,3 +18,4 @@ export function calculateCoefficient(sks: number, ikCount: number, totalIK: numb
   // Asumsi bobot CPMK 100% jika tidak didefinisikan lain
   return (sks / 144) * 1 * (totalIK > 0 ? ikCount / totalIK : 0);
 }
+
