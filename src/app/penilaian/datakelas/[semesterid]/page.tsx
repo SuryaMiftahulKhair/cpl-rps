@@ -124,7 +124,6 @@ export default function SemesterMatakuliahListPage({
       <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Data Kelas</h1>
-          <span className="text-sm font-mono bg-gray-200 px-2 py-1 rounded text-gray-600">Semester ID: {semesterid}</span>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">

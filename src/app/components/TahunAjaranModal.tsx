@@ -19,7 +19,11 @@ interface TahunAjaranForm {
 interface TahunAjaranModalProps {
   isOpen: boolean;
   onClose: () => void;
+<<<<<<< HEAD
   onSubmit: (data: TahunAjaranForm) => void;
+=======
+  onSubmit: (data: { tahun: string; semester: "GANJIL" | "GENAP" ; }) => void;
+>>>>>>> ba63e4bfb8e8224f5ee18748e0db973b2c7eb4c0
   submitting: boolean;
 }
 
@@ -41,6 +45,25 @@ export default function TahunAjaranModal({
 
   if (!isOpen) return null;
 
+<<<<<<< HEAD
+=======
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const tahun = formData.get("tahun") as string;
+    const semester = formData.get("semester") as "GANJIL" | "GENAP";
+
+    if (tahun.trim() && semester) {
+      onSubmit({
+        tahun: tahun.trim(),
+        semester,
+        
+      });
+    }
+  };
+
+
+>>>>>>> ba63e4bfb8e8224f5ee18748e0db973b2c7eb4c0
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 m-4 animate-slideUp">
@@ -68,6 +91,7 @@ export default function TahunAjaranModal({
 
           {/* ===== Tahun Ajaran (SELECT) ===== */}
           <div>
+<<<<<<< HEAD
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Tahun Ajaran <span className="text-red-500">*</span>
             </label>
@@ -98,10 +122,15 @@ export default function TahunAjaranModal({
                 {form.formState.errors.tahun.message}
               </p>
             )}
+=======
+            <label htmlFor="tahun" className="block text-sm font-semibold text-gray-700 mb-2">Tahun Ajaran <span className="text-red-500">*</span></label>
+            <input type="text" id="tahun" name="tahun" required placeholder="Contoh: 2024/2025" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-500" />
+>>>>>>> ba63e4bfb8e8224f5ee18748e0db973b2c7eb4c0
           </div>
 
           {/* ===== Semester ===== */}
           <div>
+<<<<<<< HEAD
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Semester <span className="text-red-500">*</span>
             </label>
@@ -112,10 +141,15 @@ export default function TahunAjaranModal({
               })}
               className="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500"
             >
+=======
+            <label htmlFor="semester" className="block text-sm font-semibold text-gray-700 mb-2">Semester <span className="text-red-500">*</span></label>
+            <select id="semester" name="semester" required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white text-gray-500">
+>>>>>>> ba63e4bfb8e8224f5ee18748e0db973b2c7eb4c0
               <option value="GANJIL">GANJIL</option>
               <option value="GENAP">GENAP</option>
             </select>
           </div>
+<<<<<<< HEAD
 
           {/* ===== Kode Neosia ===== */}
           <div>
@@ -143,6 +177,10 @@ export default function TahunAjaranModal({
           </div>
 
           {/* ===== BUTTON ===== */}
+=======
+          <div className="mb-4">       
+       </div>
+>>>>>>> ba63e4bfb8e8224f5ee18748e0db973b2c7eb4c0
           <div className="flex gap-3 pt-2">
             <button
               type="button"
@@ -170,3 +208,8 @@ export default function TahunAjaranModal({
     </div>
   );
 }
+<<<<<<< HEAD
+=======
+
+export default TahunAjaranModal;
+>>>>>>> ba63e4bfb8e8224f5ee18748e0db973b2c7eb4c0

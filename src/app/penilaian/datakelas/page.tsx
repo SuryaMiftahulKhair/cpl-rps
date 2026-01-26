@@ -15,7 +15,6 @@ export interface TahunAjaran {
   id: number | string; 
   tahun: string;
   semester: Semester;
-  kode_neosia: string;
 }
 
 async function parseApiError(res: Response): Promise<string> {
@@ -63,11 +62,11 @@ export default function DataNilaiPage() {
     fetchData();
   }, []);
 
-  const handleAddTahunAjaran = async (data: { tahun: string; semester: "GANJIL" | "GENAP" ; kode_neosia : string}) => {
+  const handleAddTahunAjaran = async (data: { tahun: string; semester: "GANJIL" | "GENAP" ; }) => {
     setSubmitting(true);
     setError(null);
     const optimisticId = -Date.now();
-    const optimisticItem: TahunAjaran = { id: optimisticId, tahun: data.tahun, semester: data.semester as Semester, kode_neosia: data.kode_neosia };
+    const optimisticItem: TahunAjaran = { id: optimisticId, tahun: data.tahun, semester: data.semester as Semester,};
     setSemesterList((prev) => [optimisticItem, ...prev].sort((a, b) => b.tahun.localeCompare(a.tahun) || b.semester.localeCompare(a.semester)));
     setIsModalOpen(false);
 
