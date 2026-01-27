@@ -7,23 +7,24 @@ const key = new TextEncoder().encode(secretKey);
 
 // 1. Fungsi Membuat Session (Dipanggil saat Login sukses)
 export async function createSession(payload: any) {
-  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 Hari
+  // Ubah durasi dari 24 jam menjadi 2 jam agar lebih ketat
+  const duration = 2 * 60 * 60 * 1000; // 2 Jam
+  const expires = new Date(Date.now() + duration); 
+  
   const session = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("24h")
+    .setExpirationTime("2h") // Sinkronkan dengan 2 jam
     .sign(key);
 
-  // Simpan ke Cookies
   (await cookies()).set("session", session, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     expires,
-    sameSite: "lax",
+    sameSite: "strict", // Ubah 'lax' jadi 'strict' agar lebih aman dari CSRF
     path: "/",
   });
 }
-
 // 2. Fungsi Mengambil Data User dari Session (Dipanggil di API/Page)
 export async function getSession() {
   const session = (await cookies()).get("session")?.value;

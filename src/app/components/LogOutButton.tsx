@@ -7,15 +7,11 @@ export default function LogoutButton() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    // Panggil API Logout (Kita buat sebentar lagi)
-    // Atau pakai Server Action kalau kakak pakai Server Action
-    
-    // Cara Cepat: Hapus cookie lewat API Route khusus logout
-    await fetch("/api/auth/logout", { method: "POST" });
-    
-    router.push("/login"); // Lempar ke login
-    router.refresh(); // Refresh agar middleware sadar session hilang
-  };
+    const res = await fetch("/api/auth/logout", { method: "POST" });
+    if (res.ok) {
+        window.location.href = "/login"; // Redirect ke login
+    }
+};
 
   return (
     <button 
