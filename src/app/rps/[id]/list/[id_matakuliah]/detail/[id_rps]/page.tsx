@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation"; // TAMBAHKAN useSearchParams
 import { 
@@ -19,8 +19,7 @@ interface RubrikFormData {
 }
 
 interface OtorisasiFormData {
-    penyusun_1: string; // ID Dosen 1
-    penyusun_2: string; // ID Dosen 2 (Opsional)
+    penyusun: { nama: string }[]; 
     koordinator: string;
     kaprodi: string;
 }
@@ -41,7 +40,7 @@ interface PertemuanFormData {
 }
 
 interface OtorisasiFormData {
-    penyusun: string;
+    penyusun: { nama: string }[];
     koordinator: string;
     kaprodi: string;
 }
@@ -128,7 +127,12 @@ export default function DetailRPSPage({ params }: { params: Promise<{ id: string
     });
 
     const otorisasiForm = useForm<OtorisasiFormData>({
-        defaultValues: { penyusun: "", koordinator: "", kaprodi: "" }
+    defaultValues: { penyusun: [{ nama: "" }], koordinator: "", kaprodi: "" }
+    });
+    
+    const { fields, append, remove } = useFieldArray({
+    control: otorisasiForm.control,
+    name: "penyusun"
     });
 
     // --- FETCH DATA ---
@@ -256,33 +260,53 @@ export default function DetailRPSPage({ params }: { params: Promise<{ id: string
         } catch (error: any) { alert(`Error: ${error.message}`); } finally { setIsSaving(false); }
     };
 
-    const handleSaveOtorisasi = async (data: OtorisasiFormData) => {
-        setIsSaving(true);
-        try {
-            const res = await fetch(`/api/rps/${id_rps}?prodiId=${prodiId}`, { 
-                method: 'PUT', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ 
-                    section: 'otorisasi', 
-                    data: data 
-                }) 
-            });
-            if (res.ok) { 
-                await fetchRPSData(); 
-                setEditingSection(null); 
-                otorisasiForm.reset();
+    const handleSaveOtorisasi = async (formData: OtorisasiFormData) => {
+    setIsSaving(true);
+    try {
+        // Ambil hanya nama-nama dosen dari array object
+        const listNamaPenyusun = formData.penyusun.map(p => p.nama).filter(n => n !== "");
+
+        const payload = {
+            section: 'otorisasi',
+            data: {
+                nama_penyusun: listNamaPenyusun, // Ini sekarang jadi Array ["Dosen 1", "Dosen 2"]
+                nama_koordinator: formData.koordinator,
+                nama_kaprodi: formData.kaprodi
             }
-        } catch (error: any) { alert(`Gagal: ${error.message}`); } finally { setIsSaving(false); }
-    };
+        };
+
+        const res = await fetch(`/api/rps/${id_rps}?prodiId=${prodiId}`, { 
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        });
+
+        if (res.ok) { 
+            await fetchRPSData(); 
+            setEditingSection(null); 
+        }
+    } catch (error) {
+        alert("Gagal menyimpan data");
+    } finally {
+        setIsSaving(false);
+    }
+};
 
     const openEditOtorisasi = () => {
+    // 1. Ambil data penyusun dari rpsData
+    // Jika datanya array, kita map ke format { nama: "..." }
+    // Jika masih null/bukan array, kita kasih satu input kosong default
+    const existingPenyusun = Array.isArray(rpsData.nama_penyusun) 
+        ? rpsData.nama_penyusun.map((nama: string) => ({ nama }))
+        : [{ nama: "" }];
+
+    // 2. Reset form dengan struktur data yang baru
     otorisasiForm.reset({
-        // Karena sekarang kita pakai penyusun_1 dan penyusun_2
-        penyusun_1: rpsData.nama_penyusun || "", 
-        penyusun_2: rpsData.nama_penyusun_2 || "", // Pastikan kolom ini ada di DB
+        penyusun: existingPenyusun,
         koordinator: rpsData.nama_koordinator || "",
         kaprodi: rpsData.nama_kaprodi || ""
     });
+
     setEditingSection('otorisasi');
 };
 
@@ -338,17 +362,37 @@ useEffect(() => {
                     </div>
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <SectionHeader title="Otorisasi" onEdit={openEditOtorisasi} />
-                        <div className="p-4 grid grid-cols-3 gap-2 text-center text-[10px]">
-                            <div className="border p-2 rounded">
-                                <strong className="text-gray-900">Penyusun:</strong> 
-                                <div className="text-gray-900 text-[9px] mt-1">
-                                    <p>1. {rpsData.nama_penyusun || "-"}</p>
-                                    {rpsData.nama_penyusun_2 && <p>2. {rpsData.nama_penyusun_2}</p>}
-                                </div>
+                        <div className="border p-2 rounded">
+                        {/* BAGIAN PENYUSUN (ARRAY) */}
+                        <div>
+                            <strong className="text-gray-900 text-xs uppercase tracking-wider">Penyusun:</strong>
+                            <div className="text-gray-900 text-[11px] mt-1 space-y-1 ml-2">
+                                {Array.isArray(rpsData.nama_penyusun) ? (
+                                    rpsData.nama_penyusun.map((nama: string, idx: number) => (
+                                        <p key={idx}>{idx + 1}. {nama}</p>
+                                    ))
+                                ) : (
+                                    <p>{rpsData.nama_penyusun || "-"}</p>
+                                )}
                             </div>
-                            <div className="border p-2 rounded"><strong className="text-gray-900">Koordinator:</strong> <p className="text-gray-900">{rpsData.nama_koordinator || "-"}</p></div>
-                            <div className="border p-2 rounded"><strong className="text-gray-900">Kaprodi:</strong> <p className="text-gray-900">{rpsData.nama_kaprodi || "-"}</p></div>
                         </div>
+
+                        {/* BAGIAN KOORDINATOR */}
+                        <div className="pt-2 border-t border-gray-50">
+                            <strong className="text-gray-900 text-xs uppercase tracking-wider">Koordinator MK:</strong>
+                            <p className="text-gray-900 text-[11px] mt-1 ml-2">
+                                {rpsData.nama_koordinator || "-"}
+                            </p>
+                        </div>
+
+                        {/* BAGIAN KAPRODI */}
+                        <div className="pt-2 border-t border-gray-50">
+                            <strong className="text-gray-900 text-xs uppercase tracking-wider">Ketua Program Studi:</strong>
+                            <p className="text-gray-900 text-[11px] mt-1 ml-2">
+                                {rpsData.nama_kaprodi || "-"}
+                            </p>
+                        </div>
+                    </div>
                     </div>
                 </div>
 
@@ -553,7 +597,7 @@ useEffect(() => {
                 </form>
             </Modal>
 
-            <Modal 
+           <Modal 
     isOpen={editingSection === 'otorisasi'} 
     onClose={() => { setEditingSection(null); otorisasiForm.reset(); }} 
     title="Edit Otorisasi" 
@@ -561,28 +605,45 @@ useEffect(() => {
     isSaving={isSaving}
 >
     <form className="space-y-4">
-        {/* PENYUSUN 1 */}
-        <div>
-            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Penyusun 1 (Utama)</label>
-            <select 
-                {...otorisasiForm.register("penyusun_1", { required: "Penyusun utama wajib dipilih" })}
-                className="w-full border p-2 rounded-lg text-sm bg-white text-gray-900"
-            >
-                <option value=""></option>
-                {dosenList.map(d => <option key={d.id} value={d.nama}>{d.nama}</option>)}
-            </select>
-        </div>
+        {/* BAGIAN PENYUSUN DINAMIS */}
+        <div className="space-y-3">
+            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                Dosen Penyusun RPS
+            </label>
+            
+            {fields.map((field, index) => (
+                <div key={field.id} className="flex gap-2 items-center">
+                    <div className="flex-1">
+                        <select 
+                            {...otorisasiForm.register(`penyusun.${index}.nama` as const, { required: "Wajib diisi" })}
+                            className="w-full border p-2 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        >
+                            <option value="">-- Pilih Dosen {index + 1} --</option>
+                            {dosenList.map(d => <option key={d.id} value={d.nama}>{d.nama}</option>)}
+                        </select>
+                    </div>
+                    
+                    {/* Tombol Hapus (Hanya muncul jika lebih dari 1 penyusun) */}
+                    {fields.length > 1 && (
+                        <button 
+                            type="button" 
+                            onClick={() => remove(index)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Hapus Penyusun"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    )}
+                </div>
+            ))}
 
-        {/* PENYUSUN 2 (OPSIONAL) */}
-        <div>
-            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Penyusun 2 (Anggota - Opsional)</label>
-            <select 
-                {...otorisasiForm.register("penyusun_2")}
-                className="w-full border p-2 rounded-lg text-sm bg-white text-gray-900"
+            <button 
+                type="button" 
+                onClick={() => append({ nama: "" })}
+                className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 text-xs font-bold py-1"
             >
-                <option value=""></option>
-                {dosenList.map(d => <option key={d.id} value={d.nama}>{d.nama}</option>)}
-            </select>
+                <Plus size={14} /> Tambah Dosen Penyusun
+            </button>
         </div>
 
         {/* KOORDINATOR */}
@@ -609,7 +670,7 @@ useEffect(() => {
             </select>
         </div>
     </form>
-</Modal>
+    </Modal>
 
         </DashboardLayout>
     );

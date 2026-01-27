@@ -55,42 +55,34 @@ export async function GET(
 
 // PUT: Update Data (Otorisasi, Deskripsi, dll)
 export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> } // 1. Ubah tipe data params jadi Promise
 ) {
-  try {
-    const { id } = await params;
-    const body = await req.json();
-    const { section, data } = body;
+    try {
+        const { id } = await params; // 2. WAJIB di-await di sini
+        const body = await req.json();
+        const { section, data } = body;
 
-    let updateData: any = {};
+        // Di dalam PUT API Kakak
+if (section === 'otorisasi') {
+    // Pastikan data.nama_penyusun adalah array, jika bukan buat jadi array
+    const cleanPenyusun = Array.isArray(data.nama_penyusun) 
+        ? data.nama_penyusun 
+        : [data.nama_penyusun];
 
-    // MAPPING SESUAI SCHEMA KAKAK
-    if (section === 'otorisasi') {
-      updateData = {
-        nama_penyusun: data.penyusun,
-        nama_koordinator: data.koordinator,
-        nama_kaprodi: data.kaprodi
-      };
-    } else if (section === 'deskripsi') {
-      updateData = { deskripsi: data };
-    } else if (section === 'materi') {
-      updateData = { materi_pembelajaran: data };
-    } else if (section === 'pustaka') {
-      updateData = { 
-        pustaka_utama: data.utama, 
-        pustaka_pendukung: data.pendukung 
-      };
-    }
-
-    const updated = await prisma.rPS.update({
-      where: { id: Number(id) },
-      data: updateData
+    await prisma.rPS.update({
+        where: { id: Number(id) },
+        data: {
+            nama_penyusun: cleanPenyusun, // Simpan sebagai Json Array
+            nama_koordinator: data.nama_koordinator,
+            nama_kaprodi: data.nama_kaprodi,
+        }
     });
+}
 
-    return NextResponse.json({ success: true, data: updated });
-
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        console.error("PUT RPS Error:", error);
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
 }
