@@ -1,20 +1,23 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
+  Edit,
   Target,
   Loader2,
   Printer,
   Plus,
+  X,
+  Save,
   CheckSquare,
-  Edit,
 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
-// --- IMPORT MODAL KOMPONEN (Sesuai Komponen yang Kakak Buat) ---
+// --- IMPORT MODAL KOMPONEN ---
 import CpmkModal from "@/app/components/detail-rps/CpmkModal";
 import PertemuanModal from "@/app/components/detail-rps/PertemuanModal";
 import OtorisasiModal from "@/app/components/detail-rps/OtorisasiModel";
@@ -61,20 +64,17 @@ export default function DetailRPSPage({
   const searchParams = useSearchParams();
   const prodiId = searchParams.get("prodiId");
 
-  // State Data
   const [rpsData, setRpsData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // State Modal Toggles
   const [showPertemuanModal, setShowPertemuanModal] = useState(false);
   const [showCpmkModal, setShowCpmkModal] = useState(false);
-  const [dosenList, setDosenList] = useState<{ id: number; nama: string }[]>(
-    [],
-  );
+  const [dosenList, setDosenList] = useState([]);
 
-  // --- FETCH DATA ---
+  const otorisasiForm = useForm<any>();
+
   const fetchRPSData = async () => {
     try {
       const res = await fetch(`/api/rps/${id_rps}?prodiId=${prodiId}`);
@@ -104,53 +104,104 @@ export default function DetailRPSPage({
     }
   }, [id_rps, prodiId]);
 
-  // --- SAVE HANDLERS ---
-  const handleSaveCpmk = async (data: any) => {
+  const handleSaveOtorisasi = async (formData: any) => {
     setIsSaving(true);
     try {
-      const res = await fetch("/api/rps/cpmk", {
-        method: "POST",
+      // Pastikan kita mengirim array string murni ["Nama 1", "Nama 2"]
+      const listNamaPenyusun = formData.penyusun
+        .map((p: any) => p.nama)
+        .filter((n: string) => n.trim() !== "");
+
+      const payload = {
+        section: "otorisasi",
+        data: {
+          // Kita kirim objek ini, backend harus siap menerima
+          nama_penyusun: listNamaPenyusun,
+          nama_koordinator: formData.koordinator,
+          nama_kaprodi: formData.kaprodi,
+        },
+      };
+
+      const res = await fetch(`/api/rps/${id_rps}?prodiId=${prodiId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, rps_id: Number(id_rps), prodiId }),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        await fetchRPSData();
-        setShowCpmkModal(false);
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Gagal menyimpan ke server");
       }
+
+      await fetchRPSData();
+      setEditingSection(null);
+    } catch (error: any) {
+      alert("Error Server: " + error.message);
+      console.error("Detail Error:", error);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleSavePertemuan = async (data: any) => {
+  // --- SAVE HANDLERS (DILENGKAPI DENGAN FETCH) ---
+
+  const handleSaveCpmk = async (formData: any) => {
+    setIsSaving(true);
+    try {
+      // Log untuk cek data sebelum dikirim (cek di console browser)
+      console.log("Data yang dikirim ke API:", formData);
+
+      const res = await fetch("/api/rps/cpmk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rps_id: Number(id_rps), // Pastikan angka
+          kode_cpmk: formData.kode, // Sesuaikan 'kode' dari modal ke 'kode_cpmk' API
+          deskripsi: formData.deskripsi,
+          ik_id: formData.ik_id ? Number(formData.ik_id) : null, // Pastikan angka
+          prodiId: prodiId,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        // Jika error 400, tampilkan pesan error detail dari backend
+        throw new Error(result.error || "Gagal menyimpan CPMK");
+      }
+
+      await fetchRPSData();
+      setShowCpmkModal(false);
+    } catch (error: any) {
+      alert("Kesalahan: " + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSavePertemuan = async (formData: any) => {
     setIsSaving(true);
     try {
       const res = await fetch(`/api/rps/pertemuan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, rps_id: Number(id_rps), prodiId }),
+        body: JSON.stringify({
+          ...formData,
+          rps_id: Number(id_rps),
+          pekan_ke: Number(formData.pekan_ke),
+          bobot_nilai: Number(formData.bobot_nilai),
+        }),
       });
-      if (res.ok) {
-        await fetchRPSData();
-        setShowPertemuanModal(false);
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
-  const handleSaveOtorisasi = async (formData: any) => {
-    setIsSaving(true);
-    try {
-      const res = await fetch(`/api/rps/${id_rps}?prodiId=${prodiId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section: "otorisasi", data: formData }),
-      });
-      if (res.ok) {
-        await fetchRPSData();
-        setEditingSection(null);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Gagal simpan");
       }
+
+      await fetchRPSData();
+      setShowPertemuanModal(false);
+    } catch (error: any) {
+      alert("Kesalahan: " + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -208,13 +259,14 @@ export default function DetailRPSPage({
             width: 100% !important;
             border-collapse: collapse !important;
             border: 1px solid black !important;
-            margin-top: 10px;
+            margin: 10px 0;
           }
           th,
           td {
             border: 1px solid black !important;
             padding: 8px !important;
-            font-size: 11pt !important;
+            font-size: 10pt !important;
+            text-align: left !important;
           }
           th {
             background-color: #f2f2f2 !important;
@@ -223,6 +275,7 @@ export default function DetailRPSPage({
         }
       `}</style>
 
+      {/* --- TAMPILAN DASHBOARD WEB (SLATE) --- */}
       <div className="p-6 lg:p-8 bg-gray-50 min-h-screen no-print">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 uppercase">
@@ -231,7 +284,7 @@ export default function DetailRPSPage({
           <div className="flex gap-2">
             <Link
               href={`/rps/${id}/list/${id_matakuliah}?prodiId=${prodiId}`}
-              className="bg-white border px-4 py-2 rounded flex items-center gap-2 text-sm hover:bg-gray-50">
+              className="bg-white border px-4 py-2 rounded flex items-center gap-2 text-sm hover:bg-gray-50 shadow-sm">
               <ChevronLeft size={16} /> Kembali
             </Link>
             <button
@@ -244,34 +297,67 @@ export default function DetailRPSPage({
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-2">
-            <InfoRow label="Mata Kuliah" value={matkul.nama} />
-            <InfoRow label="Kode" value={matkul.kode_mk} />
-            <InfoRow label="Bobot (SKS)" value={matkul.sks} />
-            <InfoRow label="Semester" value={matkul.semester} />
+            <InfoRow label="MATA KULIAH" value={matkul.nama} />
+            <InfoRow label="KODE" value={matkul.kode_mk} />
+            <InfoRow label="BOBOT" value={matkul.sks} />
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <SectionHeader
               title="Otorisasi"
               onEdit={() => setEditingSection("otorisasi")}
             />
-            <div className="p-4 space-y-2 text-sm">
-              <p>
-                <strong>Penyusun:</strong>{" "}
-                {Array.isArray(rpsData.nama_penyusun)
-                  ? rpsData.nama_penyusun.join(", ")
-                  : rpsData.nama_penyusun || "-"}
-              </p>
-              <p>
-                <strong>Koordinator:</strong>{" "}
-                {String(rpsData.nama_koordinator || "-")}
-              </p>
-              <p>
-                <strong>Kaprodi:</strong> {String(rpsData.nama_kaprodi || "-")}
-              </p>
+            <div className="p-4 space-y-3">
+              {/* BAGIAN PENYUSUN */}
+              <div>
+                <strong className="text-gray-900 text-xs uppercase tracking-wider">
+                  Dosen Penyusun:
+                </strong>
+                <div className="text-gray-900 text-[11px] mt-1 space-y-1">
+                  {(() => {
+                    // Ambil data murni, jika Prisma mengembalikan {set: []}, ambil dalamnya
+                    const rawData = rpsData.nama_penyusun;
+                    const names =
+                      rawData && typeof rawData === "object" && "set" in rawData
+                        ? rawData.set
+                        : rawData;
+
+                    return Array.isArray(names) ? (
+                      names.map((nama: string, idx: number) => (
+                        <p key={idx}>
+                          {idx + 1}. {nama}
+                        </p>
+                      ))
+                    ) : (
+                      <p>{names || "-"}</p>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* BAGIAN KOORDINATOR MK */}
+              <div className="pt-2 border-t border-gray-50">
+                <strong className="text-gray-900 text-xs uppercase tracking-wider">
+                  Koordinator MK:
+                </strong>
+                <p className="text-gray-900 text-sm font-medium mt-1">
+                  {String(rpsData.nama_koordinator || "-")}
+                </p>
+              </div>
+
+              {/* BAGIAN KAPRODI */}
+              <div className="pt-2 border-t border-gray-50">
+                <strong className="text-gray-900 text-xs uppercase tracking-wider">
+                  Ketua Program Studi:
+                </strong>
+                <p className="text-gray-900 text-sm font-medium mt-1">
+                  {String(rpsData.nama_kaprodi || "-")}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
+        {/* TABEL CPMK DASHBOARD */}
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden mb-6">
           <SectionHeader
             title="CPMK"
@@ -288,8 +374,8 @@ export default function DetailRPSPage({
             {rpsData.cpmk?.map((item: any) => (
               <div
                 key={item.id}
-                className="border rounded-lg p-4 bg-gray-50/30">
-                <span className="font-bold text-indigo-700 text-xs">
+                className="border rounded-lg p-4 bg-gray-50/30 text-black">
+                <span className="font-bold text-indigo-700 text-xs ">
                   {item.kode_cpmk}
                 </span>
                 <p className="text-gray-900 text-sm mt-1">{item.deskripsi}</p>
@@ -298,6 +384,7 @@ export default function DetailRPSPage({
           </div>
         </div>
 
+        {/* TABEL RENCANA MINGGUAN DASHBOARD */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
           <div className="bg-slate-600 text-white px-4 py-3 flex justify-between items-center">
             <h3 className="font-bold text-sm uppercase">Rencana Mingguan</h3>
@@ -310,7 +397,7 @@ export default function DetailRPSPage({
           <div className="p-6 overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-gray-100">
+                <tr className="bg-gray-100 text-blue-700 border-b border-gray-200">
                   <th>Mg</th>
                   <th>Kemampuan Akhir</th>
                   <th>Indikator</th>
@@ -318,7 +405,7 @@ export default function DetailRPSPage({
                   <th>Bobot</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100 text-black">
                 {rpsData.pertemuan?.map((p: any) => (
                   <tr key={p.id}>
                     <td className="text-center">{p.pekan_ke}</td>
@@ -334,7 +421,9 @@ export default function DetailRPSPage({
         </div>
       </div>
 
-      {/* --- AREA PDF MURNI DATA --- */}
+      {/* ============================================================
+          --- AREA KHUSUS PDF ---
+          ============================================================ */}
       <div id="pdf-area" className="hidden print:block">
         <div className="pdf-sampul">
           <h1 className="text-3xl font-bold uppercase">
@@ -394,14 +483,51 @@ export default function DetailRPSPage({
 
         <div className="pdf-page">
           <h2 className="font-bold border-b-2 border-black pb-1 mb-4 uppercase">
-            II. RENCANA PEMBELAJARAN MINGGUAN
+            II. CAPAIAN PEMBELAJARAN (CPMK) & INDIKATOR KINERJA (IK)
+          </h2>
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: "10%" }}>Kode</th>
+                <th style={{ width: "45%" }}>CPMK</th>
+                <th style={{ width: "45%" }}>Indikator Kinerja (IK)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rpsData.cpmk?.map((item: any) => (
+                <tr key={item.id}>
+                  <td className="font-bold text-center">{item.kode_cpmk}</td>
+                  <td>{item.deskripsi}</td>
+                  <td>
+                    {item.ik && item.ik.length > 0 ? (
+                      item.ik.map((ik: any, idx: number) => (
+                        <div key={idx} className="mb-1">
+                          <span className="font-bold">[{ik.kode_ik}]</span>{" "}
+                          {ik.deskripsi}
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-gray-400 italic">
+                        Tidak ada IK terikat
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="pdf-page">
+          <h2 className="font-bold border-b-2 border-black pb-1 mb-4 uppercase">
+            III. RENCANA PEMBELAJARAN MINGGUAN
           </h2>
           <table>
             <thead>
               <tr>
                 <th>Mg</th>
                 <th>Kemampuan Akhir</th>
-                <th>Indikator</th>
+                <th>Indikator & Kriteria</th>
                 <th>Metode</th>
                 <th>Bobot</th>
               </tr>
@@ -421,7 +547,6 @@ export default function DetailRPSPage({
         </div>
       </div>
 
-      {/* --- MODALS --- */}
       <OtorisasiModal
         isOpen={editingSection === "otorisasi"}
         onClose={() => setEditingSection(null)}
