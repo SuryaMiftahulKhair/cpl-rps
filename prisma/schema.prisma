@@ -148,7 +148,6 @@ model RPS {
   matakuliah          MataKuliah     @relation(fields: [matakuliah_id], references: [id])
   tahun_ajaran        TahunAjaran?   @relation(fields: [tahun_ajaran_id], references: [id])
   pertemuan           RPSPertemuan[]
-  rubriks             Rubrik[]       @relation("RPSToRubrik")
   cpmk                CPMK[]         @relation("CPMKToRPS")
   ikas                Ik[]           @relation("IkaToRPS")
 
@@ -164,11 +163,11 @@ model RPSPertemuan {
   waktu               String?
   pengalaman_belajar  String?
   kriteria_penilaian  String?
-  bobot_nilai         Float?
+  bobot_cpmk          Float?
   rps_id              Int
   rps                 RPS      @relation(fields: [rps_id], references: [id], onDelete: Cascade)
   cpmk                CPMK[]   @relation("CPMKToPertemuan")
-  rubriks             Rubrik[] @relation("RubrikToPertemuan")
+  
 
   @@map("rps_pertemuan")
 }
@@ -178,11 +177,11 @@ model CPMK {
   kode_cpmk              String
   is_locked              Boolean                @default(false)
   deskripsi              String
-  pemetaan_komponen_cpmk PemetaanKomponenCpmk[]
   kelas                  Kelas[]                @relation("CPMKToKelas")
   rps_pertemuan          RPSPertemuan[]         @relation("CPMKToPertemuan")
   rps                    RPS[]                  @relation("CPMKToRPS")
   ik                     Ik[]                   @relation("IkaToCPMK")
+  komponen_nilai          KomponenNilai[]
 
   @@map("cpmk")
 }
@@ -204,9 +203,10 @@ model Ik {
 model KomponenNilai {
   id                     Int                    @id @default(autoincrement())
   nama                   String
-  bobot                  Float
+  bobot_nilai            Float
   kelas_id               Int
-  pemetaan_komponen_cpmk PemetaanKomponenCpmk[]
+  cpmk_id                Int
+  cpmk                   CPMK                   @relation(fields: [cpmk_id], references: [id], onDelete: Cascade)
   kelas                  Kelas                  @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
   nilai                  Nilai[]
 
@@ -215,10 +215,10 @@ model KomponenNilai {
 
 model Nilai {
   id                Int           @id @default(autoincrement())
-  peserta_kelas_id  Int
-  komponen_nilai_id Int
   nilai_komponen    Float
+  komponen_nilai_id Int
   komponen          KomponenNilai @relation(fields: [komponen_nilai_id], references: [id], onDelete: Cascade)
+  peserta_kelas_id  Int
   peserta_kelas     PesertaKelas  @relation(fields: [peserta_kelas_id], references: [id], onDelete: Cascade)
 
   @@unique([peserta_kelas_id, komponen_nilai_id])
@@ -248,27 +248,6 @@ model PesertaKelas {
 
   @@unique([kelas_id, mahasiswa_id])
   @@map("peserta_kelas")
-}
-
-model PemetaanKomponenCpmk {
-  id                Int           @id @default(autoincrement())
-  komponen_nilai_id Int
-  cpmk_id           Int
-  bobot             Float
-  cpmk              CPMK          @relation(fields: [cpmk_id], references: [id], onDelete: Cascade)
-  komponen_nilai    KomponenNilai @relation(fields: [komponen_nilai_id], references: [id], onDelete: Cascade)
-}
-
-model Rubrik {
-  id          Int            @id @default(autoincrement())
-  kode_rubrik String
-  nama_rubrik String
-  deskripsi   String
-  rps_id      Int
-  rps         RPS            @relation("RPSToRubrik", fields: [rps_id], references: [id], onDelete: Cascade)
-  pertemuan   RPSPertemuan[] @relation("RubrikToPertemuan")
-
-  @@map("rubrik")
 }
 
 enum UserRole {
