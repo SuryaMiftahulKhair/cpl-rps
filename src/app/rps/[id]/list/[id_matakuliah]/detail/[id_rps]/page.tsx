@@ -364,18 +364,20 @@ useEffect(() => {
                         <SectionHeader title="Otorisasi" onEdit={openEditOtorisasi} />
                         <div className="border p-2 rounded">
                         {/* BAGIAN PENYUSUN (ARRAY) */}
-                        <div>
-                            <strong className="text-gray-900 text-xs uppercase tracking-wider">Penyusun:</strong>
-                            <div className="text-gray-900 text-[11px] mt-1 space-y-1 ml-2">
-                                {Array.isArray(rpsData.nama_penyusun) ? (
-                                    rpsData.nama_penyusun.map((nama: string, idx: number) => (
-                                        <p key={idx}>{idx + 1}. {nama}</p>
-                                    ))
-                                ) : (
-                                    <p>{rpsData.nama_penyusun || "-"}</p>
-                                )}
-                            </div>
-                        </div>
+                        <div className="border p-2 rounded">
+    <strong className="text-gray-900">Penyusun:</strong> 
+    <div className="text-gray-900 text-[11px] mt-1 space-y-1">
+        {/* CEK APAKAH DATA ADA DAN BERBENTUK ARRAY */}
+        {rpsData.nama_penyusun && Array.isArray(rpsData.nama_penyusun) ? (
+            rpsData.nama_penyusun.map((nama: string, idx: number) => (
+                <p key={idx}>{idx + 1}. {nama}</p>
+            ))
+        ) : (
+            /* Jika data masih string lama atau null, tampilkan apa adanya */
+            <p>{typeof rpsData.nama_penyusun === 'string' ? rpsData.nama_penyusun : "-"}</p>
+        )}
+    </div>
+</div>
 
                         {/* BAGIAN KOORDINATOR */}
                         <div className="pt-2 border-t border-gray-50">

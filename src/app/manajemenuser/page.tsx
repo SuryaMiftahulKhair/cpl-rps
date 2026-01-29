@@ -4,12 +4,15 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import TambahUserModal from "../components/TambahUserModal";
+import ResetPasswordModal from "../components/ResetPasswordModal";
+import Link from "next/link";
 
 import {
   HiOutlineUsers,
   HiOutlinePlus,
   HiOutlinePencilSquare,
   HiOutlineTrash,
+  HiOutlineKey, // Import Icon Kunci
 } from "react-icons/hi2";
 import { Loader2 } from "lucide-react";
 
@@ -17,13 +20,15 @@ export default function ManajemenUserPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openModal, setOpenModal] = useState(false);
-  const [role, setRole] = useState("admin"); // Idealnya ambil dari session
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [openResetModal, setOpenResetModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{ id: number; nama: string } | null>(null);
 
-  // 1. Fungsi untuk mengambil daftar user dari Database
+  // 1. Fungsi Fetch User
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/users/list"); // Buat API list user
+      const res = await fetch("/api/users/list");
       const json = await res.json();
       if (json.success) {
         setUsers(json.data);
@@ -35,15 +40,46 @@ export default function ManajemenUserPage() {
     }
   };
 
-  // 2. Jalankan fetch saat pertama kali buka halaman
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  // 2. Fungsi Reset Password
+  // Fungsi ini diletakkan di dalam fungsi ManajemenUserPage
+const handleResetPassword = (userId: number, nama: string) => {
+    setSelectedUser({ id: userId, nama });
+    setOpenResetModal(true);
+};
 
-  if (role !== "admin") {
+  useEffect(() => {
+  const initPage = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/session");
+      const session = await res.json();
+      
+      // LOG DEBUG: Cek di console browser apakah role-nya beneran ADMIN (huruf besar/kecil berpengaruh)
+      console.log("Session User:", session);
+
+      // Pastikan membandingkan dengan nilai string yang tepat dari database
+      if (session.success && session.data.role === "ADMIN") {
+        setCurrentUser(session.data);
+        fetchUsers();
+      } else {
+        setCurrentUser("REJECTED");
+      }
+    } catch (error) {
+      console.error("Auth error:", error);
+      setCurrentUser("REJECTED");
+    } finally {
+      setLoading(false);
+    }
+  };
+  initPage();
+}, []);
+
+  if (currentUser === "REJECTED") {
     return (
-      <div className="flex items-center justify-center h-screen text-red-600 font-semibold">
-        Akses ditolak.
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
+        <h1 className="text-4xl font-black text-red-600">403</h1>
+        <p className="text-gray-600 font-bold">Akses Ditolak. Khusus Admin.</p>
+        <Link href="/home" className="mt-4 text-indigo-600 underline">Kembali ke home</Link>
       </div>
     );
   }
@@ -56,7 +92,6 @@ export default function ManajemenUserPage() {
         <Header />
 
         <main className="p-8 space-y-6">
-          {/* HEADER */}
           <div className="flex items-center justify-between border-b pb-3">
             <div className="flex items-center gap-2 text-2xl font-bold text-gray-900">
               <HiOutlineUsers className="w-7 h-7 text-indigo-600" />
@@ -72,7 +107,6 @@ export default function ManajemenUserPage() {
             </button>
           </div>
 
-          {/* TABLE */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
             {loading ? (
               <div className="p-20 flex flex-col items-center justify-center text-gray-400 gap-3">
@@ -85,7 +119,7 @@ export default function ManajemenUserPage() {
                   <tr>
                     <th className="px-6 py-4 text-left font-bold text-gray-600">No</th>
                     <th className="px-6 py-4 text-left font-bold text-gray-600">Nama</th>
-                    <th className="px-6 py-4 text-left font-bold text-gray-600">Username</th>
+                    <th className="px-6 py-4 text-left font-bold text-gray-600">NIP</th>
                     <th className="px-6 py-4 text-left font-bold text-gray-600">Role</th>
                     <th className="px-6 py-4 text-center font-bold text-gray-600">Aksi</th>
                   </tr>
@@ -111,9 +145,19 @@ export default function ManajemenUserPage() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex justify-center gap-3">
+                            {/* Tombol Reset Password */}
+                            <button 
+                              onClick={() => handleResetPassword(user.id, user.nama)}
+                              title="Reset Password" 
+                              className="p-2 text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-all"
+                            >
+                              <HiOutlineKey className="w-5 h-5" />
+                            </button>
+
                             <button title="Edit" className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-all">
                               <HiOutlinePencilSquare className="w-5 h-5" />
                             </button>
+                            
                             <button 
                               title="Hapus" 
                               className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all"
@@ -133,10 +177,20 @@ export default function ManajemenUserPage() {
         </main>
       </div>
 
+      <ResetPasswordModal 
+    open={openResetModal}
+    onClose={() => {
+        setOpenResetModal(false);
+        setSelectedUser(null);
+    }}
+    user={selectedUser}
+    // JANGAN tambahkan onSuccess di sini karena di ResetPasswordModal.tsx memang tidak kita buat props itu
+    />
+
       <TambahUserModal
         open={openModal}
         onClose={() => setOpenModal(false)}
-        onSuccess={fetchUsers} // Panggil fetchUsers lagi kalau sukses simpan
+        onSuccess={fetchUsers}
       />
     </div>
   );

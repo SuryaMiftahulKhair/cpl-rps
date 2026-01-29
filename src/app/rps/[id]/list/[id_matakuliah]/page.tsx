@@ -54,6 +54,8 @@ export default function RPSVersionHistoryPage({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
+    const [isDeleting, setIsDeleting] = useState<number | null>(null); // State untuk loading per item
+
     useEffect(() => {
         const fetchData = async () => {
             if (!prodiId) return; // Tunggu prodiId dari sidebar
@@ -100,6 +102,31 @@ export default function RPSVersionHistoryPage({
         } finally {
             setIsProcessing(false);
             setIsModalOpen(false);
+        }
+    };
+
+    const handleDeleteRPS = async (rpsId: number) => {
+        const confirmDelete = confirm("Apakah Anda yakin ingin menghapus versi RPS ini? Data yang dihapus tidak dapat dikembalikan.");
+        if (!confirmDelete) return;
+
+        setIsDeleting(rpsId);
+        try {
+            const res = await fetch(`/api/rps/delete/${rpsId}?prodiId=${prodiId}`, {
+                method: "DELETE",
+            });
+
+            const json = await res.json();
+            if (json.success) {
+                // Update state rpsList secara lokal agar data langsung hilang dari tabel
+                setRpsList((prev) => prev.filter((item) => item.id !== rpsId));
+                alert("RPS berhasil dihapus.");
+            } else {
+                alert("Gagal menghapus: " + json.error);
+            }
+        } catch (err) {
+            alert("Terjadi kesalahan sistem.");
+        } finally {
+            setIsDeleting(null);
         }
     };
 
@@ -192,14 +219,14 @@ export default function RPSVersionHistoryPage({
                                                             <Eye size={18} />
                                                         </button>
                                                     </Link>
-                                                    <Link href={`/rps/${id}/list/${id_matakuliah}/detail/${item.id}?prodiId=${prodiId}`}>
-                                                        <button className="p-2 text-green-600 bg-green-50 rounded hover:bg-green-100 transition" title="Edit">
-                                                            <Edit size={18} />
-                                                        </button>
-                                                    </Link>
-                                                    <button className="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100 transition" title="Hapus">
-                                                        <Trash2 size={18} />
-                                                    </button>
+                                                    <button 
+        onClick={() => handleDeleteRPS(item.id)}
+        disabled={isDeleting === item.id}
+        className="p-2 text-red-600 bg-red-50 rounded hover:bg-red-100 transition disabled:opacity-50" 
+        title="Hapus"
+    >
+        {isDeleting === item.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+    </button>
                                                 </div>
                                             </td>
                                         </tr>

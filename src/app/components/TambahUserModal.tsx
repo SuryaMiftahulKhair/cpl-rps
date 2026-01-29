@@ -54,7 +54,7 @@ export default function TambahUserModal({ open, onClose, onSuccess }: Props) {
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nama Lengkap</label>
             <input
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none transition-all"
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none transition-all text-black"
               placeholder="Masukkan Nama Lengkap"
               value={formData.nama}
               onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
@@ -64,8 +64,8 @@ export default function TambahUserModal({ open, onClose, onSuccess }: Props) {
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Username / Email</label>
             <input
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none transition-all"
-              placeholder="Contoh: budi123"
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none transition-all text-black"
+              placeholder="Masukkan NIP"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
             />
@@ -74,7 +74,7 @@ export default function TambahUserModal({ open, onClose, onSuccess }: Props) {
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Role Pengguna</label>
             <select 
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none transition-all bg-white"
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none transition-all bg-white text-black"
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             >
@@ -87,7 +87,7 @@ export default function TambahUserModal({ open, onClose, onSuccess }: Props) {
             <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Password Awal</label>
             <input
               type="password"
-              className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none transition-all"
+              className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none transition-all text-black"
               placeholder="Minimal 6 karakter"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
