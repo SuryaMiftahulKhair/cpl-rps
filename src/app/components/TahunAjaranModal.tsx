@@ -117,30 +117,6 @@ export default function TahunAjaranModal({
             </select>
           </div>
 
-          {/* ===== Kode Neosia ===== */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Kode Semester Neosia
-            </label>
-
-            <input
-              {...form.register("kode_neosia", {
-                required: "Kode Neosia wajib diisi",
-              })}
-              placeholder="Contoh: 20241 / 20242"
-              className={inputStyle}
-            />
-
-            {form.formState.errors.kode_neosia && (
-              <p className="text-xs text-red-500 mt-1">
-                {form.formState.errors.kode_neosia.message}
-              </p>
-            )}
-
-            <p className="text-xs text-gray-500 mt-1">
-              * Digunakan untuk sinkronisasi nilai Neosia
-            </p>
-          </div>
 
           {/* ===== BUTTON ===== */}
           <div className="flex gap-3 pt-2">
