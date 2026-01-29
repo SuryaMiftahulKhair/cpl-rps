@@ -44,12 +44,10 @@ export async function POST(
     }
 
     await prisma.$transaction(async (tx) => {
-        // 1. Reset Komponen Lama (Agar bersih dan tidak duplikat)
         await tx.komponenNilai.deleteMany({ where: { kelas_id: kelasId } });
 
         const mapKomponenId: Record<string, number> = {};
-        
-        // 2. Buat Komponen Baru & Mapping CPL
+
         for (const k of komponen) {
             const newK = await tx.komponenNilai.create({
                 data: {
@@ -59,17 +57,13 @@ export async function POST(
                 }
             });
             
-            // Simpan ID untuk mapping nilai nanti
             mapKomponenId[k.nama] = newK.id;
 
-            // [PENTING] Simpan Hubungan ke CPMK (CPL)
             if (k.cpmk_id) {
-                // Pastikan cpmk_id dikonversi ke Int
                 const cpmkIdInt = parseInt(String(k.cpmk_id)); 
                 
                 if (!isNaN(cpmkIdInt)) {
-                    // Gunakan nama model yang sesuai di schema.prisma Anda
-                    // Biasanya 'pemetaanKomponenCPMK' atau 'pemetaan_komponen_cpmk'
+
                     await tx.pemetaanKomponenCpmk.create({
                         data: {
                             komponen_nilai_id: newK.id,
@@ -81,10 +75,9 @@ export async function POST(
             }
         }
 
-        // 3. Simpan Nilai Mahasiswa (Jika ada data Excel)
+
         if (dataNilai && Array.isArray(dataNilai)) {
             for (const row of dataNilai) {
-                // Normalisasi Key Excel (biar tidak case sensitive)
                 const nimKey = Object.keys(row).find(key => key.toLowerCase() === 'nim');
                 const namaKey = Object.keys(row).find(key => key.toLowerCase() === 'nama');
                 
@@ -93,7 +86,6 @@ export async function POST(
 
                 if (!nim) continue; 
 
-                // Cari atau Buat Peserta Kelas
                 let peserta = await tx.pesertaKelas.findFirst({
                     where: { kelas_id: kelasId, nim: String(nim) }
                 });

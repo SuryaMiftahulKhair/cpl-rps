@@ -1,131 +1,22 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { RefreshCw, X, Printer, Loader2, Search } from 'lucide-react';
+import React from 'react';
+import { X, Printer, Loader2, Search } from 'lucide-react';
 import DashboardLayout from "@/app/components/DashboardLayout";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-// --- Types ---
-interface Student {
-  nim: string;
-  nama: string;
-}
-
-interface StudentCPL {
-  code: string;
-  cplLo: string;
-  nilai: number;
-  description: string;
-  descriptionEn: string;
-}
-
-interface TahunAjaran {
-  id: number;
-  tahun: string;
-  semester: string;
-}
+import { useCPLMahasiswa } from '@/hooks/useCPLMahasiswa'; // Import Hook
 
 export default function CPLMahasiswaPage() {
-  // State Filter
-  const [semesterList, setSemesterList] = useState<TahunAjaran[]>([]);
-  const [filterType, setFilterType] = useState<"SEMUA" | "TAHUN" | "SEMESTER">("SEMESTER");
-  const [selectedYear, setSelectedYear] = useState<string>(""); 
-  const [selectedSemesterId, setSelectedSemesterId] = useState<string>(""); 
+  // Panggil Hook
+  const {
+    semesterList, uniqueYears, filteredStudents, selectedStudent, studentCPLData,
+    loading, loadingCPL, activeTab, setActiveTab,
+    filterType, setFilterType, selectedYear, setSelectedYear, selectedSemesterId, setSelectedSemesterId,
+    searchNim, setSearchNim, searchName, setSearchName,
+    loadStudents, handleOpenCPL, handleCloseModal
+  } = useCPLMahasiswa();
 
-  // State Data
-  const [students, setStudents] = useState<Student[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingCPL, setLoadingCPL] = useState(false);
-  
-  // State Search Table
-  const [searchNim, setSearchNim] = useState('');
-  const [searchName, setSearchName] = useState('');
-  
-  // State Modal Detail
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [studentCPLData, setStudentCPLData] = useState<StudentCPL[]>([]);
-  const [activeTab, setActiveTab] = useState<'radar' | 'bar'>('radar');
-
-  // 1. Initial Load (Semester List)
-  useEffect(() => {
-    fetch("/api/tahunAjaran").then(res => res.json()).then(json => {
-        const data = Array.isArray(json) ? json : json.data;
-        setSemesterList(data);
-        if (data.length > 0) {
-            setSelectedSemesterId(String(data[0].id));
-            setSelectedYear(data[0].tahun);
-        }
-    });
-  }, []);
-
-  // Helper: Unik Tahun
-  const uniqueYears = Array.from(new Set(semesterList.map(s => s.tahun)));
-
-  // Helper: Get Active Semester IDs based on Filter
-  const getActiveSemesterIds = () => {
-    if (filterType === "SEMUA") return semesterList.map(s => Number(s.id));
-    if (filterType === "TAHUN") return semesterList.filter(s => s.tahun === selectedYear).map(s => Number(s.id));
-    return [Number(selectedSemesterId)];
-  };
-
-  // 2. Load Student List
-  const loadStudents = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/laporan/cpl-mahasiswa", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ semester_ids: getActiveSemesterIds() })
-      });
-      const json = await res.json();
-      setStudents(json.students || []);
-      setFilteredStudents(json.students || []); // Reset filter
-    } catch (err) {
-      console.error(err);
-      alert("Gagal memuat data mahasiswa");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 3. Client-side Search Filter (NIM/Nama)
-  useEffect(() => {
-    let filtered = students;
-    if (searchNim) filtered = filtered.filter(s => s.nim.toLowerCase().includes(searchNim.toLowerCase()));
-    if (searchName) filtered = filtered.filter(s => s.nama.toLowerCase().includes(searchName.toLowerCase()));
-    setFilteredStudents(filtered);
-  }, [searchNim, searchName, students]);
-
-  // 4. Load CPL Detail (Modal)
-  const handleOpenCPL = async (student: Student) => {
-    setSelectedStudent(student);
-    setLoadingCPL(true);
-    try {
-        const res = await fetch("/api/laporan/cpl-mahasiswa", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-                semester_ids: getActiveSemesterIds(),
-                nim: student.nim 
-            })
-        });
-        const json = await res.json();
-        setStudentCPLData(json.cplData || []);
-    } catch (e) {
-        alert("Gagal hitung CPL");
-    } finally {
-        setLoadingCPL(false);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setSelectedStudent(null);
-    setStudentCPLData([]);
-    setActiveTab('radar');
-  };
-
-  // Data Grafik
+  // Helper untuk format data Recharts
   const radarData = studentCPLData.map(item => ({ subject: item.code, value: item.nilai, fullMark: 100 }));
   const barData = studentCPLData.map(item => ({ name: item.code, nilai: item.nilai }));
 
@@ -139,12 +30,16 @@ export default function CPLMahasiswaPage() {
             <h1 className="text-2xl font-bold text-gray-800">CPL Mahasiswa</h1>
           </div>
 
-          {/* --- FILTER SECTION (Dual Dropdown) --- */}
+          {/* --- FILTER SECTION --- */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
             <div className="flex flex-col md:flex-row gap-4 items-end">
                 <div className="w-full md:w-1/3">
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cakupan Data</label>
-                    <select className="w-full border p-2.5 rounded-lg text-sm bg-gray-50 text-gray-700" value={filterType} onChange={(e) => setFilterType(e.target.value as any)}>
+                    <select 
+                        className="w-full border p-2.5 rounded-lg text-sm bg-gray-50 text-gray-700" 
+                        value={filterType} 
+                        onChange={(e) => setFilterType(e.target.value as any)}
+                    >
                         <option value="SEMESTER">Per Semester</option>
                         <option value="TAHUN">1 Tahun Ajaran</option>
                         <option value="SEMUA">Keseluruhan</option>
@@ -172,7 +67,7 @@ export default function CPLMahasiswaPage() {
             </div>
           </div>
 
-          {/* Table Container */}
+          {/* --- TABLE CONTAINER --- */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
               <h2 className="text-lg font-semibold text-gray-700">Daftar Mahasiswa</h2>
@@ -180,6 +75,7 @@ export default function CPLMahasiswaPage() {
             </div>
 
             <div className="p-6">
+              {/* Client-side Search */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <input type="text" placeholder="Cari NIM..." value={searchNim} onChange={(e) => setSearchNim(e.target.value)} className="px-4 py-2 border rounded-lg text-sm"/>
                 <input type="text" placeholder="Cari Nama..." value={searchName} onChange={(e) => setSearchName(e.target.value)} className="px-4 py-2 border rounded-lg text-sm"/>
@@ -187,7 +83,7 @@ export default function CPLMahasiswaPage() {
 
               <div className="overflow-x-auto max-h-[500px]">
                 <table className="w-full">
-                  <thead className="bg-gray-50 sticky top-0">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">No</th>
                       <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">NIM</th>
@@ -197,7 +93,7 @@ export default function CPLMahasiswaPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredStudents.length === 0 ? (
-                        <tr><td colSpan={4} className="p-8 text-center text-gray-400">Data tidak ditemukan. Silakan atur filter.</td></tr>
+                        <tr><td colSpan={4} className="p-8 text-center text-gray-400">Data tidak ditemukan. Silakan atur filter dan klik Tampilkan.</td></tr>
                     ) : (
                         filteredStudents.map((s, idx) => (
                             <tr key={s.nim} className="hover:bg-indigo-50 transition">
@@ -219,12 +115,18 @@ export default function CPLMahasiswaPage() {
           </div>
         </div>
 
-        {/* Right Panel (Optional: List Master CPL) */}
+        {/* Right Panel (Side info) */}
         <div className="hidden xl:block w-80 bg-white border-l border-gray-200 overflow-y-auto h-screen sticky top-0">
-           <div className="p-6 bg-gray-50 border-b"><h3 className="font-bold text-gray-700">Referensi CPL</h3></div>
+           <div className="p-6 bg-gray-50 border-b"><h3 className="font-bold text-gray-700">Informasi</h3></div>
            <div className="p-4 space-y-4">
-               {/* Ini bisa diisi data statis atau fetch dari API Master CPL */}
-               <div className="text-sm text-gray-500 italic text-center">Pilih mahasiswa untuk melihat detail nilai.</div>
+               <div className="text-sm text-gray-500">
+                  <p className="mb-2">Gunakan filter untuk memilih periode perhitungan CPL:</p>
+                  <ul className="list-disc ml-5 space-y-1">
+                      <li><b>Per Semester:</b> CPL hanya dari mata kuliah semester tertentu.</li>
+                      <li><b>1 Tahun Ajaran:</b> Akumulasi Ganjil & Genap.</li>
+                      <li><b>Keseluruhan:</b> Akumulasi semua mata kuliah yang pernah diambil.</li>
+                  </ul>
+               </div>
            </div>
         </div>
       </div>

@@ -13,9 +13,7 @@ export function calculateCPMKScore(mappings: { avg: number; bobot: number }[]): 
   return score;
 }
 
-// Rumus Koefisien sesuai MLOA
 export function calculateCoefficient(sks: number, ikCount: number, totalIK: number): number {
-  // Asumsi bobot CPMK 100% jika tidak didefinisikan lain
   return (sks / 144) * 1 * (totalIK > 0 ? ikCount / totalIK : 0);
 }
 
