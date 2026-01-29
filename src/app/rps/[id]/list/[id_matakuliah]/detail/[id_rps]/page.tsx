@@ -445,7 +445,6 @@ export default function DetailRPSPage({
         isSaving={isSaving}
         cpmkList={rpsData.cpmk}
         nextPekan={0}
-        rubrikList={[]}
         isEdit={false}
       />
     </DashboardLayout>

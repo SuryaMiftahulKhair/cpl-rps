@@ -11,11 +11,10 @@ interface PertemuanModalProps {
     isSaving: boolean;
     nextPekan: number;
     cpmkList: any[];
-    rubrikList: any[];
     isEdit: boolean;
 }
 
-export default function PertemuanModal({ isOpen, onClose, onSave, isSaving, nextPekan, cpmkList, rubrikList, isEdit }: PertemuanModalProps) {
+export default function PertemuanModal({ isOpen, onClose, onSave, isSaving, nextPekan, cpmkList,  isEdit }: PertemuanModalProps) {
     const [selectedCpmk, setSelectedCpmk] = useState("");
     const { register, handleSubmit, reset, setValue } = useForm();
 
@@ -81,13 +80,7 @@ export default function PertemuanModal({ isOpen, onClose, onSave, isSaving, next
                         <textarea {...register("kriteria_penilaian")} className="w-full border p-2 h-16 rounded-lg text-sm text-gray-900 border-slate-200" />
                     </div>
 
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Hubungkan ke Rubrik (Opsional)</label>
-                        <select {...register("rubrik_id")} className="w-full border p-2 rounded-lg text-sm bg-white border-slate-200 text-gray-900">
-                            <option value="">-- Tanpa Rubrik --</option>
-                            {rubrikList?.map(r => <option key={r.id} value={r.id}>{r.kode_rubrik} - {r.nama_rubrik}</option>)}
-                        </select>
-                    </div>
+                    
 
                     <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
                         <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-100 rounded-lg">Batal</button>
