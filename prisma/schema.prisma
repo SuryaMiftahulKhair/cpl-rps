@@ -175,7 +175,8 @@ model RPSPertemuan {
 model CPMK {
   id                     Int                    @id @default(autoincrement())
   kode_cpmk              String
-  is_locked              Boolean                @default(false)
+  bobot_to_cpl           Float
+  is_locked              Boolean                @default(true)
   deskripsi              String
   kelas                  Kelas[]                @relation("CPMKToKelas")
   rps_pertemuan          RPSPertemuan[]         @relation("CPMKToPertemuan")
