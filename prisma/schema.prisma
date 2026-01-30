@@ -138,7 +138,7 @@ model RPS {
   matakuliah_id       Int
   nama_kaprodi        String?
   nama_koordinator    String?
-  nama_penyusun       String?
+  nama_penyusun       Json?
   nomor_dokumen       String?
   tanggal_penyusunan  DateTime       @default(now())
   semester            Semester?

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useState, useEffect, use, useMemo } from "react";
+import { useForm } from "react-hook-form";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   Edit,
@@ -11,10 +11,11 @@ import {
   Loader2,
   Printer,
   Plus,
-  X,
-  Save,
+  Trash2,
+  AlertTriangle,
+  CheckCircle2,
+  ClipboardList,
   CheckSquare,
-  ClipboardList, // <-- Tambahkan ini Kak
 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
@@ -23,7 +24,47 @@ import CpmkModal from "@/app/components/detail-rps/CpmkModal";
 import PertemuanModal from "@/app/components/detail-rps/PertemuanModal";
 import OtorisasiModal from "@/app/components/detail-rps/OtorisasiModel";
 
-// --- HELPER COMPONENTS (WEB ONLY) ---
+// ==========================================
+// TYPE DEFINITIONS
+// ==========================================
+interface Pertemuan {
+  id: number;
+  pekan_ke: number;
+  bahan_kajian: string;
+  pengalaman_belajar: string;
+  waktu: string;
+  bobot_cpmk: number;
+}
+
+interface CPMK {
+  id: number;
+  kode_cpmk: string;
+  deskripsi: string;
+  ik?: Array<{
+    kode_ik: string;
+    deskripsi: string;
+  }>;
+}
+
+interface RPSData {
+  id: number;
+  nama_penyusun: string;
+  nama_koordinator: string;
+  nama_kaprodi: string;
+  kurikulum_nama?: string;
+  cpmk: CPMK[];
+  pertemuan: Pertemuan[];
+  available_iks: any[];
+  matakuliah: {
+    nama: string;
+    kode_mk: string;
+    sks: string;
+  };
+}
+
+// ==========================================
+// HELPER COMPONENTS
+// ==========================================
 function SectionHeader({ title, icon, onEdit, action }: any) {
   return (
     <div className="flex items-center justify-between bg-slate-600 text-white px-4 py-3 rounded-t-lg no-print">
@@ -36,7 +77,7 @@ function SectionHeader({ title, icon, onEdit, action }: any) {
           <button
             title="Edit"
             onClick={onEdit}
-            className="p-1.5 hover:bg-slate-700 rounded">
+            className="p-1.5 hover:bg-slate-700 rounded transition-colors">
             <Edit size={16} />
           </button>
         )}
@@ -56,6 +97,113 @@ function InfoRow({ label, value }: any) {
   );
 }
 
+function BobotProgressBar({
+  totalBobot,
+  sisaBobot,
+}: {
+  totalBobot: number;
+  sisaBobot: number;
+}) {
+  const percentage = Math.min((totalBobot / 100) * 100, 100);
+  const isOverLimit = totalBobot > 100;
+  const isComplete = totalBobot === 100;
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm font-bold text-slate-700 uppercase tracking-tight">
+          Total Bobot Penilaian (Target 100%)
+        </span>
+        <div className="flex items-center gap-2">
+          {isComplete && <CheckCircle2 size={16} className="text-green-600" />}
+          {isOverLimit && <AlertTriangle size={16} className="text-red-600" />}
+          <span
+            className={`text-lg font-black ${isOverLimit ? "text-red-600" : isComplete ? "text-green-600" : "text-indigo-600"}`}>
+            {totalBobot}%
+          </span>
+        </div>
+      </div>
+      <div className="relative w-full bg-slate-100 rounded-full h-4 overflow-hidden border border-slate-200">
+        <div
+          className={`h-full transition-all duration-500 ease-out ${isOverLimit ? "bg-red-500" : isComplete ? "bg-green-500" : "bg-indigo-500"}`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      <div className="mt-2 text-[11px] flex justify-between font-medium">
+        <span className="text-slate-500 tracking-wide">
+          SISA YANG HARUS DIALOKASIKAN: {sisaBobot}%
+        </span>
+        {isOverLimit && (
+          <span className="text-red-600 animate-pulse font-bold uppercase">
+            ⚠ Melebihi Batas Maksimal!
+          </span>
+        )}
+        {isComplete && (
+          <span className="text-green-600 font-bold uppercase tracking-widest">
+            ✓ Bobot Sudah Ideal
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DeleteConfirmDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  pertemuan,
+  isDeleting,
+}: any) {
+  if (!isOpen || !pertemuan) return null;
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-100 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in duration-200">
+        <div className="p-6">
+          <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto border-2 border-red-100">
+            <AlertTriangle className="text-red-600" size={32} />
+          </div>
+          <h3 className="text-xl font-black text-slate-900 text-center mb-2">
+            Hapus Pertemuan?
+          </h3>
+          <p className="text-sm text-slate-500 text-center leading-relaxed">
+            Anda akan menghapus rencana pertemuan{" "}
+            <span className="font-bold text-slate-700 underline">
+              Minggu Ke-{pertemuan.pekan_ke}
+            </span>
+            . Bobot{" "}
+            <span className="font-bold text-red-600">
+              {pertemuan.bobot_cpmk}%
+            </span>{" "}
+            akan dikembalikan ke sisa alokasi.
+          </p>
+        </div>
+        <div className="flex border-t">
+          <button
+            onClick={onClose}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-4 text-sm font-bold text-slate-500 hover:bg-slate-50 border-r transition-colors disabled:opacity-50">
+            BATAL
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-4 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            {isDeleting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              "YA, HAPUS"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
 export default function DetailRPSPage({
   params,
 }: {
@@ -65,16 +213,32 @@ export default function DetailRPSPage({
   const searchParams = useSearchParams();
   const prodiId = searchParams.get("prodiId");
 
-  const [rpsData, setRpsData] = useState<any | null>(null);
+  const [rpsData, setRpsData] = useState<RPSData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
   const [showPertemuanModal, setShowPertemuanModal] = useState(false);
   const [showCpmkModal, setShowCpmkModal] = useState(false);
   const [dosenList, setDosenList] = useState([]);
 
-  const otorisasiForm = useForm<any>();
+  // Delete states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pertemuanToDelete, setPertemuanToDelete] = useState<Pertemuan | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Computed Values
+  const totalBobot = useMemo(() => {
+    if (!rpsData?.pertemuan) return 0;
+    return rpsData.pertemuan.reduce(
+      (sum, p) => sum + (Number(p.bobot_cpmk) || 0),
+      0,
+    );
+  }, [rpsData?.pertemuan]);
+
+  const sisaBobot = useMemo(() => Math.max(0, 100 - totalBobot), [totalBobot]);
+  const isBobotValid = useMemo(() => totalBobot <= 100, [totalBobot]);
 
   const fetchRPSData = async () => {
     try {
@@ -88,88 +252,100 @@ export default function DetailRPSPage({
     }
   };
 
-  const fetchDosen = async () => {
-    try {
-      const res = await fetch(`/api/users/dosen?prodiId=${prodiId}`);
-      const json = await res.json();
-      if (json.success) setDosenList(json.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   useEffect(() => {
     if (prodiId) {
       fetchRPSData();
+      const fetchDosen = async () => {
+        const res = await fetch(`/api/users/dosen?prodiId=${prodiId}`);
+        const json = await res.json();
+        if (json.success) setDosenList(json.data);
+      };
       fetchDosen();
     }
   }, [id_rps, prodiId]);
 
+  const renderPenyusunList = (rawData: any) => {
+    if (!rawData)
+      return (
+        <p className="text-gray-400 italic text-[11px]">Belum ada penyusun</p>
+      );
+
+    try {
+      // Jika data tersimpan sebagai JSON string ["Nama A", "Nama B"]
+      if (typeof rawData === "string" && rawData.startsWith("[")) {
+        const parsed = JSON.parse(rawData);
+        return (
+          <div className="flex flex-col gap-1.5 mt-1">
+            {parsed.map((nama: string, idx: number) => (
+              <div key={idx} className="flex items-start gap-2 leading-relaxed">
+                <span className="text-indigo-600 font-bold min-w-[15px]">
+                  {idx + 1}.
+                </span>
+                <span className="text-gray-900 font-medium">{nama}</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      // Fallback: Jika data masih berupa string lama yang dipisah koma (Dosen A, Dosen B)
+      if (typeof rawData === "string" && rawData.includes(",")) {
+        return (
+          <div className="flex flex-col gap-1.5 mt-1">
+            {rawData.split(",").map((nama: string, idx: number) => (
+              <div key={idx} className="flex items-start gap-2 leading-relaxed">
+                <span className="text-indigo-600 font-bold min-w-[15px]">
+                  {idx + 1}.
+                </span>
+                <span className="text-gray-900 font-medium">{nama.trim()}</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      // Jika hanya satu nama string biasa
+      return <p className="text-gray-900 font-medium">{rawData}</p>;
+    } catch (e) {
+      return <p className="text-gray-900 font-medium">{String(rawData)}</p>;
+    }
+  };
+
   const handleSaveOtorisasi = async (formData: any) => {
     setIsSaving(true);
     try {
-      // Pastikan kita mengirim array string murni ["Nama 1", "Nama 2"]
-      const listNamaPenyusun = formData.penyusun
+      const listPenyusun = (formData.penyusun || [])
         .map((p: any) => p.nama)
-        .filter((n: string) => n.trim() !== "");
-
+        .filter((n: string) => n && n.trim() !== "");
       const payload = {
         section: "otorisasi",
         data: {
-          // Kita kirim objek ini, backend harus siap menerima
-          nama_penyusun: listNamaPenyusun,
-          nama_koordinator: formData.koordinator,
-          nama_kaprodi: formData.kaprodi,
+          nama_penyusun: JSON.stringify(listPenyusun),
+          nama_koordinator: formData.koordinator || "",
+          nama_kaprodi: formData.kaprodi || "",
         },
       };
-
       const res = await fetch(`/api/rps/${id_rps}?prodiId=${prodiId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Gagal menyimpan ke server");
-      }
-
+      if (!res.ok) throw new Error("Gagal simpan");
       await fetchRPSData();
       setEditingSection(null);
-    } catch (error: any) {
-      alert("Error Server: " + error.message);
-      console.error("Detail Error:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // --- SAVE HANDLERS (DILENGKAPI DENGAN FETCH) ---
-
-  const handleSaveCpmk = async (formData: any) => {
-    setIsSaving(true);
-    try {
-      const res = await fetch("/api/rps/cpmk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rps_id: id_rps, // ID RPS dari params
-          kode_cpmk: formData.kode, // Dari register("kode") di modal
-          deskripsi: formData.deskripsi,
-          ik_id: formData.ik_id, // ID IK yang dipilih
-        }),
-      });
-
-      if (res.ok) {
-        await fetchRPSData();
-        setShowCpmkModal(false);
-      }
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleSavePertemuan = async (formData: any) => {
+    const bBaru = Number(formData.bobot_nilai);
+    if (!isBobotValid || bBaru > sisaBobot) {
+      alert(
+        `❌ Gagal! Sisa bobot hanya ${sisaBobot}%. Input Anda ${bBaru}% melebihi batas.`,
+      );
+      return;
+    }
     setIsSaving(true);
     try {
       const res = await fetch(`/api/rps/pertemuan`, {
@@ -179,21 +355,63 @@ export default function DetailRPSPage({
           ...formData,
           rps_id: Number(id_rps),
           pekan_ke: Number(formData.pekan_ke),
-          bobot_nilai: Number(formData.bobot_nilai),
+          bobot_nilai: bBaru,
+        }),
+      });
+      if (!res.ok) throw new Error("Gagal simpan");
+      await fetchRPSData();
+      setShowPertemuanModal(false);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveCpmk = async (formData: any) => {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/rps/cpmk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rps_id: Number(id_rps),
+          kode_cpmk: formData.kode,
+          deskripsi: formData.deskripsi,
+          ik_id: formData.ik_id ? Number(formData.ik_id) : null,
+          prodiId: prodiId,
         }),
       });
 
+      const result = await res.json();
+
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Gagal simpan");
+        throw new Error(result.error || "Gagal menyimpan CPMK");
       }
 
       await fetchRPSData();
-      setShowPertemuanModal(false);
+      setShowCpmkModal(false);
     } catch (error: any) {
       alert("Kesalahan: " + error.message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeletePertemuan = async () => {
+    if (!pertemuanToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(
+        `/api/rps/pertemuan/${pertemuanToDelete.id}?prodiId=${prodiId}`,
+        { method: "DELETE" },
+      );
+      if (res.ok) {
+        await fetchRPSData();
+        setDeleteDialogOpen(false);
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -204,68 +422,10 @@ export default function DetailRPSPage({
       </div>
     );
   if (!rpsData) return null;
-
-  const matkul = rpsData?.matakuliah || {};
+  const matkul = rpsData.matakuliah;
 
   return (
     <DashboardLayout>
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          #pdf-area,
-          #pdf-area * {
-            visibility: visible !important;
-          }
-          #pdf-area {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          * {
-            font-family: "Arial", sans-serif !important;
-            color: black !important;
-          }
-          .pdf-sampul {
-            height: 98vh;
-            display: flex !important;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            page-break-after: always;
-            text-align: center;
-          }
-          .pdf-page {
-            display: block !important;
-            page-break-after: always;
-            padding: 20mm;
-          }
-          table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            border: 1px solid black !important;
-            margin: 10px 0;
-          }
-          th,
-          td {
-            border: 1px solid black !important;
-            padding: 8px !important;
-            font-size: 10pt !important;
-            text-align: left !important;
-          }
-          th {
-            background-color: #f2f2f2 !important;
-            font-weight: bold;
-          }
-        }
-      `}</style>
-
-      {/* --- TAMPILAN DASHBOARD WEB (SLATE) --- */}
       <div className="p-6 lg:p-8 bg-gray-50 min-h-screen no-print">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 uppercase">
@@ -297,34 +457,15 @@ export default function DetailRPSPage({
               onEdit={() => setEditingSection("otorisasi")}
             />
             <div className="p-4 space-y-3">
-              {/* BAGIAN PENYUSUN */}
-              <div>
-                <strong className="text-gray-900 text-xs uppercase tracking-wider">
+              <div className="pt-2">
+                <strong className="text-slate-500 text-[10px] font-bold uppercase tracking-widest block mb-1">
                   Dosen Penyusun:
                 </strong>
-                <div className="text-gray-900 text-[11px] mt-1 space-y-1">
-                  {(() => {
-                    // Ambil data murni, jika Prisma mengembalikan {set: []}, ambil dalamnya
-                    const rawData = rpsData.nama_penyusun;
-                    const names =
-                      rawData && typeof rawData === "object" && "set" in rawData
-                        ? rawData.set
-                        : rawData;
-
-                    return Array.isArray(names) ? (
-                      names.map((nama: string, idx: number) => (
-                        <p key={idx}>
-                          {idx + 1}. {nama}
-                        </p>
-                      ))
-                    ) : (
-                      <p>{names || "-"}</p>
-                    );
-                  })()}
+                <div className="text-sm antialiased">
+                  {/* Panggil fungsi yang sudah diperbaiki di atas */}
+                  {renderPenyusunList(rpsData.nama_penyusun)}
                 </div>
               </div>
-
-              {/* BAGIAN KOORDINATOR MK */}
               <div className="pt-2 border-t border-gray-50">
                 <strong className="text-gray-900 text-xs uppercase tracking-wider">
                   Koordinator MK:
@@ -333,8 +474,6 @@ export default function DetailRPSPage({
                   {String(rpsData.nama_koordinator || "-")}
                 </p>
               </div>
-
-              {/* BAGIAN KAPRODI */}
               <div className="pt-2 border-t border-gray-50">
                 <strong className="text-gray-900 text-xs uppercase tracking-wider">
                   Ketua Program Studi:
@@ -347,77 +486,66 @@ export default function DetailRPSPage({
           </div>
         </div>
 
-        {/* TABEL CPMK DASHBOARD */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
           <SectionHeader
-            title="Capaian Pembelajaran Mata Kuliah (CPMK)"
+            title="CPMK"
             icon={<Target size={18} />}
             action={
               <button
                 onClick={() => setShowCpmkModal(true)}
-                className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-xs flex gap-1 items-center transition-all font-bold shadow-sm">
+                className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-xs flex gap-1 font-bold shadow-sm">
                 <Plus size={14} /> Tambah CPMK
               </button>
             }
           />
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/30">
-            {rpsData.cpmk && rpsData.cpmk.length > 0 ? (
-              rpsData.cpmk.map((item: any) => (
-                <div
-                  key={item.id}
-                  className="group bg-white border border-gray-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-md transition-all duration-200">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-bold text-indigo-700 text-xs bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 uppercase tracking-tighter">
-                      {item.kode_cpmk || item.kode}
-                    </span>
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {/* Kakak bisa tambah tombol edit/hapus di sini nanti */}
+            {rpsData.cpmk?.map((item) => (
+              <div
+                key={item.id}
+                className="group bg-white border border-gray-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-md transition-all">
+                <span className="font-bold text-indigo-700 text-xs bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 uppercase mb-2 block w-fit">
+                  {item.kode_cpmk}
+                </span>
+                <p className="text-gray-900 text-sm leading-relaxed font-medium">
+                  {item.deskripsi}
+                </p>
+                {item.ik && item.ik.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-dashed border-gray-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
+                      <CheckSquare size={12} /> Indikator Kinerja Terikat:
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {item.ik.map((ik, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-100 font-medium">
+                          [{ik.kode_ik}]
+                        </span>
+                      ))}
                     </div>
                   </div>
-
-                  <p className="text-gray-900 text-sm leading-relaxed font-medium">
-                    {item.deskripsi}
-                  </p>
-
-                  {/* MENAMPILKAN INDIKATOR KINERJA (IK) YANG TERIKAT */}
-                  {item.ik && item.ik.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-dashed border-gray-100">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
-                        <CheckSquare size={12} /> Indikator Kinerja Terikat:
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {item.ik.map((ik: any, idx: number) => (
-                          <span
-                            key={idx}
-                            className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-100 font-medium">
-                            {ik.kode_ik || ik.kode}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="col-span-full py-10 text-center bg-white border-2 border-dashed border-gray-100 rounded-xl">
-                <Target size={40} className="mx-auto text-slate-200 mb-2" />
-                <p className="text-slate-400 text-sm italic">
-                  Belum ada data CPMK yang ditambahkan.
-                </p>
+                )}
               </div>
-            )}
+            ))}
           </div>
         </div>
 
-        {/* TABEL RENCANA MINGGUAN DASHBOARD */}
+        {/* PROGRESS BAR BARU */}
+        <BobotProgressBar totalBobot={totalBobot} sisaBobot={sisaBobot} />
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
           <div className="bg-slate-600 text-white px-4 py-3 flex justify-between items-center">
             <h3 className="font-bold text-sm uppercase tracking-wider flex items-center gap-2">
               <ClipboardList size={18} /> Rencana Mingguan
             </h3>
             <button
-              onClick={() => setShowPertemuanModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm flex gap-2 items-center transition-all shadow-md font-bold">
+              onClick={() =>
+                isBobotValid && sisaBobot > 0
+                  ? setShowPertemuanModal(true)
+                  : alert("Bobot sudah 100%")
+              }
+              disabled={!isBobotValid || sisaBobot === 0}
+              className={`px-4 py-2 rounded-lg text-sm flex gap-2 font-bold shadow-md transition-all ${!isBobotValid || sisaBobot === 0 ? "bg-slate-400" : "bg-green-600 hover:bg-green-700"}`}>
               <Plus size={16} /> Tambah Pertemuan
             </button>
           </div>
@@ -429,10 +557,10 @@ export default function DetailRPSPage({
                     Mg
                   </th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
-                    Kemampuan Akhir (Sub-CPMK)
+                    Kemampuan Akhir
                   </th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
-                    Indikator & Kriteria
+                    Indikator
                   </th>
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
                     Metode
@@ -440,200 +568,155 @@ export default function DetailRPSPage({
                   <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase text-center w-20">
                     Bobot
                   </th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase text-center w-20">
+                    Aksi
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {rpsData.pertemuan && rpsData.pertemuan.length > 0 ? (
-                  rpsData.pertemuan.map((p: any) => (
-                    <tr
-                      key={p.id}
-                      className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-4 text-center font-bold text-slate-700">
-                        {p.pekan_ke}
-                      </td>
-                      {/* SESUAIKAN NAMA FIELD DENGAN DATABASE (bahan_kajian, dll) */}
-                      <td className="px-4 py-4 text-sm text-slate-900 leading-relaxed max-w-xs">
-                        {p.bahan_kajian || p.kemampuan_akhir}
-                      </td>
-                      <td className="px-4 py-4 text-xs text-slate-600 italic whitespace-pre-wrap leading-relaxed">
-                        {p.pengalaman_belajar || p.kriteria_penilaian}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-700">
-                        {p.waktu || p.metode_pembelajaran}
-                      </td>
-                      <td className="px-4 py-4 text-center font-bold text-indigo-600 bg-indigo-50/30">
-                        {p.bobot_cpmk || p.bobot_nilai}%
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-10 text-center text-slate-400 italic bg-gray-50">
-                      Belum ada rencana pertemuan. Klik "Tambah Pertemuan" untuk
-                      mengisi.
+                {rpsData.pertemuan?.map((p) => (
+                  <tr
+                    key={p.id}
+                    className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-4 text-center font-bold text-slate-700">
+                      {p.pekan_ke}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-slate-900 leading-relaxed">
+                      {p.bahan_kajian}
+                    </td>
+                    <td className="px-4 py-4 text-xs text-slate-600 italic">
+                      {p.pengalaman_belajar}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-slate-700">
+                      {p.waktu}
+                    </td>
+                    <td className="px-4 py-4 text-center font-bold text-indigo-600 bg-indigo-50/30">
+                      {p.bobot_cpmk}%
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <button
+                        title="Hapus"
+                        onClick={() => {
+                          setPertemuanToDelete(p);
+                          setDeleteDialogOpen(true);
+                        }}
+                        className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      {/* ============================================================
-          --- AREA KHUSUS PDF ---
-          ============================================================ */}
-      <div id="pdf-area" className="hidden print:block">
-        <div className="pdf-sampul">
-          <h1 className="text-3xl font-bold uppercase">
-            RENCANA PEMBELAJARAN SEMESTER (RPS)
-          </h1>
-          <h2 className="text-xl font-bold mt-4 uppercase">
-            MATA KULIAH: {matkul.nama} ({matkul.kode_mk})
-          </h2>
-          <div className="my-12">
-            <img src="/logo-unhas.png" alt="Logo UNHAS" width="250" />
-          </div>
-          <div className="mt-auto text-lg font-bold uppercase">
-            UNIVERSITAS HASANUDDIN
-            <br />
-            FAKULTAS TEKNIK
-            <br />
-            PRODI TEKNIK INFORMATIKA
-            <br />
-            TAHUN {new Date().getFullYear()}
-          </div>
-        </div>
+      {/* MODALS */}
+      {editingSection === "otorisasi" && (
+        <OtorisasiModal
+          isOpen={true}
+          onClose={() => setEditingSection(null)}
+          onSave={handleSaveOtorisasi}
+          isSaving={isSaving}
+          dosenList={dosenList}
+          initialData={rpsData}
+        />
+      )}
 
-        <div className="pdf-page">
-          <h2 className="font-bold border-b-2 border-black pb-1 mb-4 uppercase">
-            I. KURIKULUM & VISI MISI
-          </h2>
-          <p>
-            <strong>Kurikulum:</strong> {rpsData?.kurikulum_nama || "K23"} -
-            Berbasis OBE
-          </p>
-          <div className="mt-10">
-            <h3 className="font-bold uppercase text-center mb-4 underline">
-              OTORISASI / PENGESAHAN
-            </h3>
-            <table className="text-center">
-              <thead>
-                <tr>
-                  <th>Penyusun</th>
-                  <th>Koordinator MK</th>
-                  <th>Ketua Prodi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="h-24">
-                  <td>
-                    {Array.isArray(rpsData.nama_penyusun)
-                      ? rpsData.nama_penyusun.join(", ")
-                      : rpsData.nama_penyusun}
-                  </td>
-                  <td>{String(rpsData.nama_koordinator || "-")}</td>
-                  <td>{String(rpsData.nama_kaprodi || "-")}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="pdf-page">
-          <h2 className="font-bold border-b-2 border-black pb-1 mb-4 uppercase">
-            II. CAPAIAN PEMBELAJARAN (CPMK) & INDIKATOR KINERJA (IK)
-          </h2>
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: "10%" }}>Kode</th>
-                <th style={{ width: "45%" }}>CPMK</th>
-                <th style={{ width: "45%" }}>Indikator Kinerja (IK)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rpsData.cpmk?.map((item: any) => (
-                <tr key={item.id}>
-                  <td className="font-bold text-center">{item.kode_cpmk}</td>
-                  <td>{item.deskripsi}</td>
-                  <td>
-                    {item.ik && item.ik.length > 0 ? (
-                      item.ik.map((ik: any, idx: number) => (
-                        <div key={idx} className="mb-1">
-                          <span className="font-bold">[{ik.kode_ik}]</span>{" "}
-                          {ik.deskripsi}
-                        </div>
-                      ))
-                    ) : (
-                      <span className="text-gray-400 italic">
-                        Tidak ada IK terikat
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="pdf-page">
-          <h2 className="font-bold border-b-2 border-black pb-1 mb-4 uppercase">
-            III. RENCANA PEMBELAJARAN MINGGUAN
-          </h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Mg</th>
-                <th>Kemampuan Akhir</th>
-                <th>Indikator & Kriteria</th>
-                <th>Metode</th>
-                <th>Bobot</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rpsData.pertemuan?.map((p: any) => (
-                <tr key={p.id}>
-                  <td className="text-center">{p.pekan_ke}</td>
-                  <td>{p.kemampuan_akhir}</td>
-                  <td>{p.kriteria_penilaian}</td>
-                  <td>{p.metode_pembelajaran}</td>
-                  <td className="text-center">{p.bobot_nilai}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <OtorisasiModal
-        isOpen={editingSection === "otorisasi"}
-        onClose={() => setEditingSection(null)}
-        onSave={handleSaveOtorisasi}
-        isSaving={isSaving}
-        dosenList={dosenList}
-        initialData={rpsData}
-      />
       <CpmkModal
         isOpen={showCpmkModal}
         onClose={() => setShowCpmkModal(false)}
         onSave={handleSaveCpmk}
         isSaving={isSaving}
         availableIks={rpsData.available_iks}
-        nextNo={0}
+        nextNo={rpsData.cpmk.length + 1}
       />
+
       <PertemuanModal
         isOpen={showPertemuanModal}
         onClose={() => setShowPertemuanModal(false)}
         onSave={handleSavePertemuan}
         isSaving={isSaving}
         cpmkList={rpsData.cpmk}
-        nextPekan={0}
+        nextPekan={rpsData.pertemuan.length + 1}
         rubrikList={[]}
         isEdit={false}
       />
+
+      <DeleteConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleDeletePertemuan}
+        pertemuan={pertemuanToDelete}
+        isDeleting={isDeleting}
+      />
+
+      {/* AREA PDF (Hidden in Web) */}
+      <div id="pdf-area" className="hidden print:block">
+        <div className="pdf-sampul">
+          <h1 className="text-3xl font-bold">
+            RENCANA PEMBELAJARAN SEMESTER (RPS)
+          </h1>
+          <h2 className="text-xl font-bold mt-4 uppercase">
+            MATA KULIAH: {matkul.nama} ({matkul.kode_mk})
+          </h2>
+          <div className="my-12">
+            <img src="/logo-unhas.png" alt="Logo" width="250" />
+          </div>
+          <div className="mt-auto text-lg font-bold">
+            UNIVERSITAS HASANUDDIN
+            <br />
+            FAKULTAS TEKNIK
+          </div>
+        </div>
+        <div className="pdf-page">
+          <h2 className="font-bold border-b-2 border-black pb-1 mb-4 uppercase">
+            I. OTORISASI
+          </h2>
+          <table className="text-center">
+            <thead>
+              <tr>
+                <th>Penyusun</th>
+                <th>Koordinator</th>
+                <th>Ketua Prodi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="h-24">
+                <td>{renderPenyusunList(rpsData.nama_penyusun)}</td>
+                <td>{rpsData.nama_koordinator}</td>
+                <td>{rpsData.nama_kaprodi}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="pdf-page">
+          <h2 className="font-bold border-b-2 border-black pb-1 mb-4 uppercase">
+            II. RENCANA MINGGUAN
+          </h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Mg</th>
+                <th>Kemampuan Akhir</th>
+                <th>Indikator</th>
+                <th>Bobot</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rpsData.pertemuan?.map((p) => (
+                <tr key={p.id}>
+                  <td className="text-center">{p.pekan_ke}</td>
+                  <td>{p.bahan_kajian}</td>
+                  <td>{p.pengalaman_belajar}</td>
+                  <td className="text-center">{p.bobot_cpmk}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </DashboardLayout>
   );
 }
