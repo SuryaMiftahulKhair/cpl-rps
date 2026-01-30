@@ -40,6 +40,7 @@ interface CPMK {
   id: number;
   kode_cpmk: string;
   deskripsi: string;
+  bobot_to_cpl: number; // Tambahkan field ini
   ik?: Array<{
     kode_ik: string;
     deskripsi: string;
@@ -109,7 +110,7 @@ function BobotProgressBar({
   const isComplete = totalBobot === 100;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
+    <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm no-print">
       <div className="flex justify-between items-center mb-2">
         <span className="text-sm font-bold text-slate-700 uppercase tracking-tight">
           Total Bobot Penilaian (Target 100%)
@@ -221,14 +222,12 @@ export default function DetailRPSPage({
   const [showCpmkModal, setShowCpmkModal] = useState(false);
   const [dosenList, setDosenList] = useState([]);
 
-  // Delete states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pertemuanToDelete, setPertemuanToDelete] = useState<Pertemuan | null>(
     null,
   );
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Computed Values
   const totalBobot = useMemo(() => {
     if (!rpsData?.pertemuan) return 0;
     return rpsData.pertemuan.reduce(
@@ -266,48 +265,24 @@ export default function DetailRPSPage({
 
   const renderPenyusunList = (rawData: any) => {
     if (!rawData)
-      return (
-        <p className="text-gray-400 italic text-[11px]">Belum ada penyusun</p>
-      );
-
+      return <p className="text-gray-400 italic">Belum ada penyusun</p>;
     try {
-      // Jika data tersimpan sebagai JSON string ["Nama A", "Nama B"]
       if (typeof rawData === "string" && rawData.startsWith("[")) {
         const parsed = JSON.parse(rawData);
         return (
-          <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex flex-col gap-1 mt-1">
             {parsed.map((nama: string, idx: number) => (
-              <div key={idx} className="flex items-start gap-2 leading-relaxed">
-                <span className="text-indigo-600 font-bold min-w-[15px]">
-                  {idx + 1}.
-                </span>
-                <span className="text-gray-900 font-medium">{nama}</span>
+              <div key={idx} className="flex items-start gap-2">
+                <span className="font-bold">{idx + 1}.</span>
+                <span>{nama}</span>
               </div>
             ))}
           </div>
         );
       }
-
-      // Fallback: Jika data masih berupa string lama yang dipisah koma (Dosen A, Dosen B)
-      if (typeof rawData === "string" && rawData.includes(",")) {
-        return (
-          <div className="flex flex-col gap-1.5 mt-1">
-            {rawData.split(",").map((nama: string, idx: number) => (
-              <div key={idx} className="flex items-start gap-2 leading-relaxed">
-                <span className="text-indigo-600 font-bold min-w-[15px]">
-                  {idx + 1}.
-                </span>
-                <span className="text-gray-900 font-medium">{nama.trim()}</span>
-              </div>
-            ))}
-          </div>
-        );
-      }
-
-      // Jika hanya satu nama string biasa
-      return <p className="text-gray-900 font-medium">{rawData}</p>;
+      return <p>{rawData}</p>;
     } catch (e) {
-      return <p className="text-gray-900 font-medium">{String(rawData)}</p>;
+      return <p>{String(rawData)}</p>;
     }
   };
 
@@ -341,9 +316,7 @@ export default function DetailRPSPage({
   const handleSavePertemuan = async (formData: any) => {
     const bBaru = Number(formData.bobot_nilai);
     if (!isBobotValid || bBaru > sisaBobot) {
-      alert(
-        `❌ Gagal! Sisa bobot hanya ${sisaBobot}%. Input Anda ${bBaru}% melebihi batas.`,
-      );
+      alert(`❌ Gagal! Sisa alokasi bobot hanya ${sisaBobot}%.`);
       return;
     }
     setIsSaving(true);
@@ -368,26 +341,27 @@ export default function DetailRPSPage({
     }
   };
 
+  // ✅ HANDLER SIMPAN CPMK DENGAN BOBOT DARI KODE TEMAN
   const handleSaveCpmk = async (formData: any) => {
     setIsSaving(true);
     try {
+      const payload = {
+        rps_id: Number(id_rps),
+        kode_cpmk: formData.kode,
+        deskripsi: formData.deskripsi,
+        ik_id: formData.ik_id ? Number(formData.ik_id) : null,
+        bobot: formData.bobot ? Number(formData.bobot) : 0, // Ambil bobot dari modal
+        prodiId: prodiId,
+      };
+
       const res = await fetch("/api/rps/cpmk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rps_id: Number(id_rps),
-          kode_cpmk: formData.kode,
-          deskripsi: formData.deskripsi,
-          ik_id: formData.ik_id ? Number(formData.ik_id) : null,
-          prodiId: prodiId,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Gagal menyimpan CPMK");
-      }
+      if (!res.ok) throw new Error(result.error || "Gagal menyimpan CPMK");
 
       await fetchRPSData();
       setShowCpmkModal(false);
@@ -426,6 +400,58 @@ export default function DetailRPSPage({
 
   return (
     <DashboardLayout>
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #pdf-area,
+          #pdf-area * {
+            visibility: visible !important;
+          }
+          #pdf-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+          }
+          .no-print,
+          nav,
+          aside,
+          button,
+          header {
+            display: none !important;
+          }
+          @page {
+            size: A4;
+            margin: 20mm;
+          }
+          .pdf-page {
+            page-break-after: always;
+            display: block !important;
+          }
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            border: 1px solid black !important;
+          }
+          th,
+          td {
+            border: 1px solid black !important;
+            padding: 8px !important;
+            color: black !important;
+          }
+          th {
+            background-color: #f2f2f2 !important;
+            font-weight: bold !important;
+          }
+        }
+      `}</style>
+
+      {/* --- DASHBOARD WEB VIEW --- */}
       <div className="p-6 lg:p-8 bg-gray-50 min-h-screen no-print">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 uppercase">
@@ -449,9 +475,9 @@ export default function DetailRPSPage({
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-2">
             <InfoRow label="MATA KULIAH" value={matkul.nama} />
             <InfoRow label="KODE" value={matkul.kode_mk} />
-            <InfoRow label="BOBOT" value={matkul.sks} />
+            <InfoRow label="BOBOT" value={matkul.sks + " SKS"} />
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden text-black">
             <SectionHeader
               title="Otorisasi"
               onEdit={() => setEditingSection("otorisasi")}
@@ -462,7 +488,6 @@ export default function DetailRPSPage({
                   Dosen Penyusun:
                 </strong>
                 <div className="text-sm antialiased">
-                  {/* Panggil fungsi yang sudah diperbaiki di atas */}
                   {renderPenyusunList(rpsData.nama_penyusun)}
                 </div>
               </div>
@@ -503,9 +528,15 @@ export default function DetailRPSPage({
               <div
                 key={item.id}
                 className="group bg-white border border-gray-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-md transition-all">
-                <span className="font-bold text-indigo-700 text-xs bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 uppercase mb-2 block w-fit">
-                  {item.kode_cpmk}
-                </span>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-bold text-indigo-700 text-xs bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 uppercase w-fit">
+                    {item.kode_cpmk}
+                  </span>
+                  {/* ✅ MENAMPILKAN BOBOT DI WEB DASHBOARD */}
+                  <span className="text-[10px] font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded border border-teal-200">
+                    Bobot ke CPL: {item.bobot_to_cpl || 0}%
+                  </span>
+                </div>
                 <p className="text-gray-900 text-sm leading-relaxed font-medium">
                   {item.deskripsi}
                 </p>
@@ -530,7 +561,6 @@ export default function DetailRPSPage({
           </div>
         </div>
 
-        {/* PROGRESS BAR BARU */}
         <BobotProgressBar totalBobot={totalBobot} sisaBobot={sisaBobot} />
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
@@ -573,7 +603,7 @@ export default function DetailRPSPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 text-black">
                 {rpsData.pertemuan?.map((p) => (
                   <tr
                     key={p.id}
@@ -595,7 +625,7 @@ export default function DetailRPSPage({
                     </td>
                     <td className="px-4 py-4 text-center">
                       <button
-                        title="Hapus"
+                        title="HAPUS"
                         onClick={() => {
                           setPertemuanToDelete(p);
                           setDeleteDialogOpen(true);
@@ -612,7 +642,7 @@ export default function DetailRPSPage({
         </div>
       </div>
 
-      {/* MODALS */}
+      {/* --- MODALS --- */}
       {editingSection === "otorisasi" && (
         <OtorisasiModal
           isOpen={true}
@@ -623,7 +653,6 @@ export default function DetailRPSPage({
           initialData={rpsData}
         />
       )}
-
       <CpmkModal
         isOpen={showCpmkModal}
         onClose={() => setShowCpmkModal(false)}
@@ -632,7 +661,6 @@ export default function DetailRPSPage({
         availableIks={rpsData.available_iks}
         nextNo={rpsData.cpmk.length + 1}
       />
-
       <PertemuanModal
         isOpen={showPertemuanModal}
         onClose={() => setShowPertemuanModal(false)}
@@ -640,10 +668,9 @@ export default function DetailRPSPage({
         isSaving={isSaving}
         cpmkList={rpsData.cpmk}
         nextPekan={rpsData.pertemuan.length + 1}
-        rubrikList={[]}
         isEdit={false}
+        rubrikList={[]}
       />
-
       <DeleteConfirmDialog
         isOpen={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -652,68 +679,208 @@ export default function DetailRPSPage({
         isDeleting={isDeleting}
       />
 
-      {/* AREA PDF (Hidden in Web) */}
-      <div id="pdf-area" className="hidden print:block">
-        <div className="pdf-sampul">
-          <h1 className="text-3xl font-bold">
+      {/* ============================================================
+      --- AREA KHUSUS PDF (TAMPILAN BERSIH ISI RPS) ---
+      ============================================================ */}
+      <div id="pdf-area" className="hidden print:block bg-white p-0 text-black">
+        {/* HALAMAN 1: SAMPUL */}
+        <div className="pdf-sampul flex flex-col items-center justify-center text-center min-h-[95vh] border-4 border-double border-black m-4">
+          <h1 className="text-3xl font-black uppercase mb-2">
             RENCANA PEMBELAJARAN SEMESTER (RPS)
           </h1>
-          <h2 className="text-xl font-bold mt-4 uppercase">
+          <div className="w-24 h-1 bg-black mb-6"></div>
+          <h2 className="text-xl font-bold uppercase mb-12 px-10">
             MATA KULIAH: {matkul.nama} ({matkul.kode_mk})
           </h2>
-          <div className="my-12">
-            <img src="/logo-unhas.png" alt="Logo" width="250" />
+          <div className="my-10">
+            <img
+              src="/logo-unhas.png"
+              alt="Logo UNHAS"
+              width="220"
+              className="mx-auto"
+            />
           </div>
-          <div className="mt-auto text-lg font-bold">
+          <div className="mt-auto mb-10 text-lg font-bold uppercase leading-tight">
             UNIVERSITAS HASANUDDIN
             <br />
             FAKULTAS TEKNIK
+            <br />
+            PRODI TEKNIK INFORMATIKA
+            <br />
+            TAHUN {new Date().getFullYear()}
           </div>
         </div>
-        <div className="pdf-page">
-          <h2 className="font-bold border-b-2 border-black pb-1 mb-4 uppercase">
-            I. OTORISASI
+
+        {/* HALAMAN 2: OTORISASI & KURIKULUM */}
+        <div className="pdf-page p-[20mm]">
+          <h2 className="font-bold border-b-2 border-black pb-1 mb-6 uppercase text-lg">
+            I. KURIKULUM & PENGESAHAN
           </h2>
-          <table className="text-center">
+          <div className="mb-8">
+            <table className="w-full border-collapse">
+              <tbody>
+                <tr>
+                  <td className="border border-black p-3 bg-gray-50 w-1/3 font-bold uppercase text-xs">
+                    Kurikulum
+                  </td>
+                  <td className="border border-black p-3 text-sm">
+                    {rpsData?.kurikulum_nama || "K23"} - Berbasis OBE
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border border-black p-3 bg-gray-50 font-bold uppercase text-xs">
+                    Mata Kuliah
+                  </td>
+                  <td className="border border-black p-3 text-sm font-bold">
+                    {matkul.nama} ({matkul.kode_mk})
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 className="font-bold uppercase text-center mb-4 text-sm underline">
+            OTORISASI / PENGESAHAN
+          </h3>
+          <table className="w-full border-collapse text-center">
             <thead>
-              <tr>
-                <th>Penyusun</th>
-                <th>Koordinator</th>
-                <th>Ketua Prodi</th>
+              <tr className="bg-gray-100">
+                <th className="border border-black p-2 text-xs uppercase w-1/3">
+                  Dosen Penyusun
+                </th>
+                <th className="border border-black p-2 text-xs uppercase w-1/3">
+                  Koordinator MK
+                </th>
+                <th className="border border-black p-2 text-xs uppercase w-1/3">
+                  Ketua Prodi
+                </th>
               </tr>
             </thead>
             <tbody>
-              <tr className="h-24">
-                <td>{renderPenyusunList(rpsData.nama_penyusun)}</td>
-                <td>{rpsData.nama_koordinator}</td>
-                <td>{rpsData.nama_kaprodi}</td>
+              <tr className="h-32">
+                <td className="border border-black p-3 text-left align-top text-[11px]">
+                  {renderPenyusunList(rpsData.nama_penyusun)}
+                </td>
+                <td className="border border-black p-3 align-bottom text-[11px] font-bold uppercase">
+                  {String(rpsData.nama_koordinator || "-")}
+                </td>
+                <td className="border border-black p-3 align-bottom text-[11px] font-bold uppercase">
+                  {String(rpsData.nama_kaprodi || "-")}
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div className="pdf-page">
-          <h2 className="font-bold border-b-2 border-black pb-1 mb-4 uppercase">
-            II. RENCANA MINGGUAN
+
+        {/* HALAMAN 3: CPMK & INDIKATOR (DENGAN KOLOM BOBOT) */}
+        <div className="pdf-page p-[20mm]">
+          <h2 className="font-bold border-b-2 border-black pb-1 mb-6 uppercase text-lg">
+            II. CAPAIAN PEMBELAJARAN (CPMK) & INDIKATOR
           </h2>
-          <table>
+          <table className="w-full border-collapse">
             <thead>
-              <tr>
-                <th>Mg</th>
-                <th>Kemampuan Akhir</th>
-                <th>Indikator</th>
-                <th>Bobot</th>
+              <tr className="bg-gray-100">
+                <th className="border border-black p-2 text-xs uppercase w-[10%] text-center">
+                  Kode
+                </th>
+                <th className="border border-black p-2 text-xs uppercase w-[40%]">
+                  Deskripsi CPMK
+                </th>
+                <th className="border border-black p-2 text-xs uppercase w-[40%]">
+                  Indikator Kinerja (IK)
+                </th>
+                <th className="border border-black p-2 text-xs uppercase w-[10%]">
+                  Bobot
+                </th>{" "}
+                {/* ✅ KOLOM BOBOT BARU DI PDF */}
               </tr>
             </thead>
             <tbody>
-              {rpsData.pertemuan?.map((p) => (
-                <tr key={p.id}>
-                  <td className="text-center">{p.pekan_ke}</td>
-                  <td>{p.bahan_kajian}</td>
-                  <td>{p.pengalaman_belajar}</td>
-                  <td className="text-center">{p.bobot_cpmk}%</td>
+              {rpsData.cpmk?.map((item) => (
+                <tr key={item.id}>
+                  <td className="border border-black p-3 font-bold text-center text-sm">
+                    {item.kode_cpmk}
+                  </td>
+                  <td className="border border-black p-3 text-[11px] leading-relaxed">
+                    {item.deskripsi}
+                  </td>
+                  <td className="border border-black p-3 text-[10px] leading-tight">
+                    {item.ik && item.ik.length > 0 ? (
+                      item.ik.map((ik, idx) => (
+                        <div key={idx} className="mb-2">
+                          <span className="font-bold">[{ik.kode_ik}]</span>{" "}
+                          {ik.deskripsi}
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-gray-400 italic">
+                        Tidak ada IK terikat
+                      </span>
+                    )}
+                  </td>
+                  <td className="border border-black p-3 text-center font-bold text-sm">
+                    {item.bobot_to_cpl || 0}% {/* ✅ NILAI BOBOT BARU DI PDF */}
+                  </td>
                 </tr>
               ))}
             </tbody>
+          </table>
+        </div>
+
+        {/* HALAMAN 4: RENCANA MINGGUAN */}
+        <div className="pdf-page p-[20mm]">
+          <h2 className="font-bold border-b-2 border-black pb-1 mb-6 uppercase text-lg">
+            III. RENCANA PEMBELAJARAN MINGGUAN
+          </h2>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100 text-[10px] uppercase">
+                <th className="border border-black p-2 w-[5%] text-center">
+                  Mg
+                </th>
+                <th className="border border-black p-2 w-[25%]">
+                  Kemampuan Akhir
+                </th>
+                <th className="border border-black p-2 w-[40%]">
+                  Indikator & Kriteria
+                </th>
+                <th className="border border-black p-2 w-[20%]">Metode</th>
+                <th className="border border-black p-2 w-[10%] text-center">
+                  Bobot
+                </th>
+              </tr>
+            </thead>
+            <tbody className="text-[10px]">
+              {rpsData.pertemuan?.map((p) => (
+                <tr key={p.id}>
+                  <td className="border border-black p-2 text-center font-bold">
+                    {p.pekan_ke}
+                  </td>
+                  <td className="border border-black p-2">{p.bahan_kajian}</td>
+                  <td className="border border-black p-2 italic">
+                    {p.pengalaman_belajar}
+                  </td>
+                  <td className="border border-black p-2 text-black">
+                    {p.waktu}
+                  </td>
+                  <td className="border border-black p-2 text-center font-bold">
+                    {p.bobot_cpmk}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-gray-50 font-bold text-xs">
+                <td
+                  colSpan={4}
+                  className="border border-black p-2 text-right uppercase">
+                  Total Bobot Penilaian
+                </td>
+                <td className="border border-black p-2 text-center font-black">
+                  100%
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
