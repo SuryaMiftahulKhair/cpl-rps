@@ -26,6 +26,7 @@ export default function PertemuanModal({
   isEdit,
 }: PertemuanModalProps) {
   const [selectedCpmk, setSelectedCpmk] = useState("");
+  // Daftarkan 'cpmk_id' di sini agar bisa dihandle react-hook-form
   const { register, handleSubmit, reset, setValue } = useForm();
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export default function PertemuanModal({
         pekan_ke: nextPekan,
         bobot_nilai: 0,
         metode_pembelajaran: "Kuliah & Diskusi",
+        cpmk_id: "", // Inisialisasi kosong
       });
       setSelectedCpmk("");
     }
@@ -41,13 +43,16 @@ export default function PertemuanModal({
 
   const handleAutoFill = (cpmkId: string) => {
     setSelectedCpmk(cpmkId);
+    // KUNCI: Masukkan cpmkId ke field form 'cpmk_id'
+    setValue("cpmk_id", cpmkId);
+
     const selected = cpmkList.find((c) => c.id === Number(cpmkId));
     if (selected) {
       setValue("kemampuan_akhir", selected.deskripsi);
       const ik = selected.ik?.[0];
       setValue(
         "kriteria_penilaian",
-        ik ? `Indikator: ${ik.kode} - ${ik.deskripsi}` : "",
+        ik ? `Indikator: ${ik.kode_ik || ik.kode} - ${ik.deskripsi}` : "",
       );
     }
   };
@@ -63,7 +68,7 @@ export default function PertemuanModal({
             {isEdit ? "Edit" : "Tambah"} Pertemuan
           </h3>
           <button
-            title="Buat"
+            title="Tutup"
             onClick={onClose}
             className="p-1 hover:bg-white rounded-full text-gray-500">
             <X size={20} />
@@ -73,6 +78,9 @@ export default function PertemuanModal({
         <form
           onSubmit={handleSubmit(onSave)}
           className="p-6 space-y-4 overflow-y-auto">
+          {/* Tambahkan field hidden untuk menampung cpmk_id agar ikut tersubmit */}
+          <input type="hidden" {...register("cpmk_id")} />
+
           <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mb-2">
             <label className="block text-[10px] font-bold text-indigo-700 mb-1 uppercase tracking-widest">
               Referensi CPMK (Auto-fill)
@@ -104,13 +112,12 @@ export default function PertemuanModal({
                   max: { value: 16, message: "Maksimal pekan 16" },
                   valueAsNumber: true,
                 })}
-                // TAMBAHKAN LOGIKA INI UNTUK MEMBATASI KETIKAN MANUAL
                 onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
                   const val = parseInt(e.target.value);
                   if (val > 16) {
-                    e.target.value = "16"; // Paksa jadi 16 jika lebih
+                    e.target.value = "16";
                   } else if (val < 1 && e.target.value !== "") {
-                    e.target.value = "1"; // Paksa jadi 1 jika kurang dari 1
+                    e.target.value = "1";
                   }
                 }}
                 className="w-full border p-2 rounded-lg text-sm text-gray-900 border-slate-200 focus:ring-2 focus:ring-green-500 outline-none"
@@ -154,7 +161,7 @@ export default function PertemuanModal({
               className="w-full border p-2 h-16 rounded-lg text-sm text-gray-900 border-slate-200"
             />
           </div>
-          x
+
           <div className="flex justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white">
             <button
               type="button"
