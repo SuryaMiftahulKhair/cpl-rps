@@ -483,13 +483,13 @@ export default function DetailRPSPage({
               onEdit={() => setEditingSection("otorisasi")}
             />
             <div className="p-4 space-y-3">
-              <div className="pt-2">
-                <strong className="text-slate-500 text-[10px] font-bold uppercase tracking-widest block mb-1">
-                  Dosen Penyusun:
+              <div className="pt-2 border-t border-gray-50">
+                <strong className="text-gray-900 text-xs uppercase tracking-wider">
+                  Ketua Program Studi:
                 </strong>
-                <div className="text-sm antialiased">
-                  {renderPenyusunList(rpsData.nama_penyusun)}
-                </div>
+                <p className="text-gray-900 text-sm font-medium mt-1">
+                  {String(rpsData.nama_kaprodi || "-")}
+                </p>
               </div>
               <div className="pt-2 border-t border-gray-50">
                 <strong className="text-gray-900 text-xs uppercase tracking-wider">
@@ -501,11 +501,11 @@ export default function DetailRPSPage({
               </div>
               <div className="pt-2 border-t border-gray-50">
                 <strong className="text-gray-900 text-xs uppercase tracking-wider">
-                  Ketua Program Studi:
+                  Dosen Penyusun:
                 </strong>
-                <p className="text-gray-900 text-sm font-medium mt-1">
-                  {String(rpsData.nama_kaprodi || "-")}
-                </p>
+                <div className="text-gray-900 text-sm font-medium mt-1">
+                  {renderPenyusunList(rpsData.nama_penyusun)}
+                </div>
               </div>
             </div>
           </div>

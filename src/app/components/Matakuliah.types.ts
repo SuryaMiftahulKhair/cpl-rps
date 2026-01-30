@@ -5,6 +5,7 @@ export interface CPL {
 }
 
 export interface Matakuliah {
+  pi_area: string;
   id: number;
   kode_mk: string;
   nama: string;

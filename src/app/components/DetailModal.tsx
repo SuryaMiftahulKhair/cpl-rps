@@ -24,7 +24,7 @@ export default function DetailModal({ isOpen, onClose, matakuliah }: DetailModal
           <p><strong>Semester:</strong> {matakuliah.semester ?? "-"}</p>
           <p><strong>Sifat:</strong> {matakuliah.sifat ?? "-"}</p>
           {/* Data ini mungkin tidak ada lagi, tapi logikanya aman */}
-          <p><strong>CPL:</strong> {matakuliah.cpl ?? "-"}</p>
+          <p><strong>CPL:</strong> {Array.isArray(matakuliah.cpl) ? matakuliah.cpl.map((item: any) => item.name || item.id).join(", ") : matakuliah.cpl ?? "-"}</p>
           <p><strong>PI Area:</strong> {matakuliah.pi_area ?? "-"}</p>
         </div>
 
