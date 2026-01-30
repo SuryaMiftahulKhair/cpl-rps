@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -11,9 +11,6 @@ import {
   Loader2,
   Printer,
   Plus,
-  X,
-  Save,
-  CheckSquare,
 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
@@ -22,7 +19,7 @@ import CpmkModal from "@/app/components/detail-rps/CpmkModal";
 import PertemuanModal from "@/app/components/detail-rps/PertemuanModal";
 import OtorisasiModal from "@/app/components/detail-rps/OtorisasiModel";
 
-// --- HELPER COMPONENTS (WEB ONLY) ---
+// --- HELPER COMPONENTS ---
 function SectionHeader({ title, icon, onEdit, action }: any) {
   return (
     <div className="flex items-center justify-between bg-slate-600 text-white px-4 py-3 rounded-t-lg no-print">
@@ -73,8 +70,6 @@ export default function DetailRPSPage({
   const [showCpmkModal, setShowCpmkModal] = useState(false);
   const [dosenList, setDosenList] = useState([]);
 
-  const otorisasiForm = useForm<any>();
-
   const fetchRPSData = async () => {
     try {
       const res = await fetch(`/api/rps/${id_rps}?prodiId=${prodiId}`);
@@ -107,7 +102,6 @@ export default function DetailRPSPage({
   const handleSaveOtorisasi = async (formData: any) => {
     setIsSaving(true);
     try {
-      // Pastikan kita mengirim array string murni ["Nama 1", "Nama 2"]
       const listNamaPenyusun = formData.penyusun
         .map((p: any) => p.nama)
         .filter((n: string) => n.trim() !== "");
@@ -115,7 +109,6 @@ export default function DetailRPSPage({
       const payload = {
         section: "otorisasi",
         data: {
-          // Kita kirim objek ini, backend harus siap menerima
           nama_penyusun: listNamaPenyusun,
           nama_koordinator: formData.koordinator,
           nama_kaprodi: formData.kaprodi,
@@ -137,36 +130,38 @@ export default function DetailRPSPage({
       setEditingSection(null);
     } catch (error: any) {
       alert("Error Server: " + error.message);
-      console.error("Detail Error:", error);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // --- SAVE HANDLERS (DILENGKAPI DENGAN FETCH) ---
+  // --- SAVE HANDLERS ---
 
   const handleSaveCpmk = async (formData: any) => {
     setIsSaving(true);
     try {
-      // Log untuk cek data sebelum dikirim (cek di console browser)
-      console.log("Data yang dikirim ke API:", formData);
+      // PERUBAHAN: Pastikan field 'bobot' dikirim ke API
+      // API Anda mengharapkan 'bobot' di body, lalu dikonversi ke 'bobot_to_cpl' di DB
+      const payload = {
+        rps_id: Number(id_rps),
+        kode_cpmk: formData.kode,
+        deskripsi: formData.deskripsi,
+        ik_id: formData.ik_id ? Number(formData.ik_id) : null,
+        bobot: formData.bobot ? Number(formData.bobot) : 0, // Kirim sebagai 'bobot' sesuai form
+        prodiId: prodiId,
+      };
+
+      console.log("Saving CPMK Payload:", payload);
 
       const res = await fetch("/api/rps/cpmk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rps_id: Number(id_rps), // Pastikan angka
-          kode_cpmk: formData.kode, // Sesuaikan 'kode' dari modal ke 'kode_cpmk' API
-          deskripsi: formData.deskripsi,
-          ik_id: formData.ik_id ? Number(formData.ik_id) : null, // Pastikan angka
-          prodiId: prodiId,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const result = await res.json();
 
       if (!res.ok) {
-        // Jika error 400, tampilkan pesan error detail dari backend
         throw new Error(result.error || "Gagal menyimpan CPMK");
       }
 
@@ -275,7 +270,7 @@ export default function DetailRPSPage({
         }
       `}</style>
 
-      {/* --- TAMPILAN DASHBOARD WEB (SLATE) --- */}
+      {/* --- DASHBOARD WEB VIEW --- */}
       <div className="p-6 lg:p-8 bg-gray-50 min-h-screen no-print">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 uppercase">
@@ -299,7 +294,7 @@ export default function DetailRPSPage({
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-2">
             <InfoRow label="MATA KULIAH" value={matkul.nama} />
             <InfoRow label="KODE" value={matkul.kode_mk} />
-            <InfoRow label="BOBOT" value={matkul.sks} />
+            <InfoRow label="BOBOT" value={matkul.sks + " SKS"} />
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <SectionHeader
@@ -307,14 +302,12 @@ export default function DetailRPSPage({
               onEdit={() => setEditingSection("otorisasi")}
             />
             <div className="p-4 space-y-3">
-              {/* BAGIAN PENYUSUN */}
               <div>
                 <strong className="text-gray-900 text-xs uppercase tracking-wider">
                   Dosen Penyusun:
                 </strong>
                 <div className="text-gray-900 text-[11px] mt-1 space-y-1">
                   {(() => {
-                    // Ambil data murni, jika Prisma mengembalikan {set: []}, ambil dalamnya
                     const rawData = rpsData.nama_penyusun;
                     const names =
                       rawData && typeof rawData === "object" && "set" in rawData
@@ -323,9 +316,7 @@ export default function DetailRPSPage({
 
                     return Array.isArray(names) ? (
                       names.map((nama: string, idx: number) => (
-                        <p key={idx}>
-                          {idx + 1}. {nama}
-                        </p>
+                        <p key={idx}>{idx + 1}. {nama}</p>
                       ))
                     ) : (
                       <p>{names || "-"}</p>
@@ -333,8 +324,6 @@ export default function DetailRPSPage({
                   })()}
                 </div>
               </div>
-
-              {/* BAGIAN KOORDINATOR MK */}
               <div className="pt-2 border-t border-gray-50">
                 <strong className="text-gray-900 text-xs uppercase tracking-wider">
                   Koordinator MK:
@@ -343,8 +332,6 @@ export default function DetailRPSPage({
                   {String(rpsData.nama_koordinator || "-")}
                 </p>
               </div>
-
-              {/* BAGIAN KAPRODI */}
               <div className="pt-2 border-t border-gray-50">
                 <strong className="text-gray-900 text-xs uppercase tracking-wider">
                   Ketua Program Studi:
@@ -374,11 +361,24 @@ export default function DetailRPSPage({
             {rpsData.cpmk?.map((item: any) => (
               <div
                 key={item.id}
-                className="border rounded-lg p-4 bg-gray-50/30 text-black">
-                <span className="font-bold text-indigo-700 text-xs ">
-                  {item.kode_cpmk}
-                </span>
-                <p className="text-gray-900 text-sm mt-1">{item.deskripsi}</p>
+                className="border rounded-lg p-4 bg-gray-50/30 text-black flex justify-between items-start">
+                <div className="w-full">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-bold text-indigo-700 text-sm">
+                      {item.kode_cpmk}
+                    </span>
+                    {/* VISUALISASI BOBOT DI DASHBOARD */}
+                    <span className="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded border border-teal-200">
+                      Bobot CPL: {item.bobot_to_cpl || 0}%
+                    </span>
+                  </div>
+                  <p className="text-gray-900 text-sm">{item.deskripsi}</p>
+                  {item.ik && item.ik.length > 0 && (
+                     <div className="mt-2 text-xs text-gray-500 bg-white p-2 rounded border border-gray-100">
+                        Link IK: <span className="font-semibold text-gray-700">{item.ik[0].kode_ik}</span> - {item.ik[0].deskripsi}
+                     </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -398,21 +398,21 @@ export default function DetailRPSPage({
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-gray-100 text-blue-700 border-b border-gray-200">
-                  <th>Mg</th>
-                  <th>Kemampuan Akhir</th>
-                  <th>Indikator</th>
-                  <th>Metode</th>
-                  <th>Bobot</th>
+                  <th className="p-2 text-left">Mg</th>
+                  <th className="p-2 text-left">Kemampuan Akhir</th>
+                  <th className="p-2 text-left">Indikator</th>
+                  <th className="p-2 text-left">Metode</th>
+                  <th className="p-2 text-center">Bobot</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-black">
                 {rpsData.pertemuan?.map((p: any) => (
                   <tr key={p.id}>
-                    <td className="text-center">{p.pekan_ke}</td>
-                    <td>{p.kemampuan_akhir}</td>
-                    <td>{p.kriteria_penilaian}</td>
-                    <td>{p.metode_pembelajaran}</td>
-                    <td className="text-center">{p.bobot_nilai}%</td>
+                    <td className="p-2 text-center">{p.pekan_ke}</td>
+                    <td className="p-2">{p.kemampuan_akhir}</td>
+                    <td className="p-2">{p.kriteria_penilaian}</td>
+                    <td className="p-2">{p.metode_pembelajaran}</td>
+                    <td className="p-2 text-center">{p.bobot_nilai}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -422,7 +422,7 @@ export default function DetailRPSPage({
       </div>
 
       {/* ============================================================
-          --- AREA KHUSUS PDF ---
+          --- AREA KHUSUS PDF (PRINT) ---
           ============================================================ */}
       <div id="pdf-area" className="hidden print:block">
         <div className="pdf-sampul">
@@ -433,7 +433,7 @@ export default function DetailRPSPage({
             MATA KULIAH: {matkul.nama} ({matkul.kode_mk})
           </h2>
           <div className="my-12">
-            <img src="/logo-unhas.png" alt="Logo UNHAS" width="250" />
+            <img src="/logo-unhas.png" alt="Logo UNHAS" width="250" className="mx-auto" />
           </div>
           <div className="mt-auto text-lg font-bold uppercase">
             UNIVERSITAS HASANUDDIN
@@ -489,8 +489,10 @@ export default function DetailRPSPage({
             <thead>
               <tr>
                 <th style={{ width: "10%" }}>Kode</th>
-                <th style={{ width: "45%" }}>CPMK</th>
-                <th style={{ width: "45%" }}>Indikator Kinerja (IK)</th>
+                <th style={{ width: "40%" }}>CPMK</th>
+                <th style={{ width: "40%" }}>Indikator Kinerja (IK)</th>
+                {/* KOLOM BOBOT DI PDF */}
+                <th style={{ width: "10%" }}>Bobot</th> 
               </tr>
             </thead>
             <tbody>
@@ -512,6 +514,8 @@ export default function DetailRPSPage({
                       </span>
                     )}
                   </td>
+                  {/* NILAI BOBOT DI PDF */}
+                  <td className="text-center font-bold">{item.bobot_to_cpl || 0}%</td> 
                 </tr>
               ))}
             </tbody>
@@ -555,22 +559,23 @@ export default function DetailRPSPage({
         dosenList={dosenList}
         initialData={rpsData}
       />
+      
       <CpmkModal
         isOpen={showCpmkModal}
         onClose={() => setShowCpmkModal(false)}
         onSave={handleSaveCpmk}
         isSaving={isSaving}
         availableIks={rpsData.available_iks}
-        nextNo={0}
+        nextNo={rpsData.cpmk ? rpsData.cpmk.length + 1 : 1} 
       />
+      
       <PertemuanModal
         isOpen={showPertemuanModal}
         onClose={() => setShowPertemuanModal(false)}
         onSave={handleSavePertemuan}
         isSaving={isSaving}
         cpmkList={rpsData.cpmk}
-        nextPekan={0}
-        rubrikList={[]}
+        nextPekan={rpsData.pertemuan ? rpsData.pertemuan.length + 1 : 1}
         isEdit={false}
       />
     </DashboardLayout>
