@@ -5,10 +5,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // 1. Pastikan semua angka dikonversi dengan benar
     const rps_id = Number(body.rps_id);
     const pekan_ke = Number(body.pekan_ke);
-    const bobot_cpmk = Number(body.bobot_nilai); // Map dari 'bobot_nilai' ke 'bobot_cpmk'
+    const bobot_cpmk = Number(body.bobot_nilai);
+    const cpmk_id = body.cpmk_id ? Number(body.cpmk_id) : null; // Ambil cpmk_id dari body
 
     if (!rps_id || !pekan_ke) {
       return NextResponse.json(
@@ -17,15 +17,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Gunakan Nama Kolom yang sesuai dengan Schema Prisma Kakak
     const pertemuan = await prisma.rPSPertemuan.create({
       data: {
         rps_id: rps_id,
         pekan_ke: pekan_ke,
         bobot_cpmk: bobot_cpmk,
-        bahan_kajian: body.kemampuan_akhir, // Map kemampuan_akhir -> bahan_kajian
-        pengalaman_belajar: body.kriteria_penilaian, // Map kriteria -> pengalaman_belajar
-        waktu: body.metode_pembelajaran, // Map metode -> waktu
+        bahan_kajian: body.kemampuan_akhir,
+        pengalaman_belajar: body.kriteria_penilaian,
+        waktu: body.metode_pembelajaran,
+
+        // KUNCI PERBAIKAN: Hubungkan ke CPMK agar relasi terisi
+        // Menggunakan Many-to-Many connect
+        cpmk: cpmk_id
+          ? {
+              connect: { id: cpmk_id },
+            }
+          : undefined,
       },
     });
 
@@ -33,10 +40,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("ERROR POST PERTEMUAN:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Gagal menyimpan: " + error.message,
-      },
+      { success: false, error: "Gagal menyimpan: " + error.message },
       { status: 500 },
     );
   }
