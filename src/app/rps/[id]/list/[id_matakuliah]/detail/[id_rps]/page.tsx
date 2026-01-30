@@ -68,7 +68,7 @@ interface RPSData {
 // ==========================================
 function SectionHeader({ title, icon, onEdit, action }: any) {
   return (
-    <div className="flex items-center justify-between bg-slate-600 text-white px-4 py-3 rounded-t-lg no-print">
+    <div className="flex items-center justify-between bg-indigo-700 text-white px-4 py-3 rounded-t-lg no-print">
       <h3 className="font-bold text-sm flex items-center gap-2 uppercase tracking-wide">
         {icon} {title}
       </h3>
@@ -112,21 +112,21 @@ function BobotProgressBar({
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm no-print">
       <div className="flex justify-between items-center mb-2">
-        <span className="text-sm font-bold text-slate-700 uppercase tracking-tight">
+        <span className="text-sm font-bold text-slate-900 uppercase tracking-tight">
           Total Bobot Penilaian (Target 100%)
         </span>
         <div className="flex items-center gap-2">
-          {isComplete && <CheckCircle2 size={16} className="text-green-600" />}
-          {isOverLimit && <AlertTriangle size={16} className="text-red-600" />}
+          {isComplete && <CheckCircle2 size={16} className="text-green-700" />}
+          {isOverLimit && <AlertTriangle size={16} className="text-red-700" />}
           <span
-            className={`text-lg font-black ${isOverLimit ? "text-red-600" : isComplete ? "text-green-600" : "text-indigo-600"}`}>
+            className={`text-lg font-black ${isOverLimit ? "text-red-700" : isComplete ? "text-green-700" : "text-indigo-700"}`}>
             {totalBobot}%
           </span>
         </div>
       </div>
       <div className="relative w-full bg-slate-100 rounded-full h-4 overflow-hidden border border-slate-200">
         <div
-          className={`h-full transition-all duration-500 ease-out ${isOverLimit ? "bg-red-500" : isComplete ? "bg-green-500" : "bg-indigo-500"}`}
+          className={`h-full transition-all duration-500 ease-out ${isOverLimit ? "bg-red-700" : isComplete ? "bg-green-700" : "bg-indigo-600"}`}
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -135,12 +135,12 @@ function BobotProgressBar({
           SISA YANG HARUS DIALOKASIKAN: {sisaBobot}%
         </span>
         {isOverLimit && (
-          <span className="text-red-600 animate-pulse font-bold uppercase">
+          <span className="text-red-700 animate-pulse font-bold uppercase">
             ⚠ Melebihi Batas Maksimal!
           </span>
         )}
         {isComplete && (
-          <span className="text-green-600 font-bold uppercase tracking-widest">
+          <span className="text-green-700 font-bold uppercase tracking-widest">
             ✓ Bobot Sudah Ideal
           </span>
         )}
@@ -460,12 +460,12 @@ export default function DetailRPSPage({
           <div className="flex gap-2">
             <Link
               href={`/rps/${id}/list/${id_matakuliah}?prodiId=${prodiId}`}
-              className="bg-white border px-4 py-2 rounded flex items-center gap-2 text-sm hover:bg-gray-50 shadow-sm">
+              className="bg-white border px-4 py-2 rounded flex items-center gap-2 text-sm text-gray-900 hover:bg-gray-50 shadow-sm">
               <ChevronLeft size={16} /> Kembali
             </Link>
             <button
               onClick={() => window.print()}
-              className="bg-red-600 text-white px-4 py-2 rounded flex gap-2 shadow-md hover:bg-red-700 transition-all font-bold">
+              className="bg-rose-700 text-white px-4 py-2 rounded flex gap-2 shadow-md hover:bg-rose-800 transition-all font-bold">
               <Printer size={16} /> Export PDF
             </button>
           </div>
@@ -483,13 +483,13 @@ export default function DetailRPSPage({
               onEdit={() => setEditingSection("otorisasi")}
             />
             <div className="p-4 space-y-3">
-              <div className="pt-2">
-                <strong className="text-slate-500 text-[10px] font-bold uppercase tracking-widest block mb-1">
-                  Dosen Penyusun:
+              <div className="pt-2 border-t border-gray-50">
+                <strong className="text-gray-900 text-xs uppercase tracking-wider">
+                  Ketua Program Studi:
                 </strong>
-                <div className="text-sm antialiased">
-                  {renderPenyusunList(rpsData.nama_penyusun)}
-                </div>
+                <p className="text-gray-900 text-sm font-medium mt-1">
+                  {String(rpsData.nama_kaprodi || "-")}
+                </p>
               </div>
               <div className="pt-2 border-t border-gray-50">
                 <strong className="text-gray-900 text-xs uppercase tracking-wider">
@@ -501,11 +501,11 @@ export default function DetailRPSPage({
               </div>
               <div className="pt-2 border-t border-gray-50">
                 <strong className="text-gray-900 text-xs uppercase tracking-wider">
-                  Ketua Program Studi:
+                  Dosen Penyusun:
                 </strong>
-                <p className="text-gray-900 text-sm font-medium mt-1">
-                  {String(rpsData.nama_kaprodi || "-")}
-                </p>
+                <div className="text-gray-900 text-sm font-medium mt-1">
+                  {renderPenyusunList(rpsData.nama_penyusun)}
+                </div>
               </div>
             </div>
           </div>
@@ -515,25 +515,25 @@ export default function DetailRPSPage({
           <SectionHeader
             title="CPMK"
             icon={<Target size={18} />}
-            action={
+              action={
               <button
                 onClick={() => setShowCpmkModal(true)}
-                className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-xs flex gap-1 font-bold shadow-sm">
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs flex gap-1 font-bold shadow-sm">
                 <Plus size={14} /> Tambah CPMK
               </button>
             }
           />
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/30">
-            {rpsData.cpmk?.map((item) => (
+              {rpsData.cpmk?.map((item) => (
               <div
                 key={item.id}
                 className="group bg-white border border-gray-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-md transition-all">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-bold text-indigo-700 text-xs bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 uppercase w-fit">
+                  <span className="font-bold text-white text-xs bg-indigo-700 px-2 py-1 rounded-md border border-indigo-700 uppercase w-fit">
                     {item.kode_cpmk}
                   </span>
                   {/* ✅ MENAMPILKAN BOBOT DI WEB DASHBOARD */}
-                  <span className="text-[10px] font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded border border-teal-200">
+                  <span className="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded border border-emerald-600">
                     Bobot ke CPL: {item.bobot_to_cpl || 0}%
                   </span>
                 </div>
@@ -564,41 +564,41 @@ export default function DetailRPSPage({
         <BobotProgressBar totalBobot={totalBobot} sisaBobot={sisaBobot} />
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-          <div className="bg-slate-600 text-white px-4 py-3 flex justify-between items-center">
+          <div className="bg-indigo-700 text-white px-4 py-3 flex justify-between items-center">
             <h3 className="font-bold text-sm uppercase tracking-wider flex items-center gap-2">
               <ClipboardList size={18} /> Rencana Mingguan
             </h3>
             <button
               onClick={() =>
-                isBobotValid && sisaBobot > 0
-                  ? setShowPertemuanModal(true)
-                  : alert("Bobot sudah 100%")
-              }
-              disabled={!isBobotValid || sisaBobot === 0}
-              className={`px-4 py-2 rounded-lg text-sm flex gap-2 font-bold shadow-md transition-all ${!isBobotValid || sisaBobot === 0 ? "bg-slate-400" : "bg-green-600 hover:bg-green-700"}`}>
+                  isBobotValid && sisaBobot > 0
+                    ? setShowPertemuanModal(true)
+                    : alert("Bobot sudah 100%")
+                }
+                disabled={!isBobotValid || sisaBobot === 0}
+                className={`px-4 py-2 rounded-lg text-sm flex gap-2 font-bold shadow-md transition-all ${!isBobotValid || sisaBobot === 0 ? "bg-slate-400" : "bg-emerald-600 hover:bg-emerald-700"}`}>
               <Plus size={16} /> Tambah Pertemuan
             </button>
           </div>
           <div className="p-0 overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase text-center w-12">
+                <tr className="bg-white border-b border-gray-200">
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-900 uppercase text-center w-12">
                     Mg
                   </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-900 uppercase">
                     Kemampuan Akhir
                   </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-900 uppercase">
                     Indikator
                   </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-900 uppercase">
                     Metode
                   </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase text-center w-20">
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-900 uppercase text-center w-20">
                     Bobot
                   </th>
-                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase text-center w-20">
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-900 uppercase text-center w-20">
                     Aksi
                   </th>
                 </tr>

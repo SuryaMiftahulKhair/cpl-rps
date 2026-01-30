@@ -1,0 +1,56 @@
+{
+    "cpl": [
+        {
+            "id": 1,
+            "name": "Contoh CPL 1",
+            "description": "Deskripsi untuk CPL 1"
+        }
+    ],
+    "ik": [
+        {
+            "id": 1,
+            "name": "Contoh IK 1",
+            "description": "Deskripsi untuk IK 1",
+            "cpl_id": 1
+        }
+    ],
+    "cpmk": [
+        {
+            "id": 1,
+            "name": "Contoh CPMK 1",
+            "description": "Deskripsi untuk CPMK 1",
+            "ik_id": 1,
+            "cpl_id": 1
+        }
+    ],
+    "subcpmk": [
+        {
+            "id": 1,
+            "name": "Contoh Sub CPMK 1",
+            "description": "Deskripsi untuk Sub CPMK 1",
+            "cpmk_id": 1,
+            "ik_id": 1,
+            "cpl_id": 1
+        },
+        {
+            "id": 2,
+            "name": "Contoh Sub CPMK 2",
+            "description": "Deskripsi untuk Sub CPMK 2",
+            "cpmk_id": 1,
+            "ik_id": 1,
+            "cpl_id": 1
+        }
+    ],
+    "matakuliah": [
+        {
+            "id": 1,
+            "kode_mk": "MK001",
+            "nama": "Mata Kuliah Contoh",
+            "sks": 3,
+            "semester": 1,
+            "cpl_ids": [1, 2],
+            "ik_ids": [1, 2]
+        }
+    ]
+}
+

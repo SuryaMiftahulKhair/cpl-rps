@@ -248,7 +248,7 @@ const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah?prodiId=${prod
       <div className="p-8">
         <div className="flex justify-between items-center mb-6">
           <div className="flex flex-col">
-            <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                 <Layers size={24} className="text-indigo-600" />
                 Mata Kuliah Kurikulum
             </h1>
@@ -256,13 +256,13 @@ const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah?prodiId=${prod
           </div>
 
           <div className="flex gap-3">
-            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-green-500 text-white px-4 py-2.5 rounded-lg shadow-md hover:bg-green-600">
+            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-lg shadow-lg hover:bg-emerald-700 transition">
               <Plus size={18} /> <span className="text-sm font-medium">Manual</span>
             </button>
-            <button onClick={() => setIsExcelModalOpen(true)} className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2.5 rounded-lg shadow-md hover:bg-emerald-600">
+            <button onClick={() => setIsExcelModalOpen(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-lg shadow-lg hover:bg-emerald-700 transition">
               <FileSpreadsheet size={18} /> <span className="text-sm font-medium">Excel</span>
             </button>
-            <button onClick={() => handleBack()} className="flex items-center gap-2 bg-gray-500 text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-gray-600">
+            <button onClick={() => handleBack()} className="flex items-center gap-2 bg-slate-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-slate-700 transition">
               <ChevronLeft size={18} /> Kembali
             </button>
           </div>
@@ -277,26 +277,26 @@ const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah?prodiId=${prod
         <div className="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-indigo-50">
+              <thead className="bg-white">
                 <tr>
-                  <th className="px-4 py-4 text-left font-bold text-xs text-indigo-700 uppercase">KODE</th>
-                  <th className="px-4 py-4 text-left font-bold text-xs text-indigo-700 uppercase">NAMA MATA KULIAH</th>
-                  <th className="px-4 py-4 text-center font-bold text-xs text-indigo-700 uppercase">SEM</th>
-                  <th className="px-4 py-4 text-center font-bold text-xs text-indigo-700 uppercase">SKS</th>
-                  <th className="px-4 py-4 text-center font-bold text-xs text-indigo-700 uppercase">SIFAT</th>
-                  <th className="px-4 py-4 text-center font-bold text-xs text-indigo-700 uppercase">AKSI</th>
+                  <th className="px-4 py-4 text-left font-bold text-xs text-slate-900 uppercase">KODE</th>
+                  <th className="px-4 py-4 text-left font-bold text-xs text-slate-900 uppercase">NAMA MATA KULIAH</th>
+                  <th className="px-4 py-4 text-center font-bold text-xs text-slate-900 uppercase">SEM</th>
+                  <th className="px-4 py-4 text-center font-bold text-xs text-slate-900 uppercase">SKS</th>
+                  <th className="px-4 py-4 text-center font-bold text-xs text-slate-900 uppercase">SIFAT</th>
+                  <th className="px-4 py-4 text-center font-bold text-xs text-slate-900 uppercase">AKSI</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
                 {loading ? (
-                  <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-400"><Loader2 className="animate-spin inline mr-2"/> Memuat data...</td></tr>
+                  <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-900"><Loader2 className="animate-spin inline mr-2"/> Memuat data...</td></tr>
                 ) : data.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500 italic">Belum ada mata kuliah di kurikulum ini.</td></tr>
+                  <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-900 italic">Belum ada mata kuliah di kurikulum ini.</td></tr>
                 ) : (
                   data.map((item) => (
                     <tr key={item.id} className="hover:bg-indigo-50/30 transition-colors">
-                      <td className="px-4 py-4 font-mono font-bold text-indigo-600">{item.kode_mk}</td>
-                      <td className="px-4 py-4 font-semibold text-gray-800">
+                      <td className="px-4 py-4 font-mono font-bold text-slate-900">{item.kode_mk}</td>
+                      <td className="px-4 py-4 font-semibold text-slate-900">
                         {item.nama}
                         <div className="flex flex-wrap gap-1 mt-1">
                           {item.cpl?.map(c => (
@@ -308,7 +308,7 @@ const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah?prodiId=${prod
                       </td>
                       <td className="px-4 py-4 text-center font-medium">{item.semester ?? "-"}</td>
                       <td className="px-4 py-4 text-center">{item.sks}</td>
-                      <td className="px-4 py-4 text-center uppercase text-[10px] font-bold text-gray-500">{item.sifat ?? "-"}</td>
+                      <td className="px-4 py-4 text-center uppercase text-[10px] font-bold text-slate-900">{item.sifat ?? "-"}</td>
                       <td className="px-4 py-4 text-center space-x-2">
                         <button onClick={() => handleShowDetail(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Detail">
                           <Eye size={18} />
