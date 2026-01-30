@@ -14,6 +14,7 @@ import {
   X,
   Save,
   CheckSquare,
+  ClipboardList, // <-- Tambahkan ini Kak
 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
@@ -148,32 +149,21 @@ export default function DetailRPSPage({
   const handleSaveCpmk = async (formData: any) => {
     setIsSaving(true);
     try {
-      // Log untuk cek data sebelum dikirim (cek di console browser)
-      console.log("Data yang dikirim ke API:", formData);
-
       const res = await fetch("/api/rps/cpmk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          rps_id: Number(id_rps), // Pastikan angka
-          kode_cpmk: formData.kode, // Sesuaikan 'kode' dari modal ke 'kode_cpmk' API
+          rps_id: id_rps, // ID RPS dari params
+          kode_cpmk: formData.kode, // Dari register("kode") di modal
           deskripsi: formData.deskripsi,
-          ik_id: formData.ik_id ? Number(formData.ik_id) : null, // Pastikan angka
-          prodiId: prodiId,
+          ik_id: formData.ik_id, // ID IK yang dipilih
         }),
       });
 
-      const result = await res.json();
-
-      if (!res.ok) {
-        // Jika error 400, tampilkan pesan error detail dari backend
-        throw new Error(result.error || "Gagal menyimpan CPMK");
+      if (res.ok) {
+        await fetchRPSData();
+        setShowCpmkModal(false);
       }
-
-      await fetchRPSData();
-      setShowCpmkModal(false);
-    } catch (error: any) {
-      alert("Kesalahan: " + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -358,63 +348,134 @@ export default function DetailRPSPage({
         </div>
 
         {/* TABEL CPMK DASHBOARD */}
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
           <SectionHeader
-            title="CPMK"
-            icon={<Target size={16} />}
+            title="Capaian Pembelajaran Mata Kuliah (CPMK)"
+            icon={<Target size={18} />}
             action={
               <button
                 onClick={() => setShowCpmkModal(true)}
-                className="bg-teal-600 text-white px-2 py-1 rounded text-xs flex gap-1">
-                <Plus size={14} /> Tambah
+                className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-xs flex gap-1 items-center transition-all font-bold shadow-sm">
+                <Plus size={14} /> Tambah CPMK
               </button>
             }
           />
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {rpsData.cpmk?.map((item: any) => (
-              <div
-                key={item.id}
-                className="border rounded-lg p-4 bg-gray-50/30 text-black">
-                <span className="font-bold text-indigo-700 text-xs ">
-                  {item.kode_cpmk}
-                </span>
-                <p className="text-gray-900 text-sm mt-1">{item.deskripsi}</p>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/30">
+            {rpsData.cpmk && rpsData.cpmk.length > 0 ? (
+              rpsData.cpmk.map((item: any) => (
+                <div
+                  key={item.id}
+                  className="group bg-white border border-gray-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-md transition-all duration-200">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-bold text-indigo-700 text-xs bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 uppercase tracking-tighter">
+                      {item.kode_cpmk || item.kode}
+                    </span>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Kakak bisa tambah tombol edit/hapus di sini nanti */}
+                    </div>
+                  </div>
+
+                  <p className="text-gray-900 text-sm leading-relaxed font-medium">
+                    {item.deskripsi}
+                  </p>
+
+                  {/* MENAMPILKAN INDIKATOR KINERJA (IK) YANG TERIKAT */}
+                  {item.ik && item.ik.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-dashed border-gray-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
+                        <CheckSquare size={12} /> Indikator Kinerja Terikat:
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {item.ik.map((ik: any, idx: number) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-100 font-medium">
+                            {ik.kode_ik || ik.kode}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full py-10 text-center bg-white border-2 border-dashed border-gray-100 rounded-xl">
+                <Target size={40} className="mx-auto text-slate-200 mb-2" />
+                <p className="text-slate-400 text-sm italic">
+                  Belum ada data CPMK yang ditambahkan.
+                </p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
         {/* TABEL RENCANA MINGGUAN DASHBOARD */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
           <div className="bg-slate-600 text-white px-4 py-3 flex justify-between items-center">
-            <h3 className="font-bold text-sm uppercase">Rencana Mingguan</h3>
+            <h3 className="font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+              <ClipboardList size={18} /> Rencana Mingguan
+            </h3>
             <button
               onClick={() => setShowPertemuanModal(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded text-sm flex gap-2">
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm flex gap-2 items-center transition-all shadow-md font-bold">
               <Plus size={16} /> Tambah Pertemuan
             </button>
           </div>
-          <div className="p-6 overflow-x-auto">
-            <table className="w-full text-xs">
+          <div className="p-0 overflow-x-auto">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-100 text-blue-700 border-b border-gray-200">
-                  <th>Mg</th>
-                  <th>Kemampuan Akhir</th>
-                  <th>Indikator</th>
-                  <th>Metode</th>
-                  <th>Bobot</th>
+                <tr className="bg-slate-50 border-b border-gray-200">
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase text-center w-12">
+                    Mg
+                  </th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
+                    Kemampuan Akhir (Sub-CPMK)
+                  </th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
+                    Indikator & Kriteria
+                  </th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
+                    Metode
+                  </th>
+                  <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase text-center w-20">
+                    Bobot
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-black">
-                {rpsData.pertemuan?.map((p: any) => (
-                  <tr key={p.id}>
-                    <td className="text-center">{p.pekan_ke}</td>
-                    <td>{p.kemampuan_akhir}</td>
-                    <td>{p.kriteria_penilaian}</td>
-                    <td>{p.metode_pembelajaran}</td>
-                    <td className="text-center">{p.bobot_nilai}%</td>
+              <tbody className="divide-y divide-gray-100">
+                {rpsData.pertemuan && rpsData.pertemuan.length > 0 ? (
+                  rpsData.pertemuan.map((p: any) => (
+                    <tr
+                      key={p.id}
+                      className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-4 text-center font-bold text-slate-700">
+                        {p.pekan_ke}
+                      </td>
+                      {/* SESUAIKAN NAMA FIELD DENGAN DATABASE (bahan_kajian, dll) */}
+                      <td className="px-4 py-4 text-sm text-slate-900 leading-relaxed max-w-xs">
+                        {p.bahan_kajian || p.kemampuan_akhir}
+                      </td>
+                      <td className="px-4 py-4 text-xs text-slate-600 italic whitespace-pre-wrap leading-relaxed">
+                        {p.pengalaman_belajar || p.kriteria_penilaian}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-slate-700">
+                        {p.waktu || p.metode_pembelajaran}
+                      </td>
+                      <td className="px-4 py-4 text-center font-bold text-indigo-600 bg-indigo-50/30">
+                        {p.bobot_cpmk || p.bobot_nilai}%
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-4 py-10 text-center text-slate-400 italic bg-gray-50">
+                      Belum ada rencana pertemuan. Klik "Tambah Pertemuan" untuk
+                      mengisi.
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

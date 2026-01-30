@@ -6,33 +6,37 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { rps_id, kode_cpmk, deskripsi, ik_id } = body;
 
-    // 1. Validasi
-    if (!rps_id || !kode_cpmk) {
-        return NextResponse.json({ error: "Data wajib diisi" }, { status: 400 });
-    }
-
-    // 2. Simpan ke Database (FIXED)
+    // Simpan ke Database
     const newCpmk = await prisma.cPMK.create({
       data: {
-        // HAPUS rps_id KARENA TIDAK ADA KOLOMNYA
-        kode_cpmk,
-        deskripsi,
-        
-        // HUBUNGKAN KE RPS (Relasi Many-to-Many)
+        kode_cpmk: kode_cpmk,
+        deskripsi: deskripsi,
+        bobot_to_cpl: 0.0, // WAJIB ada karena di model bukan 'Float?'
+        is_locked: false, // Default di model true, kita set false agar bisa diedit
+
+        // Relasi Many-to-Many ke RPS
         rps: {
-            connect: { id: Number(rps_id) }
+          connect: { id: Number(rps_id) },
         },
 
-        // HUBUNGKAN KE IK (Relasi Many-to-Many)
-        // Gunakan Array [{ id: ... }] 
-        ik: ik_id ? { connect: [{ id: Number(ik_id) }] } : undefined
-      }
+        // Relasi ke IK (Indikator Kinerja)
+        ik: ik_id
+          ? {
+              connect: { id: Number(ik_id) },
+            }
+          : undefined,
+      },
     });
 
     return NextResponse.json({ success: true, data: newCpmk });
-
-  } catch (err: any) {
-    console.error("Create CPMK Error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (error: any) {
+    console.error("CREATE CPMK ERROR:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Gagal simpan: " + error.message,
+      },
+      { status: 500 },
+    );
   }
 }
