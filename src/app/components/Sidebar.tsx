@@ -160,7 +160,6 @@ export default function Sidebar() {
             </nav>
 
             <div className="p-3 border-t border-gray-100 bg-gray-50/50 mt-auto">
-                <LogoutButton />
                 <MenuItem href="/pengaturan" icon={Settings} isActive={currentPath === "/pengaturan"}>Pengaturan</MenuItem>
             </div>
         </div>
