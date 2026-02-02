@@ -12,9 +12,11 @@ import {
   HiOutlinePlus,
   HiOutlinePencilSquare,
   HiOutlineTrash,
-  HiOutlineKey, // Import Icon Kunci
+  HiOutlineKey,
+  HiOutlineShieldCheck,
+  HiOutlineUserCircle,
 } from "react-icons/hi2";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle, Shield, Crown, Search } from "lucide-react";
 
 export default function ManajemenUserPage() {
   const [users, setUsers] = useState([]);
@@ -23,8 +25,9 @@ export default function ManajemenUserPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [openResetModal, setOpenResetModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<{ id: number; nama: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // 1. Fungsi Fetch User
+  // Fetch Users
   const fetchUsers = async () => {
     setLoading(true);
     try {
@@ -40,46 +43,66 @@ export default function ManajemenUserPage() {
     }
   };
 
-  // 2. Fungsi Reset Password
-  // Fungsi ini diletakkan di dalam fungsi ManajemenUserPage
-const handleResetPassword = (userId: number, nama: string) => {
+  // Reset Password Handler
+  const handleResetPassword = (userId: number, nama: string) => {
     setSelectedUser({ id: userId, nama });
     setOpenResetModal(true);
-};
+  };
 
   useEffect(() => {
-  const initPage = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/session");
-      const session = await res.json();
-      
-      // LOG DEBUG: Cek di console browser apakah role-nya beneran ADMIN (huruf besar/kecil berpengaruh)
-      console.log("Session User:", session);
+    const initPage = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/auth/session");
+        const session = await res.json();
+        
+        console.log("Session User:", session);
 
-      // Pastikan membandingkan dengan nilai string yang tepat dari database
-      if (session.success && session.data.role === "ADMIN") {
-        setCurrentUser(session.data);
-        fetchUsers();
-      } else {
+        if (session.success && session.data.role === "ADMIN") {
+          setCurrentUser(session.data);
+          fetchUsers();
+        } else {
+          setCurrentUser("REJECTED");
+        }
+      } catch (error) {
+        console.error("Auth error:", error);
         setCurrentUser("REJECTED");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Auth error:", error);
-      setCurrentUser("REJECTED");
-    } finally {
-      setLoading(false);
-    }
-  };
-  initPage();
-}, []);
+    };
+    initPage();
+  }, []);
+
+  // Filter users based on search
+  const filteredUsers = users.filter((user: any) =>
+    user.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Count by role
+  const adminCount = users.filter((u: any) => u.role === "ADMIN").length;
+  const dosenCount = users.filter((u: any) => u.role === "DOSEN").length;
 
   if (currentUser === "REJECTED") {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
-        <h1 className="text-4xl font-black text-red-600">403</h1>
-        <p className="text-gray-600 font-bold">Akses Ditolak. Khusus Admin.</p>
-        <Link href="/home" className="mt-4 text-indigo-600 underline">Kembali ke home</Link>
+        <div className="text-center">
+          <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Shield className="w-12 h-12 text-red-600" strokeWidth={2} />
+          </div>
+          <h1 className="text-6xl font-black text-red-600 mb-4">403</h1>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Akses Ditolak</h2>
+          <p className="text-gray-600 font-medium mb-6">
+            Halaman ini hanya dapat diakses oleh Administrator
+          </p>
+          <Link 
+            href="/home" 
+            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-md"
+          >
+            Kembali ke Dashboard
+          </Link>
+        </div>
       </div>
     );
   }
@@ -92,100 +115,265 @@ const handleResetPassword = (userId: number, nama: string) => {
         <Header />
 
         <main className="p-8 space-y-6">
-          <div className="flex items-center justify-between border-b pb-3">
-            <div className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-              <HiOutlineUsers className="w-7 h-7 text-indigo-600" />
-              Manajemen Pengguna
+          
+          {/* ================= HEADER WITH GRADIENT ================= */}
+          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6 border border-indigo-100">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                  <HiOutlineUsers className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-1">
+                    Manajemen Pengguna
+                  </h1>
+                  <p className="text-sm text-gray-600">
+                    Kelola akun pengguna dan hak akses sistem
+                  </p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => setOpenModal(true)}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                <HiOutlinePlus className="w-5 h-5" strokeWidth={2.5} />
+                Tambah Akun
+              </button>
             </div>
-
-            <button
-              onClick={() => setOpenModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700 transition-all shadow-md"
-            >
-              <HiOutlinePlus className="w-5 h-5" />
-              Tambah Akun
-            </button>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+          {/* ================= STATS CARDS ================= */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Total Users */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                  <HiOutlineUsers className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                    Total Pengguna
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {users.length}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Admin Count */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                  <Crown className="w-7 h-7 text-white" strokeWidth={2} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                    Administrator
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {adminCount}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dosen Count */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
+                  <HiOutlineUserCircle className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                    Dosen
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {dosenCount}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ================= TABLE SECTION ================= */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            
+            {/* Header */}
+            <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <HiOutlineShieldCheck className="w-5 h-5 text-indigo-600" />
+                  Daftar Pengguna
+                </h2>
+                
+                {/* Search Input */}
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                  type="text"
+                  placeholder="Cari nama atau NIP..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm text-gray-900 hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Table */}
             {loading ? (
               <div className="p-20 flex flex-col items-center justify-center text-gray-400 gap-3">
-                <Loader2 className="animate-spin" size={40} />
-                <p>Memuat data pengguna...</p>
+                <Loader2 className="animate-spin text-indigo-600" size={48} strokeWidth={2.5} />
+                <p className="text-sm font-semibold text-gray-600">Memuat data pengguna...</p>
               </div>
             ) : (
-              <table className="w-full text-sm text-gray-900">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-6 py-4 text-left font-bold text-gray-600">No</th>
-                    <th className="px-6 py-4 text-left font-bold text-gray-600">Nama</th>
-                    <th className="px-6 py-4 text-left font-bold text-gray-600">NIP</th>
-                    <th className="px-6 py-4 text-left font-bold text-gray-600">Role</th>
-                    <th className="px-6 py-4 text-center font-bold text-gray-600">Aksi</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-gray-100">
-                  {users.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-10 text-gray-400">Belum ada data pengguna.</td>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b-2 border-gray-200">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50 w-20">
+                        No
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                        Nama Lengkap
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                        NIP / Username
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                        Role
+                      </th>
+                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                        Aksi
+                      </th>
                     </tr>
-                  ) : (
-                    users.map((user: any, index) => (
-                      <tr key={user.id} className="hover:bg-indigo-50/30 transition-all">
-                        <td className="px-6 py-4 text-gray-500">{index + 1}</td>
-                        <td className="px-6 py-4 font-bold text-gray-800">{user.nama}</td>
-                        <td className="px-6 py-4 text-gray-600">{user.username}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                            user.role === "ADMIN" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
-                          }`}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex justify-center gap-3">
-                            {/* Tombol Reset Password */}
-                            <button 
-                              onClick={() => handleResetPassword(user.id, user.nama)}
-                              title="Reset Password" 
-                              className="p-2 text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-all"
-                            >
-                              <HiOutlineKey className="w-5 h-5" />
-                            </button>
+                  </thead>
 
-                            <button title="Edit" className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-all">
-                              <HiOutlinePencilSquare className="w-5 h-5" />
-                            </button>
-                            
-                            <button 
-                              title="Hapus" 
-                              className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all"
-                              onClick={() => confirm("Hapus akun ini?")}
-                            >
-                              <HiOutlineTrash className="w-5 h-5" />
-                            </button>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-16">
+                          <div className="flex flex-col items-center justify-center text-center">
+                            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                              {searchQuery ? (
+                                <Search className="w-8 h-8 text-gray-400" />
+                              ) : (
+                                <HiOutlineUsers className="w-8 h-8 text-gray-400" />
+                              )}
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                              {searchQuery ? "Tidak Ada Hasil" : "Belum Ada Data"}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              {searchQuery 
+                                ? `Tidak ditemukan pengguna dengan kata kunci "${searchQuery}"`
+                                : "Belum ada pengguna terdaftar dalam sistem"
+                              }
+                            </p>
                           </div>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      filteredUsers.map((user: any, index) => (
+                        <tr 
+                          key={user.id} 
+                          className="group hover:bg-indigo-50/40 transition-all duration-150"
+                        >
+                          <td className="px-6 py-4">
+                            <span className="text-sm font-medium text-gray-500">
+                              {index + 1}
+                            </span>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-full flex items-center justify-center flex-shrink-0">
+                                <span className="text-indigo-700 font-bold text-sm">
+                                  {user.nama.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <span className="font-semibold text-gray-900 text-sm">
+                                {user.nama}
+                              </span>
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <span className="font-mono text-sm font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                              {user.username}
+                            </span>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border ${
+                              user.role === "ADMIN" 
+                                ? "bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 border-purple-200" 
+                                : "bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200"
+                            }`}>
+                              {user.role === "ADMIN" ? (
+                                <Crown className="w-3.5 h-3.5" strokeWidth={2.5} />
+                              ) : (
+                                <HiOutlineUserCircle className="w-3.5 h-3.5" />
+                              )}
+                              {user.role}
+                            </span>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                              {/* Reset Password */}
+                              <button 
+                                onClick={() => handleResetPassword(user.id, user.nama)}
+                                title="Reset Password" 
+                                className="p-2 text-amber-700 bg-amber-50 border-2 border-amber-200 rounded-lg hover:bg-amber-100 hover:border-amber-300 transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                              >
+                                <HiOutlineKey className="w-5 h-5" />
+                              </button>
+
+                              {/* Edit */}
+                              <button 
+                                title="Edit Pengguna" 
+                                className="p-2 text-indigo-700 bg-indigo-50 border-2 border-indigo-200 rounded-lg hover:bg-indigo-100 hover:border-indigo-300 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                              >
+                                <HiOutlinePencilSquare className="w-5 h-5" />
+                              </button>
+                              
+                              {/* Delete */}
+                              <button 
+                                title="Hapus Pengguna" 
+                                className="p-2 text-red-700 bg-red-50 border-2 border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                onClick={() => {
+                                  if (confirm(`Apakah Anda yakin ingin menghapus akun "${user.nama}"?`)) {
+                                    // Handle delete
+                                  }
+                                }}
+                              >
+                                <HiOutlineTrash className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </main>
       </div>
 
+      {/* ================= MODALS ================= */}
       <ResetPasswordModal 
-    open={openResetModal}
-    onClose={() => {
-        setOpenResetModal(false);
-        setSelectedUser(null);
-    }}
-    user={selectedUser}
-    // JANGAN tambahkan onSuccess di sini karena di ResetPasswordModal.tsx memang tidak kita buat props itu
-    />
+        open={openResetModal}
+        onClose={() => {
+          setOpenResetModal(false);
+          setSelectedUser(null);
+        }}
+        user={selectedUser}
+      />
 
       <TambahUserModal
         open={openModal}
