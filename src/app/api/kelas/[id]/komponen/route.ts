@@ -6,142 +6,133 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const kelasId = parseInt((await params).id, 10);
+    const resolvedParams = await params;
+    const kelasId = parseInt(resolvedParams.id, 10);
     const body = await request.json();
     
-    // --- MODE 1: SYNC RPS ---
+    // --- MODE 1: SYNC DARI RPS (Tarik Rencana) ---
     if (body.action === "sync_rps") {
         const { evaluasi } = body;
         await prisma.$transaction(async (tx) => {
             await tx.komponenNilai.deleteMany({ where: { kelas_id: kelasId } });
             for (const item of evaluasi) {
-                const newK = await tx.komponenNilai.create({
+                if (!item.cpmk_id) continue; 
+                await tx.komponenNilai.create({
                     data: {
                         nama: item.nama,
-                        bobot: parseFloat(item.bobot),
-                        kelas_id: kelasId
+                        bobot_nilai: parseFloat(item.bobot),
+                        kelas_id: kelasId,
+                        cpmk_id: parseInt(item.cpmk_id)
                     }
                 });
-                if (item.cpmk_id) {
-                    await tx.pemetaanKomponenCpmk.create({
-                        data: {
-                            komponen_nilai_id: newK.id,
-                            cpmk_id: parseInt(item.cpmk_id),
-                            bobot: 100 // Default 100% kontribusi ke CPMK tsb
-                        }
-                    });
-                }
             }
         });
-        return NextResponse.json({ message: "Sync RPS Success" });
+        return NextResponse.json({ message: "Sync RPS Berhasil" });
     }
 
-    // --- MODE 2: SIMPAN MANUAL / UPLOAD EXCEL ---
+    // --- MODE 2: IMPORT EXCEL (NILAI + MAHASISWA + HITUNG) ---
     const { komponen, dataNilai } = body;
 
+    // Validasi input
     if (!komponen || !Array.isArray(komponen)) {
         return NextResponse.json({ error: "Data komponen tidak valid" }, { status: 400 });
     }
+    if (!dataNilai || !Array.isArray(dataNilai)) {
+        return NextResponse.json({ error: "Data nilai excel kosong" }, { status: 400 });
+    }
 
     await prisma.$transaction(async (tx) => {
-        await tx.komponenNilai.deleteMany({ where: { kelas_id: kelasId } });
 
-        const mapKomponenId: Record<string, number> = {};
+        const dbKomponen = await tx.komponenNilai.findMany({
+            where: { kelas_id: kelasId }
+        });
 
-        for (const k of komponen) {
-            const newK = await tx.komponenNilai.create({
-                data: {
-                    nama: k.nama,
-                    bobot: parseFloat(k.bobot),
-                    kelas_id: kelasId
+        for (const row of dataNilai) {
+            const nimKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'nim');
+            const namaKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'nama');
+            
+            const nim = nimKey ? String(row[nimKey]).trim() : null;
+            const namaMhs = namaKey ? String(row[namaKey]).trim() : "Mahasiswa Baru";
+
+            if (!nim) continue; 
+            const mhs = await tx.mahasiswa.upsert({
+                where: { nim: nim },
+                update: { nama: namaMhs }, 
+                create: {
+                    nim: nim,
+                    nama: namaMhs
                 }
             });
-            
-            mapKomponenId[k.nama] = newK.id;
 
-            if (k.cpmk_id) {
-                const cpmkIdInt = parseInt(String(k.cpmk_id)); 
-                
-                if (!isNaN(cpmkIdInt)) {
-
-                    await tx.pemetaanKomponenCpmk.create({
-                        data: {
-                            komponen_nilai_id: newK.id,
-                            cpmk_id: cpmkIdInt,
-                            bobot: 100 
-                        }
-                    });
+            const peserta = await tx.pesertaKelas.upsert({
+                where: {
+                    kelas_id_mahasiswa_id: {
+                        kelas_id: kelasId,
+                        mahasiswa_id: mhs.id
+                    }
+                },
+                update: {}, 
+                create: {
+                    kelas_id: kelasId,
+                    mahasiswa_id: mhs.id
                 }
-            }
-        }
+            });
 
+            let totalNilaiAkhir = 0;
 
-        if (dataNilai && Array.isArray(dataNilai)) {
-            for (const row of dataNilai) {
-                const nimKey = Object.keys(row).find(key => key.toLowerCase() === 'nim');
-                const namaKey = Object.keys(row).find(key => key.toLowerCase() === 'nama');
+           
+            for (const kompData of dbKomponen) {
                 
-                const nim = nimKey ? row[nimKey] : null;
-                const namaMhs = namaKey ? row[namaKey] : "Mahasiswa";
+                const excelKey = Object.keys(row).find(k => 
+                    k.trim().toLowerCase() === kompData.nama.trim().toLowerCase() ||
+                    k.trim().toLowerCase().startsWith(kompData.nama.trim().toLowerCase() + " (") 
+                );
 
-                if (!nim) continue; 
-
-                let peserta = await tx.pesertaKelas.findFirst({
-                    where: { kelas_id: kelasId, nim: String(nim) }
-                });
-
-                if (!peserta) {
-                    peserta = await tx.pesertaKelas.create({
-                        data: { 
-                            kelas: {
-                                connect: { id: kelasId }
+                const excelVal = excelKey ? row[excelKey] : undefined;
+                if (excelVal !== undefined && excelVal !== null && excelVal !== "") {
+                    const nilaiAngka = parseFloat(excelVal);
+                    
+                    if (!isNaN(nilaiAngka)) {
+                        await tx.nilai.upsert({
+                            where: {
+                                peserta_kelas_id_komponen_nilai_id: {
+                                    peserta_kelas_id: peserta.id,
+                                    komponen_nilai_id: kompData.id
+                                }
                             },
-                            mahasiswa: {
-                                connect: { nim: String(nim) }}
-                        }
-                    });
-                }
-
-                // Simpan Nilai per Komponen
-                let nilaiAkhir = 0;
-                for (const k of komponen) {
-                    // Cari nilai di Excel berdasarkan nama komponen
-                    const val = row[k.nama];
-                    const nilaiAngka = parseFloat(val);
-                    const komponenId = mapKomponenId[k.nama];
-
-                    if (!isNaN(nilaiAngka) && komponenId) {
-                        await tx.nilai.create({
-                            data: {
+                            update: { nilai_komponen: nilaiAngka },
+                            create: {
                                 peserta_kelas_id: peserta.id,
-                                komponen_nilai_id: komponenId,
+                                komponen_nilai_id: kompData.id,
                                 nilai_komponen: nilaiAngka
                             }
                         });
-                        nilaiAkhir += nilaiAngka * (k.bobot / 100);
+                        totalNilaiAkhir += (nilaiAngka * kompData.bobot_nilai) / 100;
                     }
                 }
-                
-                // Konversi Huruf
-                let nilaiHuruf = "E";
-                if (nilaiAkhir >= 85) nilaiHuruf = "A";
-                else if (nilaiAkhir >= 80) nilaiHuruf = "A-";
-                else if (nilaiAkhir >= 75) nilaiHuruf = "B+";
-                else if (nilaiAkhir >= 70) nilaiHuruf = "B";
-                else if (nilaiAkhir >= 65) nilaiHuruf = "B-";
-                else if (nilaiAkhir >= 60) nilaiHuruf = "C+";
-                else if (nilaiAkhir >= 50) nilaiHuruf = "C";
-                else if (nilaiAkhir >= 40) nilaiHuruf = "D";
-                
-                await tx.pesertaKelas.update({
-                    where: { id: peserta.id },
-                    data: { nilai_akhir_angka: nilaiAkhir, nilai_huruf: nilaiHuruf }
-                });
             }
+
+            let nilaiHuruf = "E";
+            if (totalNilaiAkhir >= 85) nilaiHuruf = "A";
+            else if (totalNilaiAkhir >= 80) nilaiHuruf = "A-";
+            else if (totalNilaiAkhir >= 75) nilaiHuruf = "B+";
+            else if (totalNilaiAkhir >= 70) nilaiHuruf = "B";
+            else if (totalNilaiAkhir >= 65) nilaiHuruf = "B-";
+            else if (totalNilaiAkhir >= 60) nilaiHuruf = "C+";
+            else if (totalNilaiAkhir >= 50) nilaiHuruf = "C";
+            else if (totalNilaiAkhir >= 40) nilaiHuruf = "D";
+
+            await tx.pesertaKelas.update({
+                where: { id: peserta.id },
+                data: {
+                    nilai_akhir_angka: parseFloat(totalNilaiAkhir.toFixed(2)),
+                    nilai_akhir_huruf: nilaiHuruf
+                }
+            });
         }
     });
 
-    return NextResponse.json({ message: "Data berhasil disimpan" });
+    return NextResponse.json({ message: "Import berhasil: Data Mahasiswa & Nilai tersimpan." });
 
   } catch (err: any) {
     console.error("API POST Error:", err);
