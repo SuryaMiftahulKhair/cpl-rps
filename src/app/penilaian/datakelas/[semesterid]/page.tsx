@@ -3,7 +3,7 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Search, Plus } from "lucide-react"; 
+import { ArrowLeft, Loader2, Search, Plus, BookOpen, Calendar, GraduationCap, AlertCircle, X } from "lucide-react"; 
 import DashboardLayout from "@/app/components/DashboardLayout";
 import KelasModal from "@/app/components/KelasModal";
 
@@ -51,15 +51,12 @@ export default function SemesterMatakuliahListPage({
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/kelas?tahun_ajaran_id=${semesterid}`); // Gunakan tahun_ajaran_id sesuai backend
+      const res = await fetch(`/api/kelas?tahun_ajaran_id=${semesterid}`);
       if (!res.ok) throw new Error(await parseApiError(res));
       
       const json = await res.json();
-      
-      // Ambil array data (sesuaikan dengan format response API backend)
       const rawData = Array.isArray(json) ? json : (json.data || []);
       
-      // Mapping data dari backend (snake_case) ke interface frontend (camelCase)
       const mappedData: MatakuliahKelas[] = rawData.map((item: any) => ({
         id: item.id,
         namaKelas: item.nama_kelas,
@@ -72,7 +69,7 @@ export default function SemesterMatakuliahListPage({
     } catch (err: any) {
       console.error("Fetch Error:", err);
       setError(`Gagal mengambil data kelas: ${err.message || "Error tidak diketahui"}`);
-      setMatakuliahList([]); // Reset list jika error
+      setMatakuliahList([]);
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +97,7 @@ export default function SemesterMatakuliahListPage({
       if (!res.ok) throw new Error(await parseApiError(res));
 
       setIsModalOpen(false);
-      await fetchData(); // Refresh data setelah berhasil
+      await fetchData();
       alert("Berhasil menambah kelas!");
     } catch (err: any) {
       alert(`Gagal: ${err.message}`);
@@ -109,7 +106,7 @@ export default function SemesterMatakuliahListPage({
     }
   };
 
-  // Filter Logic (Aman karena matakuliahList dijamin array)
+  // Filter Logic
   const filteredMatakuliah = matakuliahList.filter((mk) => {
     const term = searchTerm.toLowerCase();
     return (
@@ -119,111 +116,298 @@ export default function SemesterMatakuliahListPage({
     );
   });
 
+  // Calculate stats
+  const totalSKS = matakuliahList.reduce((sum, mk) => sum + mk.sks, 0);
+  const uniqueMK = new Set(matakuliahList.map(mk => mk.kodeMatakuliah)).size;
+
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Data Kelas</h1>
+        
+        {/* ================= HEADER WITH GRADIENT ================= */}
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6 mb-6 border border-indigo-100">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                <BookOpen className="w-6 h-6 text-white" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-1">Data Kelas</h1>
+                <p className="text-sm text-gray-600">
+                  Kelola data kelas mata kuliah per semester
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
-             {/* Tombol Kiri */}
-             <div className="flex gap-2">
-                <button 
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-cyan-700 transition-colors shadow flex items-center gap-2"
-                >
-                    <Plus size={16} /> Baru
-                </button>
-
-                <Link href="/penilaian/datakelas">
-                    <button className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-600 transition-colors shadow flex items-center gap-2">
-                        <ArrowLeft size={16} /> Kembali
-                    </button>
-                </Link>
-             </div>
-          
-             {/* Search Bar Kanan */}
-             <div className="relative w-full md:w-1/3"> 
-                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search size={18} className="text-gray-400" />
-                 </div>
-                 <input 
-                    type="text" 
-                    placeholder="Cari Kelas / Mata Kuliah..." 
-                    value={searchTerm} 
-                    onChange={(e) => setSearchTerm(e.target.value)} 
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 text-gray-900 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                 />
-             </div>
-          </div>
-          
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
-                <strong>Error:</strong> {error}
+        {/* ================= STATS SUMMARY ================= */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {/* Total Kelas */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                <GraduationCap className="w-7 h-7 text-white" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                  Total Kelas
+                </p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {matakuliahList.length}
+                </p>
+              </div>
             </div>
-          )}
+          </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">KODE MK</th>
-                    <th className="px-6 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">NAMA MATAKULIAH</th>
-                    <th className="px-6 py-3 text-center font-bold text-gray-600 uppercase tracking-wider">KELAS</th>
-                    <th className="px-6 py-3 text-center font-bold text-gray-600 uppercase tracking-wider">SKS</th>
-                    <th className="px-6 py-3 text-center font-bold text-gray-600 uppercase tracking-wider">AKSI</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-12 text-gray-500">
-                        <div className="flex flex-col items-center justify-center">
-                            <Loader2 size={32} className="animate-spin mb-2 text-indigo-500" />
-                            <span>Memuat data kelas...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredMatakuliah.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-12 text-gray-500 italic">
-                        {matakuliahList.length === 0 
-                          ? "Belum ada kelas yang terdaftar di semester ini." 
-                          : "Tidak ditemukan data yang cocok."
-                        }
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredMatakuliah.map((mk) => (
-                      <tr key={mk.id} className="hover:bg-indigo-50/30 transition-colors group">
-                        <td className="px-6 py-4 text-gray-700 font-mono font-medium">{mk.kodeMatakuliah}</td>
-                        <td className="px-6 py-4 text-gray-800 font-medium">{mk.namaMatakuliah}</td>
-                        <td className="px-6 py-4 text-center">
-                            <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full border border-indigo-200">
-                              {mk.namaKelas}
-                            </span>
+          {/* Total Mata Kuliah */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                <BookOpen className="w-7 h-7 text-white" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                  Mata Kuliah
+                </p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {uniqueMK}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Total SKS */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
+                <Calendar className="w-7 h-7 text-white" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                  Total SKS
+                </p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {totalSKS}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ================= ERROR MESSAGE ================= */}
+        {error && (
+          <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h4 className="text-sm font-bold text-red-900 mb-1">Terjadi Kesalahan</h4>
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {/* ================= MAIN CONTENT ================= */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          
+          {/* Header */}
+          <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              
+              {/* Left Side - Title & Actions */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-indigo-600" />
+                  Daftar Kelas
+                </h2>
+                
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setIsModalOpen(true)}
+                    disabled={isLoading || submitting}
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                  >
+                    <Plus size={16} strokeWidth={2.5} />
+                    Tambah Kelas
+                  </button>
+
+                  <Link href="/penilaian/datanilai">
+                    <button className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
+                      <ArrowLeft size={16} strokeWidth={2.5} />
+                      Kembali
+                    </button>
+                  </Link>
+                </div>
+              </div>
+              
+              {/* Right Side - Search */}
+              <div className="relative w-full md:w-80">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input 
+                  type="text" 
+                  placeholder="Cari kelas, kode, atau nama matakuliah..." 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)} 
+                  className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 text-gray-900 rounded-lg text-sm hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b-2 border-gray-200">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                    Kode MK
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                    Nama Matakuliah
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                    Kelas
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                    SKS
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              
+              <tbody className="divide-y divide-gray-100">
+                {/* Loading State - Skeleton */}
+                {isLoading ? (
+                  <>
+                    {[...Array(5)].map((_, i) => (
+                      <tr key={i} className="animate-pulse">
+                        <td className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-20"></div>
                         </td>
-                        <td className="px-6 py-4 text-center text-gray-600">{mk.sks}</td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-48"></div>
+                        </td>
                         <td className="px-6 py-4 text-center">
-                          <Link href={`/penilaian/datakelas/${semesterid}/${mk.id}`}>
-                            <button className="px-4 py-1.5 rounded-md text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm">
-                              Detail
-                            </button>
-                          </Link>
+                          <div className="h-6 bg-gray-200 rounded-full w-16 mx-auto"></div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="h-4 bg-gray-200 rounded w-8 mx-auto"></div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="h-8 bg-gray-200 rounded w-20 mx-auto"></div>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                  </>
+                ) : filteredMatakuliah.length === 0 ? (
+                  /* Empty State - Enhanced */
+                  <tr>
+                    <td colSpan={5} className="px-6 py-16">
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                          {matakuliahList.length === 0 ? (
+                            <BookOpen size={36} className="text-gray-400" />
+                          ) : (
+                            <Search size={36} className="text-gray-400" />
+                          )}
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          {matakuliahList.length === 0 
+                            ? "Belum Ada Kelas" 
+                            : "Tidak Ditemukan"
+                          }
+                        </h3>
+                        <p className="text-sm text-gray-500 max-w-sm mb-6">
+                          {matakuliahList.length === 0 
+                            ? "Belum ada kelas yang terdaftar di semester ini. Tambahkan kelas pertama untuk memulai." 
+                            : "Tidak ditemukan data yang cocok dengan pencarian Anda."
+                          }
+                        </p>
+                        {matakuliahList.length === 0 && (
+                          <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-md"
+                          >
+                            <Plus size={18} strokeWidth={2.5} />
+                            Tambah Kelas Pertama
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  /* Data Rows */
+                  filteredMatakuliah.map((mk) => (
+                    <tr 
+                      key={mk.id} 
+                      className="group hover:bg-indigo-50/40 transition-all duration-150"
+                    >
+                      <td className="px-6 py-4">
+                        <span className="font-mono text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                          {mk.kodeMatakuliah}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-semibold text-gray-900 text-sm">
+                          {mk.namaMatakuliah}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 text-xs font-bold">
+                          <GraduationCap className="w-3.5 h-3.5" />
+                          {mk.namaKelas}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center justify-center w-10 h-10 bg-emerald-100 text-emerald-700 rounded-lg font-bold text-sm">
+                          {mk.sks}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <Link href={`/penilaian/datakelas/${semesterid}/${mk.id}`}>
+                          <button className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                            <BookOpen size={16} strokeWidth={2.5} />
+                            Detail
+                          </button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
+
+          {/* Footer Info */}
+          {!isLoading && filteredMatakuliah.length > 0 && (
+            <div className="border-t border-gray-100 px-6 py-4 bg-gray-50">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">
+                  Menampilkan <span className="font-bold text-gray-900">{filteredMatakuliah.length}</span> dari <span className="font-bold text-gray-900">{matakuliahList.length}</span> kelas
+                </span>
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1"
+                  >
+                    <X size={14} />
+                    Hapus Filter
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* ================= MODAL ================= */}
       <KelasModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
