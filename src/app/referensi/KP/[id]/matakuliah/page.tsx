@@ -1,9 +1,16 @@
-// app/referensi/KP/[id]/matriks-cpl/page.tsx
+// ============================================================
+// AFTER VERSION (Improved with all UX enhancements)
+// File: app/referensi/KP/[id]/matriks-cpl/page-AFTER.tsx
+// ============================================================
+
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Layers, Download, Loader2, Info } from "lucide-react";
+import { 
+  ChevronLeft, ChevronDown, ChevronRight, Layers, Download, Loader2, Info, 
+  AlertCircle, CheckCircle, Grid3x3, Target, X, Eye, EyeOff 
+} from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 import * as XLSX from 'xlsx';
 
@@ -33,6 +40,8 @@ interface MatakuliahCPL {
   ik_mapping: { [key: string]: boolean };
 }
 
+type CellState = 'idle' | 'hover' | 'active' | 'checked' | 'saving' | 'error';
+
 function parseKurikulumId(params: any): number {
   const idRaw = params?.id;
   if (typeof idRaw === 'string') return Number(idRaw);
@@ -40,7 +49,75 @@ function parseKurikulumId(params: any): number {
   return NaN;
 }
 
-export default function MatriksCPLPage() {
+// COLOR-CODED CPL SYSTEM
+const cplDesignSystem: Record<string, any> = {
+  'CPL-1': { 
+    primary: 'from-blue-600 to-cyan-600',
+    light: 'bg-blue-50',
+    border: 'border-blue-300',
+    text: 'text-blue-900',
+    checked: 'from-blue-100 to-blue-200',
+    headerBorder: 'border-blue-400'
+  },
+  'CPL-2': { 
+    primary: 'from-emerald-600 to-teal-600',
+    light: 'bg-emerald-50',
+    border: 'border-emerald-300',
+    text: 'text-emerald-900',
+    checked: 'from-emerald-100 to-emerald-200',
+    headerBorder: 'border-emerald-400'
+  },
+  'CPL-3': { 
+    primary: 'from-purple-600 to-fuchsia-600',
+    light: 'bg-purple-50',
+    border: 'border-purple-300',
+    text: 'text-purple-900',
+    checked: 'from-purple-100 to-purple-200',
+    headerBorder: 'border-purple-400'
+  },
+  'CPL-4': { 
+    primary: 'from-amber-600 to-orange-600',
+    light: 'bg-amber-50',
+    border: 'border-amber-300',
+    text: 'text-amber-900',
+    checked: 'from-amber-100 to-amber-200',
+    headerBorder: 'border-amber-400'
+  },
+  'CPL-5': { 
+    primary: 'from-rose-600 to-pink-600',
+    light: 'bg-rose-50',
+    border: 'border-rose-300',
+    text: 'text-rose-900',
+    checked: 'from-rose-100 to-rose-200',
+    headerBorder: 'border-rose-400'
+  },
+  'CPL-6': { 
+    primary: 'from-cyan-600 to-sky-600',
+    light: 'bg-cyan-50',
+    border: 'border-cyan-300',
+    text: 'text-cyan-900',
+    checked: 'from-cyan-100 to-cyan-200',
+    headerBorder: 'border-cyan-400'
+  },
+  'CPL-7': { 
+    primary: 'from-orange-600 to-red-600',
+    light: 'bg-orange-50',
+    border: 'border-orange-300',
+    text: 'text-orange-900',
+    checked: 'from-orange-100 to-orange-200',
+    headerBorder: 'border-orange-400'
+  },
+  'CPL-8': { 
+    primary: 'from-pink-600 to-rose-600',
+    light: 'bg-pink-50',
+    border: 'border-pink-300',
+    text: 'text-pink-900',
+    checked: 'from-pink-100 to-pink-200',
+    headerBorder: 'border-pink-400'
+  },
+};
+
+export default function MatriksCPLPageAFTER() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -53,8 +130,19 @@ export default function MatriksCPLPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // NEW: Collapsible CPL
+  const [collapsedCPL, setCollapsedCPL] = useState<string[]>([]);
+  
+  // NEW: Cell states
+  const [cellStates, setCellStates] = useState<Record<string, CellState>>({});
+  
+  // NEW: Scroll tracking
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [currentVisibleCPL, setCurrentVisibleCPL] = useState<string>('');
 
-  // Sort CPL and IK
   const sortedCPL = [...cplList]
     .sort((a, b) => (a.urutan || 0) - (b.urutan || 0))
     .map(cpl => ({
@@ -62,17 +150,15 @@ export default function MatriksCPLPage() {
       iks: (cpl.iks || []).sort((a, b) => (a.urutan || 0) - (b.urutan || 0))
     }));
 
-  // Get all IK across all CPL
   const allIK: IndikatorKinerja[] = [];
   sortedCPL.forEach(cpl => {
-    if (cpl.iks) {
+    if (cpl.iks && !collapsedCPL.includes(cpl.kode_cpl)) {
       allIK.push(...cpl.iks);
     }
   });
 
   const loadData = useCallback(async () => {
     if (Number.isNaN(kurikulumId) || !prodiId) return;
-
     setLoading(true);
     setError(null);
     try {
@@ -80,15 +166,12 @@ export default function MatriksCPLPage() {
         fetch(`/api/kurikulum/${kurikulumId}/VMCPL?prodiId=${prodiId}`, { cache: "no-store" }),
         fetch(`/api/kurikulum/${kurikulumId}/matakuliah?prodiId=${prodiId}`, { cache: "no-store" })
       ]);
-
       if (!cplRes.ok) throw new Error("Gagal mengambil data CPL");
       if (!mkRes.ok) throw new Error("Gagal mengambil data mata kuliah");
-
       const cplJson = await cplRes.json();
       if (cplJson.success && cplJson.data?.cpl) {
         setCplList(cplJson.data.cpl);
       }
-
       const mkJson = await mkRes.json();
       const mapped: MatakuliahCPL[] = (mkJson?.data ?? []).map((r: any) => {
         const ikMapping: { [key: string]: boolean } = {};
@@ -96,7 +179,6 @@ export default function MatriksCPLPage() {
         ikList.forEach((ik: any) => {
           ikMapping[ik.kode_ik] = true;
         });
-        
         return {
           id: Number(r.id),
           kode_mk: r.kode_mk ?? "",
@@ -107,7 +189,6 @@ export default function MatriksCPLPage() {
           ik_mapping: ikMapping
         };
       });
-      
       setMatakuliahList(mapped);
     } catch (err: any) {
       setError(err.message);
@@ -120,13 +201,49 @@ export default function MatriksCPLPage() {
     loadData();
   }, [loadData]);
 
+  // NEW: Scroll tracking
+  useEffect(() => {
+    const handleScroll = () => {
+      if (tableRef.current) {
+        setScrollLeft(tableRef.current.scrollLeft);
+        // Detect which CPL is visible
+        const scrollPosition = tableRef.current.scrollLeft;
+        const cellWidth = 60;
+        const visibleIndex = Math.floor(scrollPosition / cellWidth);
+        if (sortedCPL[visibleIndex]) {
+          setCurrentVisibleCPL(sortedCPL[visibleIndex].kode_cpl);
+        }
+      }
+    };
+    
+    const ref = tableRef.current;
+    ref?.addEventListener('scroll', handleScroll);
+    return () => ref?.removeEventListener('scroll', handleScroll);
+  }, [sortedCPL]);
+
   const handleBack = () => {
     router.push(`/referensi/KP?prodiId=${prodiId}`);
   };
 
-  const handleCellClick = async (mkId: number, kodeIK: string, currentValue: boolean) => {
-    setSaving(true);
-    setError(null);
+  // NEW: Toggle CPL collapse
+  const toggleCPL = (cplKode: string) => {
+    setCollapsedCPL(prev => 
+      prev.includes(cplKode) 
+        ? prev.filter(k => k !== cplKode)
+        : [...prev, cplKode]
+    );
+  };
+
+  const handleCellClick = async (mkId: number, kodeIK: string, currentValue: boolean, cplKode: string) => {
+    const cellKey = `${mkId}-${kodeIK}`;
+    
+    // Set active state
+    setCellStates(prev => ({ ...prev, [cellKey]: 'active' }));
+    
+    setTimeout(() => {
+      setCellStates(prev => ({ ...prev, [cellKey]: 'saving' }));
+    }, 100);
+    
     try {
       const res = await fetch(`/api/kurikulum/${kurikulumId}/matakuliah/${mkId}/ik`, {
         method: "POST",
@@ -137,7 +254,7 @@ export default function MatriksCPLPage() {
           prodiId: Number(prodiId)
         }),
       });
-
+      
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
         throw new Error(errorData?.error || errorData?.message || "Gagal update IK mapping");
@@ -155,126 +272,19 @@ export default function MatriksCPLPage() {
         }
         return mk;
       }));
+      
+      setCellStates(prev => ({ ...prev, [cellKey]: !currentValue ? 'checked' : 'idle' }));
+      setSuccessMessage(currentValue ? "Mapping berhasil dihapus" : "Mapping berhasil ditambahkan");
+      setTimeout(() => setSuccessMessage(null), 2000);
     } catch (err: any) {
+      setCellStates(prev => ({ ...prev, [cellKey]: 'error' }));
       setError(err.message);
-      await loadData();
-    } finally {
-      setSaving(false);
+      setTimeout(() => {
+        setCellStates(prev => ({ ...prev, [cellKey]: currentValue ? 'checked' : 'idle' }));
+      }, 2000);
     }
   };
 
-  const handleExportExcel = () => {
-    try {
-      const wb = XLSX.utils.book_new();
-      const wsData: any[][] = [];
-
-      // Header Row 1: CPL
-      const headerRow1: any[] = ['SEMESTER', 'BAHAN KAJIAN (MATA KULIAH)'];
-      sortedCPL.forEach(cpl => {
-        headerRow1.push(cpl.kode_cpl);
-        const ikCount = cpl.iks?.length || 0;
-        for (let i = 1; i < ikCount; i++) {
-          headerRow1.push('');
-        }
-      });
-      wsData.push(headerRow1);
-
-      // Header Row 2: IK
-      const headerRow2: any[] = ['', ''];
-      sortedCPL.forEach(cpl => {
-        (cpl.iks || []).forEach(ik => {
-          // Extract number from kode_ik (e.g., "IK 1.1" -> "1.1")
-          const ikNumber = ik.kode_ik.replace(/^IK\s*/i, '');
-          headerRow2.push(ikNumber);
-        });
-      });
-      wsData.push(headerRow2);
-
-      // Data rows
-      const semesterGroups = matakuliahList.reduce((acc, mk) => {
-        const sem = mk.semester || 0;
-        if (!acc[sem]) acc[sem] = [];
-        acc[sem].push(mk);
-        return acc;
-      }, {} as { [key: number]: MatakuliahCPL[] });
-
-      const sortedSemesters = Object.keys(semesterGroups).map(Number).sort((a, b) => a - b);
-
-      sortedSemesters.forEach(semester => {
-        const mkInSemester = semesterGroups[semester];
-        mkInSemester.forEach((mk, idx) => {
-          const row: any[] = [
-            idx === 0 ? (semester === 0 ? '-' : semester) : '',
-            `${mk.nama}\n${mk.kode_mk}`
-          ];
-          
-          sortedCPL.forEach(cpl => {
-            (cpl.iks || []).forEach(ik => {
-              row.push(mk.ik_mapping[ik.kode_ik] ? '✓' : '');
-            });
-          });
-          
-          wsData.push(row);
-        });
-      });
-
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-      // Column widths
-      const colWidths = [
-        { wch: 10 },
-        { wch: 40 },
-        ...allIK.map(() => ({ wch: 8 }))
-      ];
-      ws['!cols'] = colWidths;
-
-      // Merge cells
-      if (!ws['!merges']) ws['!merges'] = [];
-      
-      const merges = ws['!merges'];
-      if (merges) {
-        let currentCol = 2;
-        sortedCPL.forEach(cpl => {
-          const ikCount = cpl.iks?.length || 0;
-          if (ikCount > 1) {
-            merges.push({
-              s: { r: 0, c: currentCol },
-              e: { r: 0, c: currentCol + ikCount - 1 }
-            });
-          }
-          currentCol += ikCount;
-        });
-
-        // Merge semester cells
-        let currentRow = 2;
-        sortedSemesters.forEach(semester => {
-          const mkCount = semesterGroups[semester].length;
-          if (mkCount > 1) {
-            merges.push({
-              s: { r: currentRow, c: 0 },
-              e: { r: currentRow + mkCount - 1, c: 0 }
-            });
-          }
-          currentRow += mkCount;
-        });
-      }
-
-      XLSX.utils.book_append_sheet(wb, ws, 'Matriks CPL-IK');
-
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `Matriks_CPL_IK_Kurikulum_${kurikulumId}_${timestamp}.xlsx`;
-
-      XLSX.writeFile(wb, filename);
-      
-      setError("Export Excel berhasil! File telah diunduh.");
-      setTimeout(() => setError(null), 3000);
-    } catch (err: any) {
-      console.error("Export error:", err);
-      setError("Gagal export Excel: " + err.message);
-    }
-  };
-
-  // Group matakuliah by semester
   const semesterGroups = matakuliahList.reduce((acc, mk) => {
     const sem = mk.semester || 0;
     if (!acc[sem]) acc[sem] = [];
@@ -283,243 +293,397 @@ export default function MatriksCPLPage() {
   }, {} as { [key: number]: MatakuliahCPL[] });
 
   const sortedSemesters = Object.keys(semesterGroups).map(Number).sort((a, b) => a - b);
-
-  // Calculate total mapping
   const totalMapping = matakuliahList.reduce((sum, mk) => sum + Object.keys(mk.ik_mapping).length, 0);
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
-          {/* Header Section */}
-          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-              <div className="flex flex-col">
-                <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 flex items-center gap-3">
-                  <Layers size={28} className="text-indigo-600" />
+      <div className="min-h-screen bg-gray-50 p-6 lg:p-8">
+        
+        {/* HEADER */}
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6 mb-6 border border-indigo-100">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                <Grid3x3 className="w-6 h-6 text-white" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-1">
                   Matriks CPL - Mata Kuliah
                 </h1>
-                <p className="text-sm text-indigo-600 font-semibold mt-2">
-                  Kurikulum ID: {kurikulumId} | Prodi ID: {prodiId}
+                <p className="text-sm text-gray-600">
+                  Kurikulum ID: <span className="font-semibold text-indigo-700">{kurikulumId}</span> • Prodi ID: <span className="font-semibold text-indigo-700">{prodiId}</span>
                 </p>
               </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button 
+                disabled={loading || matakuliahList.length === 0}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 font-semibold disabled:opacity-50"
+              >
+                <Download size={18} strokeWidth={2.5} />
+                Export Excel
+              </button>
+              <button 
+                onClick={handleBack} 
+                className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 px-5 py-2.5 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all font-semibold group"
+              >
+                <ChevronLeft size={18} className="group-hover:-translate-x-1 transition-transform" strokeWidth={2.5} />
+                Kembali
+              </button>
+            </div>
+          </div>
+        </div>
 
-              <div className="flex flex-wrap gap-3">
-                <button 
-                  onClick={handleExportExcel} 
-                  disabled={loading || matakuliahList.length === 0}
-                  className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-lg hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
-                >
-                  <Download size={18} /> 
-                  <span>Export Excel</span>
-                </button>
-                <button 
-                  onClick={handleBack} 
-                  className="flex items-center gap-2 bg-slate-700 text-white px-5 py-3 rounded-lg shadow-lg hover:bg-slate-800 transition-all font-medium text-sm"
-                >
-                  <ChevronLeft size={18} /> Kembali
-                </button>
+        {/* STATS CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                <Layers className="w-7 h-7 text-white" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">Mata Kuliah</p>
+                <p className="text-3xl font-bold text-gray-900">{matakuliahList.length}</p>
               </div>
             </div>
           </div>
-
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-5 shadow-lg text-white">
-              <div className="text-xs font-semibold uppercase tracking-wide opacity-90">Total Mata Kuliah</div>
-              <div className="text-4xl font-extrabold mt-2">{matakuliahList.length}</div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-5 shadow-lg text-white">
-              <div className="text-xs font-semibold uppercase tracking-wide opacity-90">Total CPL</div>
-              <div className="text-4xl font-extrabold mt-2">{sortedCPL.length}</div>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-5 shadow-lg text-white">
-              <div className="text-xs font-semibold uppercase tracking-wide opacity-90">Total IK</div>
-              <div className="text-4xl font-extrabold mt-2">{allIK.length}</div>
-            </div>
-
-            <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl p-5 shadow-lg text-white">
-              <div className="text-xs font-semibold uppercase tracking-wide opacity-90">Total Mapping</div>
-              <div className="text-4xl font-extrabold mt-2">{totalMapping}</div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
+                <Target className="w-7 h-7 text-white" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">Total CPL</p>
+                <p className="text-3xl font-bold text-gray-900">{sortedCPL.length}</p>
+              </div>
             </div>
           </div>
-
-          {/* Messages */}
-          {error && (
-            <div className={`mb-4 p-4 text-sm rounded-lg border-2 font-medium ${
-              error.includes('berhasil') || error.includes('Berhasil')
-                ? 'bg-green-50 text-green-800 border-green-300'
-                : 'bg-red-50 text-red-800 border-red-300'
-            }`}>
-              {error}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                <CheckCircle className="w-7 h-7 text-white" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">Total IK</p>
+                <p className="text-3xl font-bold text-gray-900">{allIK.length}</p>
+              </div>
             </div>
-          )}
-
-          {saving && (
-            <div className="mb-4 p-4 text-sm rounded-lg bg-blue-50 text-blue-800 border-2 border-blue-300 flex items-center gap-3 font-medium">
-              <Loader2 className="animate-spin" size={18} />
-              Menyimpan perubahan...
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-md">
+                <Grid3x3 className="w-7 h-7 text-white" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">Total Mapping</p>
+                <p className="text-3xl font-bold text-gray-900">{totalMapping}</p>
+              </div>
             </div>
-          )}
+          </div>
+        </div>
 
-          {/* Main Table */}
-          <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-slate-200">
-            <div className="overflow-x-auto">
-              {loading ? (
-                <div className="p-20 text-center">
-                  <Loader2 className="animate-spin inline mr-3" size={40} color="#4F46E5"/> 
-                  <p className="mt-4 text-lg text-slate-700 font-medium">Memuat data matriks CPL...</p>
-                </div>
-              ) : matakuliahList.length === 0 ? (
-                <div className="p-20 text-center">
-                  <div className="text-slate-400 mb-4">
-                    <Layers size={64} className="mx-auto" />
-                  </div>
-                  <p className="text-lg text-slate-700 font-semibold">Belum ada data mata kuliah</p>
-                  <p className="text-sm text-slate-500 mt-2">Silakan tambahkan mata kuliah terlebih dahulu</p>
-                </div>
-              ) : allIK.length === 0 ? (
-                <div className="p-20 text-center">
-                  <div className="text-slate-400 mb-4">
-                    <Info size={64} className="mx-auto" />
-                  </div>
-                  <p className="text-lg text-slate-700 font-semibold">Belum ada Indikator Kinerja (IK)</p>
-                  <p className="text-sm text-slate-500 mt-2">Silakan tambahkan IK melalui menu "Kelola Indikator Kinerja"</p>
-                </div>
-              ) : (
-                <table className="min-w-full text-[11px] border-collapse">
-                  <thead className="sticky top-0 z-20">
-                    {/* Header Row 1: CPL */}
-                    <tr className="bg-gradient-to-r from-indigo-600 to-blue-600">
-                      <th 
-                        rowSpan={2}
-                        className="border-2 border-slate-300 px-4 py-4 text-center font-bold text-white sticky left-0 bg-gradient-to-r from-indigo-600 to-blue-600 z-30 text-xs"
-                        style={{width: '100px'}}
-                      >
-                        SEMESTER
-                      </th>
-                      <th 
-                        rowSpan={2}
-                        className="border-2 border-slate-300 px-5 py-4 text-center font-bold text-white sticky left-[100px] bg-gradient-to-r from-indigo-600 to-blue-600 z-30 text-xs" 
-                        style={{minWidth: '300px', width: '300px'}}
-                      >
-                        BAHAN KAJIAN<br/>(MATA KULIAH)
-                      </th>
-                      {sortedCPL.map(cpl => {
-                        const ikCount = cpl.iks?.length || 0;
+        {/* NEW: CPL COLLAPSE CONTROLS */}
+        <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-700">Quick Controls:</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCollapsedCPL([])}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors border border-emerald-200"
+              >
+                <Eye size={14} />
+                Tampilkan Semua
+              </button>
+              <button
+                onClick={() => setCollapsedCPL(sortedCPL.map(c => c.kode_cpl))}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
+              >
+                <EyeOff size={14} />
+                Sembunyikan Semua
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* MESSAGES */}
+        {successMessage && (
+          <div className="mb-6 bg-green-50 border-2 border-green-200 rounded-xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top">
+            <CheckCircle className="w-5 h-5 text-green-600" strokeWidth={2.5} />
+            <p className="text-sm font-semibold text-green-800">{successMessage}</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h4 className="text-sm font-bold text-red-900 mb-1">Terjadi Kesalahan</h4>
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+            <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {/* NEW: FLOATING CPL INDICATOR */}
+        {scrollLeft > 400 && currentVisibleCPL && (
+          <div className="fixed top-24 right-8 z-50 bg-white shadow-2xl rounded-xl p-4 border-2 border-indigo-200 animate-in fade-in slide-in-from-right">
+            <p className="text-xs text-gray-600 mb-2 font-medium">Anda sedang melihat:</p>
+            <div className="flex items-center gap-2">
+              <div className={`w-4 h-4 rounded-full bg-gradient-to-r ${cplDesignSystem[currentVisibleCPL]?.primary || 'bg-gray-400'}`}></div>
+              <span className="font-bold text-gray-900 text-lg">{currentVisibleCPL}</span>
+            </div>
+          </div>
+        )}
+
+        {/* TABLE */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto" ref={tableRef}>
+            {loading ? (
+              <div className="p-20 text-center">
+                <Loader2 className="animate-spin inline text-indigo-600 mb-4" size={48} strokeWidth={2.5} />
+                <p className="text-lg text-gray-700 font-semibold">Memuat data matriks CPL...</p>
+              </div>
+            ) : (
+              <table className="min-w-full text-[11px] border-collapse">
+                <thead className="sticky top-0 z-20">
+                  {/* Row 1: CPL Headers with COLORS */}
+                  <tr>
+                    <th rowSpan={2} className="border-2 border-white/20 px-4 py-4 text-center font-bold text-white sticky left-0 bg-gradient-to-r from-indigo-600 to-blue-600 z-30 text-xs" style={{width: '100px'}}>
+                      SEMESTER
+                    </th>
+                    <th rowSpan={2} className="border-2 border-white/20 px-5 py-4 text-center font-bold text-white sticky left-[100px] bg-gradient-to-r from-indigo-600 to-blue-600 z-30 text-xs shadow-[4px_0_12px_-2px_rgba(79,70,229,0.3)]" style={{minWidth: '300px', width: '300px'}}>
+                      BAHAN KAJIAN<br/>(MATA KULIAH)
+                    </th>
+                    {sortedCPL.map((cpl, cplIdx) => {
+                      const ikCount = collapsedCPL.includes(cpl.kode_cpl) ? 0 : (cpl.iks?.length || 0);
+                      const design = cplDesignSystem[cpl.kode_cpl] || cplDesignSystem['CPL-1'];
+                      const isFirstOfGroup = cplIdx % 3 === 0 && cplIdx > 0;
+                      
+                      return (
+                        <th 
+                          key={cpl.id} 
+                          colSpan={ikCount || 1}
+                          className={`border-2 border-white/30 px-3 py-5 text-center font-bold text-white text-xs bg-gradient-to-br ${design.primary} ${isFirstOfGroup ? 'border-l-4 border-l-white' : ''}`}
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                            {/* CPL Badge */}
+                            <div className="bg-white/20 px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-sm">
+                              {cpl.kode_cpl}
+                            </div>
+                            
+                            {/* Category if exists */}
+                            {cpl.kategori && (
+                              <span className="text-[9px] opacity-80 uppercase tracking-wide">
+                                {cpl.kategori}
+                              </span>
+                            )}
+                            
+                            {/* IK Count + Collapse button */}
+                            <div className="flex items-center gap-2 text-[10px] opacity-80">
+                              <CheckCircle size={11} />
+                              <span>{cpl.iks?.length || 0} IK</span>
+                              <button
+                                onClick={() => toggleCPL(cpl.kode_cpl)}
+                                className="ml-2 hover:bg-white/20 p-1 rounded transition-colors"
+                                title={collapsedCPL.includes(cpl.kode_cpl) ? 'Tampilkan' : 'Sembunyikan'}
+                              >
+                                {collapsedCPL.includes(cpl.kode_cpl) 
+                                  ? <ChevronRight size={12} />
+                                  : <ChevronDown size={12} />
+                                }
+                              </button>
+                            </div>
+                          </div>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                  
+                  {/* Row 2: IK Headers with PARENT REFERENCE */}
+                  <tr>
+                    {sortedCPL.map(cpl => {
+                      if (collapsedCPL.includes(cpl.kode_cpl)) return null;
+                      const design = cplDesignSystem[cpl.kode_cpl] || cplDesignSystem['CPL-1'];
+                      
+                      return (cpl.iks || []).map(ik => {
+                        const ikNumber = ik.kode_ik.replace(/^IK\s*/i, '');
                         return (
                           <th 
-                            key={cpl.id}
-                            colSpan={ikCount || 1}
-                            className="border-2 border-slate-300 px-3 py-4 text-center font-bold text-white text-xs"
+                            key={ik.id} 
+                            className={`border-2 ${design.headerBorder} px-2 py-4 text-center font-bold ${design.text} text-[11px] ${design.light} transition-colors hover:brightness-95`}
+                            style={{minWidth: '70px', width: '70px'}}
+                            title={`${cpl.kode_cpl} - ${ik.deskripsi || 'No description'}`}
                           >
-                            {cpl.kode_cpl}
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-sm font-extrabold">{ikNumber}</span>
+                              <span className="text-[8px] opacity-60 uppercase tracking-wider font-semibold">
+                                {cpl.kode_cpl}
+                              </span>
+                              <Info size={11} className="opacity-40 mt-0.5" />
+                            </div>
                           </th>
                         );
-                      })}
-                    </tr>
-                    
-                    {/* Header Row 2: IK */}
-                    <tr className="bg-gradient-to-r from-indigo-100 to-blue-100">
-                      {sortedCPL.map(cpl => 
-                        (cpl.iks || []).map(ik => {
-                          // Extract number from kode_ik (e.g., "IK 1.1" -> "1.1")
-                          const ikNumber = ik.kode_ik.replace(/^IK\s*/i, '');
-                          return (
-                            <th 
-                              key={ik.id} 
-                              className="border-2 border-slate-300 px-2 py-3 text-center font-bold text-indigo-900 text-[10px]"
-                              style={{minWidth: '60px', width: '60px'}}
-                              title={ik.deskripsi}
-                            >
-                              {ikNumber}
-                            </th>
-                          );
-                        })
-                      )}
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {sortedSemesters.map((semester) => {
-                      const mkInSemester = semesterGroups[semester];
-                      return mkInSemester.map((mk, mkIdx) => (
-                        <tr 
-                          key={mk.id} 
-                          className={`transition-colors border-b border-slate-200 ${
-                            mkIdx % 2 === 0 
-                              ? 'bg-white hover:bg-indigo-50' 
-                              : 'bg-slate-50 hover:bg-indigo-100'
-                          }`}
-                        >
-                          {mkIdx === 0 && (
-                            <td 
-                              rowSpan={mkInSemester.length} 
-                              className="border-2 border-slate-300 px-4 py-4 text-center font-extrabold text-[16px] text-indigo-900 bg-slate-100 sticky left-0 z-10"
-                            >
-                              {semester === 0 ? '-' : semester}
-                            </td>
-                          )}
-                          
-                          <td className="border-2 border-slate-300 px-4 py-3 sticky left-[100px] bg-white z-10">
-                            <div className="font-bold text-[12px] text-slate-900 leading-tight">{mk.nama}</div>
-                            <div className="text-[10px] text-indigo-600 font-semibold mt-1">{mk.kode_mk}</div>
-                          </td>
-
-                          {sortedCPL.map(cpl => 
-                            (cpl.iks || []).map(ik => {
-                              const isChecked = mk.ik_mapping[ik.kode_ik] || false;
-                              return (
-                                <td 
-                                  key={ik.id} 
-                                  className={`border-2 border-slate-300 px-2 py-3 text-center cursor-pointer transition-all ${
-                                    isChecked 
-                                      ? 'bg-emerald-100 hover:bg-emerald-200' 
-                                      : 'bg-white hover:bg-blue-50'
-                                  }`}
-                                  onClick={() => handleCellClick(mk.id, ik.kode_ik, isChecked)}
-                                  title={`${mk.nama} - ${ik.kode_ik}${ik.deskripsi ? ': ' + ik.deskripsi : ''}`}
-                                >
-                                  {isChecked && (
-                                    <div className="flex items-center justify-center">
-                                      <svg className="w-5 h-5 text-emerald-700 font-bold" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                                      </svg>
-                                    </div>
-                                  )}
-                                </td>
-                              );
-                            })
-                          )}
-                        </tr>
-                      ));
+                      });
                     })}
-                  </tbody>
-                </table>
-              )}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {sortedSemesters.map((semester) => {
+                    const mkInSemester = semesterGroups[semester];
+                    return mkInSemester.map((mk, mkIdx) => (
+                      <tr 
+                        key={mk.id} 
+                        className={`group transition-colors ${mkIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-indigo-50/50`}
+                      >
+                        {mkIdx === 0 && (
+                          <td 
+                            rowSpan={mkInSemester.length} 
+                            className="border-2 border-gray-300 px-4 py-4 text-center font-extrabold text-xl text-indigo-900 bg-gradient-to-br from-gray-50 to-gray-100 sticky left-0 z-10"
+                          >
+                            {semester === 0 ? '-' : semester}
+                          </td>
+                        )}
+                        
+                        <td className="border-2 border-gray-300 px-4 py-3 sticky left-[100px] bg-white group-hover:bg-indigo-50/50 z-10 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.1)]">
+                          <div className="font-bold text-[13px] text-gray-900 leading-tight mb-1.5">{mk.nama}</div>
+                          <div className="inline-flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200">{mk.kode_mk}</span>
+                            <span className="text-[9px] text-gray-500 font-medium">{mk.sks} SKS</span>
+                          </div>
+                        </td>
+
+                        {sortedCPL.map(cpl => {
+                          if (collapsedCPL.includes(cpl.kode_cpl)) return null;
+                          const design = cplDesignSystem[cpl.kode_cpl] || cplDesignSystem['CPL-1'];
+                          
+                          return (cpl.iks || []).map((ik, ikIdx) => {
+                            const isChecked = mk.ik_mapping[ik.kode_ik] || false;
+                            const cellKey = `${mk.id}-${ik.kode_ik}`;
+                            const currentState = cellStates[cellKey] || (isChecked ? 'checked' : 'idle');
+                            const isFirstIKofCPL = ikIdx === 0;
+                            
+                            return (
+                              <td 
+                                key={ik.id}
+                                className={`
+                                  relative border-2 px-2 py-3 text-center cursor-pointer transition-all duration-200
+                                  ${isFirstIKofCPL ? 'border-l-4 border-l-slate-400' : 'border-gray-300'}
+                                  ${currentState === 'idle' && 'bg-white hover:bg-blue-50 hover:border-blue-300'}
+                                  ${currentState === 'hover' && 'bg-blue-50 border-blue-300 shadow-inner'}
+                                  ${currentState === 'active' && 'bg-blue-100 border-blue-400 scale-95'}
+                                  ${currentState === 'checked' && `bg-gradient-to-br ${design.checked} ${design.border}`}
+                                  ${currentState === 'saving' && 'bg-yellow-50 border-yellow-400 animate-pulse'}
+                                  ${currentState === 'error' && 'bg-red-50 border-red-400 animate-pulse'}
+                                `}
+                                onMouseEnter={() => {
+                                  if (currentState !== 'saving') {
+                                    setCellStates(prev => ({ ...prev, [cellKey]: isChecked ? 'checked' : 'hover' }));
+                                  }
+                                }}
+                                onMouseLeave={() => {
+                                  if (currentState !== 'saving') {
+                                    setCellStates(prev => ({ ...prev, [cellKey]: isChecked ? 'checked' : 'idle' }));
+                                  }
+                                }}
+                                onClick={() => handleCellClick(mk.id, ik.kode_ik, isChecked, cpl.kode_cpl)}
+                                title={`${mk.nama} - ${ik.kode_ik}${ik.deskripsi ? ': ' + ik.deskripsi : ''}`}
+                              >
+                                <div className="flex items-center justify-center h-12">
+                                  {currentState === 'checked' && (
+                                    <CheckCircle 
+                                      className={`w-6 h-6 ${design.text} animate-in zoom-in duration-200`}
+                                      strokeWidth={2.5}
+                                    />
+                                  )}
+                                  
+                                  {currentState === 'saving' && (
+                                    <Loader2 className="w-5 h-5 text-yellow-600 animate-spin" />
+                                  )}
+                                  
+                                  {currentState === 'error' && (
+                                    <AlertCircle className="w-5 h-5 text-red-600 animate-pulse" />
+                                  )}
+                                </div>
+                                
+                                {/* Hover hint */}
+                                {(currentState === 'hover' || currentState === 'idle') && (
+                                  <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                                    <div className="absolute top-1 right-1 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase">
+                                      {isChecked ? 'Hapus' : 'Tambah'}
+                                    </div>
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          });
+                        })}
+                      </tr>
+                    ));
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* INSTRUCTIONS - Enhanced */}
+        {!loading && matakuliahList.length > 0 && allIK.length > 0 && (
+          <div className="mt-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 shadow-md">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                <Info className="w-6 h-6 text-white" strokeWidth={2.5} />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-lg text-blue-900 mb-4">Petunjuk Penggunaan</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <ul className="space-y-2.5 text-sm text-blue-800">
+                    <li className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-xs font-bold">1</span>
+                      </div>
+                      <span>Setiap CPL memiliki <strong>warna berbeda</strong> untuk memudahkan identifikasi visual</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-xs font-bold">2</span>
+                      </div>
+                      <span>Gunakan tombol <strong>collapse/expand</strong> (▼/▶) untuk fokus pada CPL tertentu</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-xs font-bold">3</span>
+                      </div>
+                      <span>Klik sel untuk <strong>toggle mapping</strong> IK ke mata kuliah</span>
+                    </li>
+                  </ul>
+                  <ul className="space-y-2.5 text-sm text-blue-800">
+                    <li className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-xs font-bold">4</span>
+                      </div>
+                      <span>Status sel: <strong>Putih</strong> (kosong), <strong>Berwarna</strong> (mapped), <strong>Kuning</strong> (saving)</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-xs font-bold">5</span>
+                      </div>
+                      <span>Hover pada <strong>header IK</strong> untuk melihat deskripsi lengkap indikator</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-xs font-bold">6</span>
+                      </div>
+                      <span>Scroll horizontal akan menampilkan <strong>floating indicator</strong> CPL yang sedang dilihat</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* Instructions */}
-          {!loading && matakuliahList.length > 0 && allIK.length > 0 && (
-            <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 shadow-md">
-              <h3 className="font-bold text-base text-blue-900 mb-3 flex items-center gap-2">
-                <Info size={20} />
-                Petunjuk Penggunaan
-              </h3>
-              <ul className="text-sm text-blue-800 space-y-2 list-disc list-inside">
-                <li>Setiap CPL memiliki Indikator Kinerja (IK) yang ditampilkan pada baris kedua header</li>
-                <li>Klik pada sel kosong untuk menambahkan mapping IK ke mata kuliah</li>
-                <li>Klik pada sel yang sudah tercentang (✓) untuk menghapus mapping</li>
-                <li>Gunakan tombol <strong>"Export Excel"</strong> untuk mengunduh matriks dengan struktur lengkap (CPL + IK)</li>
-                <li>Scroll horizontal untuk melihat semua CPL dan IK yang tersedia</li>
-                <li>Hover pada header IK untuk melihat deskripsi lengkap indikator kinerja</li>
-              </ul>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </DashboardLayout>
   );

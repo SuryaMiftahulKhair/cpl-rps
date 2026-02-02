@@ -1,17 +1,94 @@
 "use client";
 
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { X, Layers } from "lucide-react";
 import { useEffect } from "react";
 
 // ========================================
-// SCHEMA & TYPES
+// ZOD SCHEMA
 // ========================================
 
-interface KurikulumFormData {
-  nama: string;
-  tahunMulai: string; // Changed to string to support "2024" or "2024/2025"
-}
+const kurikulumSchema = z.object({
+  nama: z
+    .string()
+    .min(1, "Nama kurikulum wajib diisi")
+    .min(3, "Nama kurikulum minimal 3 karakter")
+    .refine(
+      (val) => val.trim().length > 0,
+      "Nama kurikulum tidak boleh hanya spasi"
+    ),
+  
+  tahunMulai: z
+    .string()
+    .min(1, "Tahun kurikulum wajib diisi")
+    .superRefine((val, ctx) => {
+      const str = val.trim();
+      const currentYear = new Date().getFullYear();
+      
+      // Check format first
+      if (!/^\d{4}$/.test(str) && !/^\d{4}\/\d{4}$/.test(str)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Format tahun tidak valid. Gunakan format: 2024 atau 2024/2025",
+        });
+        return;
+      }
+      
+      // Single year validation
+      if (/^\d{4}$/.test(str)) {
+        const year = Number(str);
+        if (year < 2000) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Tahun tidak boleh kurang dari 2000",
+          });
+          return;
+        }
+        if (year > currentYear + 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Tahun tidak boleh lebih dari ${currentYear + 1}`,
+          });
+          return;
+        }
+      }
+      
+      // Range year validation
+      if (/^\d{4}\/\d{4}$/.test(str)) {
+        const [year1, year2] = str.split('/').map(Number);
+        
+        if (year1 < 2000) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Tahun tidak boleh kurang dari 2000",
+          });
+          return;
+        }
+        if (year1 > currentYear + 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Tahun tidak boleh lebih dari ${currentYear + 1}`,
+          });
+          return;
+        }
+        if (year2 !== year1 + 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Format tahun harus n/n+1 (contoh: 2024/2025)",
+          });
+        }
+      }
+    }),
+});
+
+// Infer type from schema
+type KurikulumFormData = z.infer<typeof kurikulumSchema>;
+
+// ========================================
+// PROPS INTERFACE
+// ========================================
 
 interface KurikulumModalProps {
   isOpen: boolean;
@@ -19,54 +96,6 @@ interface KurikulumModalProps {
   onSubmit: (nama: string, tahun: number) => Promise<void>;
   submitting: boolean;
 }
-
-// Validasi rules
-const VALIDATION_RULES = {
-  nama: {
-    required: "Nama kurikulum wajib diisi",
-    minLength: {
-      value: 3,
-      message: "Nama kurikulum minimal 3 karakter",
-    },
-    validate: {
-      notOnlySpaces: (value: string) =>
-        value.trim().length > 0 || "Nama kurikulum tidak boleh hanya spasi",
-    },
-  },
-  tahunMulai: {
-    required: "Tahun kurikulum wajib diisi",
-    validate: {
-      validFormat: (value: any) => {
-        const str = String(value).trim();
-        
-        // Format 1: Single year (2024)
-        if (/^\d{4}$/.test(str)) {
-          const year = Number(str);
-          const currentYear = new Date().getFullYear();
-          
-          if (year < 2000) return "Tahun tidak boleh kurang dari 2000";
-          if (year > currentYear + 1) return `Tahun tidak boleh lebih dari ${currentYear + 1}`;
-          
-          return true;
-        }
-        
-        // Format 2: Range year (2024/2025)
-        if (/^\d{4}\/\d{4}$/.test(str)) {
-          const [year1, year2] = str.split('/').map(Number);
-          const currentYear = new Date().getFullYear();
-          
-          if (year1 < 2000) return "Tahun tidak boleh kurang dari 2000";
-          if (year1 > currentYear + 1) return `Tahun tidak boleh lebih dari ${currentYear + 1}`;
-          if (year2 !== year1 + 1) return "Format tahun harus n/n+1 (contoh: 2024/2025)";
-          
-          return true;
-        }
-        
-        return "Format tahun tidak valid. Gunakan format: 2024 atau 2024/2025";
-      },
-    },
-  },
-};
 
 // ========================================
 // COMPONENT
@@ -85,6 +114,7 @@ export function KurikulumModal({
     reset,
     watch,
   } = useForm<KurikulumFormData>({
+    resolver: zodResolver(kurikulumSchema),
     mode: "onChange", // Validasi realtime
     defaultValues: {
       nama: "",
@@ -156,7 +186,7 @@ export function KurikulumModal({
             <input
               id="nama"
               type="text"
-              {...register("nama", VALIDATION_RULES.nama)}
+              {...register("nama")}
               placeholder="e.g., Kurikulum Sarjana K-24"
               disabled={submitting}
               className={`
@@ -190,7 +220,7 @@ export function KurikulumModal({
             <input
               id="tahunMulai"
               type="text"
-              {...register("tahunMulai", VALIDATION_RULES.tahunMulai)}
+              {...register("tahunMulai")}
               placeholder="e.g., 2024 atau 2024/2025"
               disabled={submitting}
               className={`
