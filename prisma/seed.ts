@@ -38,20 +38,21 @@ async function main() {
   // --- 2. USERS ---
   console.log('Importing Users...');
   for (const row of getSheet(workbook, 'Users') as any[]) {
-    
+
     const rawPassword = String(row.password);
-    const hashedPassword = await bcrypt.hash(rawPassword, 10); 
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+    const usernameString = String(row.username); 
 
     await prisma.user.upsert({
-      where: { username: row.username },
+      where: { username: usernameString },
       update: {
-          password_hash: hashedPassword, 
-          role: row.role as UserRole,
-          prodi_id: row.kode_prodi ? prodiMap.get(row.kode_prodi) : null
+        password_hash: hashedPassword,
+        role: row.role as UserRole,
+        prodi_id: row.kode_prodi ? prodiMap.get(row.kode_prodi) : null
       },
       create: {
-        username: row.username,
-        password_hash: hashedPassword, 
+        username: usernameString, 
+        password_hash: hashedPassword,
         nama: row.nama,
         role: row.role as UserRole,
         prodi_id: row.kode_prodi ? prodiMap.get(row.kode_prodi) : null
