@@ -309,30 +309,30 @@ export default function MatriksCPLTable({
   const mkColLeft = '100px'; // Konsisten dengan semesterColWidth
 
   return (
-    <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-white p-8 overflow-auto' : ''}`}>
+    <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-white p-8 overflow-auto' : 'bg-white'}`}>
       {/* Controls */}
       {showControls && (
-        <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+        <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <p className="text-sm font-semibold text-gray-700">Quick Controls:</p>
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-200"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-200 shadow-sm"
               >
                 {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 {isFullscreen ? 'Normal' : 'Fullscreen'}
               </button>
               <button
                 onClick={() => setCollapsedCPL([])}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors border border-emerald-200"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors border border-emerald-200 shadow-sm"
               >
                 <Eye size={14} />
                 Tampilkan Semua
               </button>
               <button
                 onClick={() => setCollapsedCPL(sortedCPL.map(c => c.kode_cpl))}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm"
               >
                 <EyeOff size={14} />
                 Sembunyikan Semua
@@ -344,14 +344,14 @@ export default function MatriksCPLTable({
 
       {/* Messages */}
       {successMessage && (
-        <div className="mb-4 bg-green-50 border-2 border-green-200 rounded-xl p-3 flex items-center gap-2 animate-in fade-in">
+        <div className="mb-4 bg-green-50 border-2 border-green-200 rounded-xl p-3 flex items-center gap-2 animate-in fade-in shadow-sm">
           <CheckCircle className="w-4 h-4 text-green-600" strokeWidth={2.5} />
           <p className="text-sm font-semibold text-green-800">{successMessage}</p>
         </div>
       )}
 
       {error && (
-        <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-xl p-3 flex items-start gap-2">
+        <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-xl p-3 flex items-start gap-2 shadow-sm">
           <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-red-700 flex-1">{error}</p>
           <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800">
@@ -362,7 +362,7 @@ export default function MatriksCPLTable({
 
       {/* Floating Indicator */}
       {scrollLeft > 400 && currentVisibleCPL && !compactMode && (
-        <div className="fixed top-24 right-8 z-50 bg-white shadow-2xl rounded-xl p-4 border-2 border-indigo-200 animate-in fade-in">
+        <div className="fixed top-24 right-8 z-50 bg-white shadow-xl rounded-xl p-4 border-2 border-indigo-200 animate-in fade-in">
           <p className="text-xs text-gray-600 mb-2 font-medium">Sedang melihat:</p>
           <div className="flex items-center gap-2">
             <div className={`w-4 h-4 rounded-full bg-gradient-to-r ${cplDesignSystem[currentVisibleCPL]?.primary || 'bg-gray-400'}`}></div>
@@ -371,8 +371,8 @@ export default function MatriksCPLTable({
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Table Container */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className={`overflow-x-auto ${maxHeight} overflow-y-auto`} ref={tableRef}>
           {loading ? (
             <div className="p-12 text-center">

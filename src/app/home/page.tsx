@@ -26,7 +26,6 @@ export default function HomePage() {
     try {
       console.log('Fetching kurikulum for prodiId:', prodiId);
       
-      // Ganti dengan endpoint API Anda yang sebenarnya
       const res = await fetch(`/api/kurikulum?prodiId=${prodiId}`, {
         cache: 'no-store'
       });
@@ -40,7 +39,6 @@ export default function HomePage() {
       
       if (data.success && data.data?.length > 0) {
         setKurikulumList(data.data);
-        // Pilih kurikulum pertama secara default
         setSelectedKurikulum(data.data[0].id);
         console.log('Selected kurikulum:', data.data[0].id);
       } else {
@@ -60,22 +58,22 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-white">
       <Sidebar />
 
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 bg-white">
         <Header />
 
-        <main className="p-8 space-y-6">
+        <main className="p-8 space-y-6 bg-white">
 
           {/* Title */}
-          <div className="flex items-center gap-2 text-2xl font-bold text-gray-800 border-b pb-3">
+          <div className="flex items-center gap-2 text-2xl font-bold text-gray-800 border-b border-gray-200 pb-3">
             <HiOutlineHome className="w-6 h-6 text-indigo-600" />
             Dashboard Utama
           </div>
 
           {/* ALERT */}
-          <div className="bg-red-50 border border-red-300 rounded-xl p-6 flex gap-4 text-red-800 shadow-sm">
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 flex gap-4 text-red-800 shadow-sm">
             <HiOutlineExclamationTriangle className="w-7 h-7 mt-1 text-red-600 shrink-0" />
             
             <div>
@@ -95,7 +93,7 @@ export default function HomePage() {
             {/* Section Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
                   <Grid3x3 className="w-5 h-5 text-white" strokeWidth={2.5} />
                 </div>
                 <div>
@@ -112,7 +110,7 @@ export default function HomePage() {
               {!loading && (
                 <button
                   onClick={fetchKurikulum}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-all text-sm font-semibold text-gray-700"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-all text-sm font-semibold text-gray-700 shadow-sm"
                 >
                   <RefreshCw size={16} />
                   Refresh
@@ -122,7 +120,7 @@ export default function HomePage() {
 
             {/* Error Display */}
             {error && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3">
+              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h4 className="text-sm font-bold text-red-900 mb-1">Terjadi Kesalahan</h4>
@@ -139,7 +137,7 @@ export default function HomePage() {
 
             {/* Loading State */}
             {loading && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
                 <div className="flex flex-col items-center justify-center gap-3">
                   <Loader2 className="animate-spin text-indigo-600" size={40} strokeWidth={2.5} />
                   <p className="text-sm text-gray-600 font-medium">Memuat kurikulum...</p>
@@ -149,14 +147,14 @@ export default function HomePage() {
 
             {/* Kurikulum Selector (jika ada lebih dari 1) */}
             {!loading && !error && kurikulumList.length > 1 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Pilih Kurikulum:
                 </label>
                 <select
                   value={selectedKurikulum || ''}
                   onChange={(e) => setSelectedKurikulum(Number(e.target.value))}
-                  className="w-full md:w-auto px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm font-semibold text-gray-900 hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
+                  className="w-full md:w-auto px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm font-semibold text-gray-900 hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white shadow-sm"
                 >
                   {kurikulumList.map(k => (
                     <option key={k.id} value={k.id} className="text-gray-900 font-semibold">
@@ -177,26 +175,25 @@ export default function HomePage() {
                 showControls={true}
                 onMappingChange={() => {
                   console.log('Mapping changed - refresh stats if needed');
-                  // Anda bisa trigger refresh stats di sini
                 }}
               />
             ) : !loading && !error && kurikulumList.length === 0 ? (
               /* Empty State - No Kurikulum */
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
                 <div className="flex flex-col items-center justify-center text-center">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-200">
                     <AlertCircle className="w-10 h-10 text-gray-400" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     Belum Ada Kurikulum
                   </h3>
-                  <p className="text-sm text-gray-500 mb-6 max-w-md">
+                  <p className="text-sm text-gray-600 mb-6 max-w-md">
                     Silakan tambahkan kurikulum terlebih dahulu untuk dapat melihat
                     matriks CPL - Mata Kuliah
                   </p>
                   <a
                     href="/referensi/KP"
-                    className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-md hover:shadow-lg"
+                    className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-sm hover:shadow-md"
                   >
                     <span>Kelola Kurikulum</span>
                   </a>
@@ -206,10 +203,10 @@ export default function HomePage() {
 
             {/* Informasi / Tips */}
             {!loading && !error && selectedKurikulum && (
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-bold">💡</span>
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <span className="text-white font-bold text-lg">💡</span>
                   </div>
                   <div>
                     <h4 className="font-bold text-blue-900 mb-2 text-sm">Tips Penggunaan</h4>
