@@ -1,9 +1,8 @@
-// file: src/app/penilaian/datakelas/[semesterid]/[kodekelas]/page.tsx
 "use client";
 
 import { useState, useEffect, use, useRef } from "react";
 import Link from "next/link";
-import * as XLSX from "xlsx"; // Library Excel
+import * as XLSX from "xlsx"; 
 import { 
   ArrowLeft, Loader2, Users, BookOpen, 
   RefreshCw, Award, Info, AlertCircle, X, TrendingUp,
@@ -11,7 +10,6 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 
-// --- INTERFACES ---
 interface KelasInfo {
   namaKelas: string;
   kodeMatakuliah: string;
@@ -67,8 +65,6 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Ref untuk tombol upload file tersembunyi
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = async () => {
@@ -125,13 +121,11 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
 
   // --- LOGIC: EXPORT EXCEL ---
   const handleExportExcel = () => {
-    // Membuka endpoint GET Export di tab baru
     window.open(`/api/kelas/${kodekelas}/export`, "_blank");
   };
 
   // --- LOGIC: IMPORT EXCEL ---
   const triggerImport = () => {
-    // Klik input file secara programmatik
     fileInputRef.current?.click();
   };
 
@@ -165,28 +159,28 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "import_excel",
-            komponen: data?.komponenList, // Kirim daftar komponen agar backend tau kolom apa yg dicari
+            komponen: data?.komponenList, 
             dataNilai: dataImport
           }),
         });
 
         const result = await res.json();
-        if (!res.ok) throw new Error(result.error || "Gagal import");
-
-        alert("Import Berhasil! Data nilai telah diperbarui.");
-        fetchData(); // Refresh tampilan
-
+        if (result.hasError) {
+            alert(`${result.message}\n\nPeringatan (Detail Error):\n${result.details}`);
+        } else {
+            alert(result.message || "Import Berhasil! Semua data telah diperbarui.");
+        }
+        fetchData(); 
       } catch (err: any) {
         alert("Gagal membaca file: " + err.message);
       } finally {
         setIsProcessing(false);
-        if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
+        if (fileInputRef.current) fileInputRef.current.value = ""; 
       }
     };
     reader.readAsBinaryString(file);
   };
 
-  // --- RENDER LOADING / ERROR ---
   if (loading) return (
     <DashboardLayout>
       <div className="flex h-screen items-center justify-center flex-col gap-4">
@@ -220,8 +214,6 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8">
-        
-        {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Link href="/penilaian/datanilai" className="hover:text-indigo-600">Data Nilai</Link>
           <ChevronRight size={16} className="text-gray-400" />
@@ -230,7 +222,6 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
           <span className="font-semibold text-gray-900">Detail Kelas</span>
         </div>
 
-        {/* HEADER SECTION */}
         <div className="bg-linear-to-r from-indigo-50 via-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-indigo-100/50 shadow-sm">
           <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
             <div className="flex-1">
@@ -247,7 +238,6 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
               <p className="text-gray-600 text-lg font-medium">Kelas {kelasInfo.namaKelas}</p>
             </div>
             
-            {/* Stats Cards */}
             <div className="flex gap-3">
                <div className="bg-white rounded-xl p-4 min-w-[100px] border border-indigo-100 shadow-sm text-center">
                   <p className="text-xs text-gray-500 font-bold uppercase">SKS</p>
@@ -261,10 +251,7 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
           </div>
         </div>
 
-        {/* MAIN GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          
-          {/* KOMPONEN PENILAIAN */}
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="border-b border-gray-200 px-6 py-4 bg-gray-50/50 flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -303,9 +290,7 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
             </div>
           </div>
 
-          {/* STATUS & ACTIONS CARD */}
           <div className="bg-linear-to-br from-indigo-600 via-indigo-700 to-blue-700 rounded-2xl shadow-xl p-6 text-white relative overflow-hidden">
-             {/* Background Effects */}
              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
 
              <div className="relative z-10">
@@ -324,9 +309,7 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
                    </div>
                 </div>
 
-                {/* --- TOMBOL IMPORT / EXPORT --- */}
                 <div className="grid grid-cols-2 gap-3">
-                   {/* Input File Hidden */}
                    <input 
                       type="file" 
                       ref={fileInputRef} 
@@ -358,7 +341,6 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
           </div>
         </div>
 
-        {/* TABEL REKAP NILAI */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
            <div className="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
               <h3 className="font-bold text-gray-800">Rekapitulasi Nilai</h3>
