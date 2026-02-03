@@ -10,7 +10,6 @@ import {
 } from 'recharts';
 
 export default function LaporanCplProdiPage() {
-  // Panggil Hook
   const {
     semesterList, uniqueYears, radarData, courseList,
     loading, hasSearched,
@@ -22,8 +21,7 @@ export default function LaporanCplProdiPage() {
     <DashboardLayout>
       <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
         
-        {/* ================= HEADER WITH GRADIENT - Following recommendation ================= */}
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6 mb-6 border border-indigo-100">
+        <div className="bg-linear-to-r from-indigo-50 to-blue-50 rounded-xl p-6 mb-6 border border-indigo-100">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
@@ -44,7 +42,7 @@ export default function LaporanCplProdiPage() {
         {/* ================= FILTER SECTION - Enhanced Design ================= */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
           {/* Header */}
-          <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+          <div className="border-b border-gray-100 px-6 py-4 bg-linear-to-r from-gray-50 to-white">
             <div className="flex items-center gap-2">
               <Filter className="w-5 h-5 text-indigo-600" />
               <h3 className="text-lg font-bold text-gray-900">Filter Laporan</h3>
@@ -156,7 +154,7 @@ export default function LaporanCplProdiPage() {
               {/* Card 1: Total MK */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                  <div className="w-14 h-14 bg-linear-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
                     <BookOpen className="w-7 h-7 text-white" strokeWidth={2} />
                   </div>
                   <div>
@@ -173,7 +171,7 @@ export default function LaporanCplProdiPage() {
               {/* Card 2: Total CPL */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                  <div className="w-14 h-14 bg-linear-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
                     <Award className="w-7 h-7 text-white" strokeWidth={2} />
                   </div>
                   <div>
@@ -190,7 +188,7 @@ export default function LaporanCplProdiPage() {
               {/* Card 3: Avg Performance */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
+                  <div className="w-14 h-14 bg-linear-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
                     <TrendingUp className="w-7 h-7 text-white" strokeWidth={2} />
                   </div>
                   <div>
@@ -214,13 +212,13 @@ export default function LaporanCplProdiPage() {
               {/* RADAR CHART - 3 columns */}
               <div className="lg:col-span-3 bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
                 {/* Header */}
-                <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+                <div className="border-b border-gray-100 px-6 py-4 bg-linear-to-r from-gray-50 to-white">
                   <div className="flex justify-between items-center">
                     <h3 className="font-bold text-gray-900 flex items-center gap-2">
                       <BarChart3 className="w-5 h-5 text-indigo-600" />
                       Peta Capaian Pembelajaran Lulusan
                     </h3>
-                    <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 text-xs font-bold">
+                    <span className="inline-flex items-center gap-1.5 bg-linear-to-r from-indigo-50 to-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 text-xs font-bold">
                       <Calendar className="w-3.5 h-3.5" />
                       {filterType === 'SEMUA' ? 'ALL TIME' : filterType === 'TAHUN' ? selectedYear : 'SEMESTER'}
                     </span>
@@ -288,7 +286,7 @@ export default function LaporanCplProdiPage() {
               {/* CPL BREAKDOWN - 2 columns */}
               <div className="lg:col-span-2 bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
                 {/* Header */}
-                <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+                <div className="border-b border-gray-100 px-6 py-4 bg-linear-to-r from-gray-50 to-white">
                   <h3 className="font-bold text-gray-900 flex items-center gap-2">
                     <Award className="w-5 h-5 text-indigo-600" />
                     Detail CPL
@@ -360,7 +358,7 @@ export default function LaporanCplProdiPage() {
             {/* ================= TABLE - Modern Design ================= */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               {/* Header */}
-              <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+              <div className="border-b border-gray-100 px-6 py-4 bg-linear-to-r from-gray-50 to-white">
                 <h4 className="font-bold text-gray-900 flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-indigo-600" />
                   Rincian Kontribusi Mata Kuliah
@@ -385,7 +383,7 @@ export default function LaporanCplProdiPage() {
                       {radarData.map(r => (
                         <th 
                           key={r.subject} 
-                          className="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50 min-w-[80px]"
+                          className="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50 min-w-20"
                         >
                           {r.subject}
                         </th>
@@ -430,9 +428,9 @@ export default function LaporanCplProdiPage() {
                               <td key={r.subject} className="px-4 py-4 text-center">
                                 {val ? (
                                   <span className={`inline-flex items-center justify-center min-w-[50px] px-3 py-1.5 rounded-lg text-xs font-bold border ${
-                                    val >= 75 ? 'bg-gradient-to-r from-green-50 to-green-100 text-green-700 border-green-200' : 
-                                    val >= 50 ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-700 border-yellow-200' : 
-                                    'bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-red-200'
+                                    val >= 75 ? 'bg-linear-to-r from-green-50 to-green-100 text-green-700 border-green-200' : 
+                                    val >= 50 ? 'bg-linear-to-r from-yellow-50 to-yellow-100 text-yellow-700 border-yellow-200' : 
+                                    'bg-linear-to-r from-red-50 to-red-100 text-red-700 border-red-200'
                                   }`}>
                                     {val.toFixed(0)}
                                   </span>

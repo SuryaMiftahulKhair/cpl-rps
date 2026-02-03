@@ -13,7 +13,15 @@ export function calculateCPMKScore(mappings: { avg: number; bobot: number }[]): 
   return score;
 }
 
-export function calculateCoefficient(sks: number, ikCount: number, totalIK: number): number {
-  return (sks / 144) * 1 * (totalIK > 0 ? ikCount / totalIK : 0);
-}
+export function calculateCoefficient(
+  sks: number, 
+  ikCount: number, 
+  totalIK: number, 
+  cpmkWeight: number 
+): number {
+  const sksFactor = sks / 144;
+  const weightFactor = cpmkWeight / 100; 
+  const ikFactor = totalIK > 0 ? ikCount / totalIK : 0;
 
+  return sksFactor * weightFactor * ikFactor;
+}
