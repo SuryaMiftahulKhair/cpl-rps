@@ -205,7 +205,7 @@ export default function Sidebar() {
         <div className="w-72 h-screen sticky top-0 bg-white shadow-2xl flex flex-col border-r border-gray-100">
             
             {/* ========== HEADER SECTION - Enhanced ========== */}
-            <div className="p-6 border-b border-indigo-100 bg-gradient-to-br from-indigo-500 via-indigo-600 to-blue-600">
+            <div className="p-6 border-b border-indigo-100 bg-linear-to-br from-indigo-500 via-indigo-600 to-blue-600">
                 {/* Logo & Title */}
                 <div className="flex items-center gap-3 mb-5">
                     <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg border border-white/30">
@@ -384,6 +384,12 @@ export default function Sidebar() {
                     >
                         Jenis Penilaian
                     </SubMenuItem>
+                    <SubMenuItem 
+                        href="/referensi/mahasiswa" 
+                        isActive={currentPath === "/referensi/mahasiswa"}
+                    >
+                        Mahasiswa
+                    </SubMenuItem>
                 </CollapsibleMenu>
 
                 {/* Manajemen User */}
@@ -397,7 +403,7 @@ export default function Sidebar() {
             </nav>
 
             {/* ========== FOOTER SECTION ========== */}
-            <div className="p-4 border-t border-gray-100 bg-gradient-to-r from-gray-50 to-gray-100 space-y-2">
+            <div className="p-4 border-t border-gray-100 bg-linear-to-r from-gray-50 to-gray-100 space-y-2">
                 {/* Settings */}
                 <MenuItem 
                     href="/pengaturan" 
