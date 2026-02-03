@@ -2,7 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Eye, Loader2, RefreshCw, Plus, Calendar, BookOpen, GraduationCap, AlertCircle, X } from "lucide-react"; 
+import { 
+  Eye, 
+  Loader2, 
+  RefreshCw, 
+  Plus, 
+  Calendar, 
+  BookOpen, 
+  GraduationCap, 
+  AlertCircle, 
+  X,
+  ChevronRight,
+  TrendingUp,
+  Users
+} from "lucide-react"; 
 import DashboardLayout from "@/app/components/DashboardLayout";
 import TahunAjaranModal from "@/app/components/TahunAjaranModal";
 
@@ -97,48 +110,97 @@ export default function DataNilaiPage() {
     }
   };
 
-  const formatNamaSemester = (tahun: string, semester: "GANJIL" | "GENAP") => {
-    return `${semester.toUpperCase()} ${tahun}`;
-  };
-
   // Count semesters by type
   const ganjilCount = semesterList.filter(s => s.semester === 'GANJIL').length;
   const genapCount = semesterList.filter(s => s.semester === 'GENAP').length;
 
+  const getSemesterColors = (semester: Semester) => {
+    return semester === Semester.GANJIL
+      ? {
+          bg: "from-blue-50 to-indigo-50",
+          border: "border-blue-200",
+          text: "text-blue-700",
+          badge: "bg-blue-500",
+          hover: "hover:border-blue-400"
+        }
+      : {
+          bg: "from-emerald-50 to-green-50",
+          border: "border-emerald-200",
+          text: "text-emerald-700",
+          badge: "bg-emerald-500",
+          hover: "hover:border-emerald-400"
+        };
+  };
+
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
+      <div className="p-6 lg:p-8">
         
-        {/* ================= HEADER WITH GRADIENT ================= */}
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6 mb-6 border border-indigo-100">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
-                <BookOpen className="w-6 h-6 text-white" strokeWidth={2.5} />
+        {/* ========== BREADCRUMB ========== */}
+        <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+          <span className="hover:text-indigo-600 cursor-pointer transition-colors">Penilaian</span>
+          <ChevronRight size={16} className="text-gray-400" />
+          <span className="font-semibold text-gray-900">Data Nilai</span>
+        </div>
+
+        {/* ========== HEADER ========== */}
+        <div className="bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-indigo-100/50 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            
+            {/* Left: Title & Info */}
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-white rounded-xl shadow-sm border border-indigo-100">
+                <BookOpen size={28} className="text-indigo-600" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">Data Nilai</h1>
+                <h1 className="text-3xl font-bold text-gray-900 mb-1">
+                  Data Nilai Mahasiswa
+                </h1>
                 <p className="text-sm text-gray-600">
-                  Kelola data nilai mahasiswa per semester dan tahun ajaran
+                  Kelola dan monitoring data nilai per semester
                 </p>
               </div>
+            </div>
+
+            {/* Right: Actions */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={fetchData}
+                disabled={isLoading || submitting}
+                className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl border-2 border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+              >
+                <RefreshCw 
+                  size={18} 
+                  className={isLoading ? "animate-spin" : ""} 
+                />
+                <span>Refresh</span>
+              </button>
+
+              <button
+                onClick={() => setIsModalOpen(true)}
+                disabled={isLoading || submitting}
+                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              >
+                <Plus size={20} strokeWidth={2.5} />
+                <span>Tambah Semester</span>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* ================= STATS SUMMARY ================= */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        {/* ========== STATS CARDS ========== */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {/* Total Semester */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-5 border border-indigo-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-                <Calendar className="w-7 h-7 text-white" strokeWidth={2} />
+              <div className="p-3 bg-indigo-500 rounded-xl shadow-md">
+                <Calendar size={24} className="text-white" strokeWidth={2.5} />
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-0.5">
                   Total Semester
                 </p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-indigo-900">
                   {semesterList.length}
                 </p>
               </div>
@@ -146,16 +208,16 @@ export default function DataNilaiPage() {
           </div>
 
           {/* Semester Ganjil */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                <GraduationCap className="w-7 h-7 text-white" strokeWidth={2} />
+              <div className="p-3 bg-blue-500 rounded-xl shadow-md">
+                <GraduationCap size={24} className="text-white" strokeWidth={2.5} />
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-0.5">
                   Semester Ganjil
                 </p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-blue-900">
                   {ganjilCount}
                 </p>
               </div>
@@ -163,16 +225,16 @@ export default function DataNilaiPage() {
           </div>
 
           {/* Semester Genap */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl p-5 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
-                <GraduationCap className="w-7 h-7 text-white" strokeWidth={2} />
+              <div className="p-3 bg-emerald-500 rounded-xl shadow-md">
+                <GraduationCap size={24} className="text-white" strokeWidth={2.5} />
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
+                <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-0.5">
                   Semester Genap
                 </p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-emerald-900">
                   {genapCount}
                 </p>
               </div>
@@ -180,161 +242,176 @@ export default function DataNilaiPage() {
           </div>
         </div>
 
-        {/* ================= ERROR MESSAGE ================= */}
+        {/* ========== ERROR ALERT ========== */}
         {error && (
-          <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="mb-6 flex items-start gap-3 text-sm text-red-700 bg-red-50 p-4 rounded-xl border border-red-200">
+            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <h4 className="text-sm font-bold text-red-900 mb-1">Terjadi Kesalahan</h4>
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="font-semibold">Terjadi Kesalahan</p>
+              <p className="mt-1">{error}</p>
             </div>
             <button
               onClick={() => setError(null)}
-              className="text-red-600 hover:text-red-800 transition-colors"
+              className="p-1 rounded-lg hover:bg-red-100 transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X size={18} className="text-red-600" />
             </button>
           </div>
         )}
 
-        {/* ================= CONTENT SECTION ================= */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* ========== MAIN CONTENT ========== */}
+        <div className="bg-white shadow-sm rounded-2xl border border-gray-200 overflow-hidden">
           
-          {/* Header */}
-          <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-indigo-600" />
-                <h2 className="text-lg font-bold text-gray-900">Daftar Semester</h2>
+          {/* Section Header */}
+          <div className="p-6 border-b border-gray-200 bg-gray-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <Calendar size={20} className="text-indigo-600" />
               </div>
-              
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  disabled={isLoading || submitting}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-                >
-                  <Plus size={18} strokeWidth={2.5} />
-                  <span>Tambah Semester</span>
-                </button>
-                
-                <button 
-                  onClick={fetchData}
-                  disabled={isLoading || submitting} 
-                  className="inline-flex items-center gap-2 bg-white border-2 border-indigo-200 text-indigo-700 px-5 py-2.5 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-all text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                >
-                  {isLoading ? (
-                    <Loader2 size={18} className="animate-spin" strokeWidth={2.5} />
-                  ) : (
-                    <RefreshCw size={18} strokeWidth={2.5} />
-                  )}
-                  <span>{isLoading ? "Memuat..." : "Refresh"}</span>
-                </button>
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Pilih Semester</h2>
+                <p className="text-sm text-gray-600">
+                  {isLoading 
+                    ? "Memuat data..." 
+                    : `${semesterList.length} semester tersedia`
+                  }
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Content */}
+          {/* Content Area */}
           <div className="p-6">
             {/* Loading State - Skeleton */}
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(6)].map((_, i) => (
-                  <div key={i} className="animate-pulse bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
-                    <div className="flex items-center justify-between">
+                  <div key={i} className="animate-pulse bg-gray-50 rounded-2xl p-6 border-2 border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex-1">
-                        <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-6 bg-gray-200 rounded-lg w-24 mb-3"></div>
+                        <div className="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
                         <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                       </div>
-                      <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                      <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
+                    </div>
+                    <div className="pt-4 border-t border-gray-200">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : semesterList.length === 0 && !error ? (
-              /* Empty State - Enhanced */
-              <div className="py-20">
-                <div className="flex flex-col items-center justify-center text-center">
-                  <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-                    <Calendar size={36} className="text-indigo-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Belum Ada Semester
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-6 max-w-sm">
-                    Mulai dengan menambahkan semester pertama untuk mengelola data nilai mahasiswa
-                  </p>
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-md"
-                  >
-                    <Plus size={18} strokeWidth={2.5} />
-                    Tambah Semester Pertama
-                  </button>
+            ) : semesterList.length === 0 ? (
+              /* Empty State */
+              <div className="text-center py-16">
+                <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
+                  <Calendar size={40} className="text-indigo-500" />
                 </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Belum Ada Data Semester
+                </h3>
+                <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+                  Tambahkan semester pertama untuk mulai mengelola data nilai mahasiswa
+                </p>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                >
+                  <Plus size={20} strokeWidth={2.5} />
+                  Tambah Semester Pertama
+                </button>
               </div>
             ) : (
-              /* Grid Cards - Enhanced */
+              /* Semester Cards Grid */
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {semesterList.map((semester) => (
-                  <Link
-                    key={semester.id}
-                    href={`/penilaian/datakelas/${semester.id}`}
-                    className="block group"
-                  >
-                    <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-indigo-400 hover:shadow-lg transition-all duration-200 cursor-pointer h-full">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          {/* Semester Badge */}
-                          <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold mb-3 ${
-                            semester.semester === 'GANJIL'
-                              ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200'
-                              : 'bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 border border-emerald-200'
-                          }`}>
-                            <Calendar className="w-3.5 h-3.5" />
-                            {semester.semester}
+                {semesterList.map((semester) => {
+                  const colors = getSemesterColors(semester.semester);
+                  
+                  return (
+                    <Link
+                      key={semester.id}
+                      href={`/penilaian/datakelas/${semester.id}`}
+                      className="group block"
+                    >
+                      <div className={`
+                        relative bg-gradient-to-br ${colors.bg} 
+                        border-2 ${colors.border} ${colors.hover}
+                        rounded-2xl p-6 
+                        hover:shadow-xl hover:scale-[1.02] 
+                        transition-all duration-200 cursor-pointer
+                        overflow-hidden h-full
+                      `}>
+                        {/* Background Pattern */}
+                        <div className="absolute top-0 right-0 opacity-10">
+                          <svg width="100" height="100" viewBox="0 0 100 100">
+                            <circle cx="80" cy="20" r="40" fill="currentColor" className={colors.text} />
+                          </svg>
+                        </div>
+
+                        {/* Content */}
+                        <div className="relative">
+                          {/* Header */}
+                          <div className="flex items-center justify-between mb-4">
+                            {/* Semester Badge */}
+                            <div className={`
+                              inline-flex items-center gap-2 px-3 py-1.5 
+                              ${colors.badge} text-white rounded-lg 
+                              text-xs font-bold uppercase tracking-wide shadow-sm
+                            `}>
+                              <Calendar size={14} />
+                              <span>{semester.semester}</span>
+                            </div>
+                            
+                            {/* View Icon */}
+                            <div className="p-2 bg-white/50 backdrop-blur-sm rounded-lg group-hover:bg-white transition-all">
+                              <Eye 
+                                size={20} 
+                                className={`${colors.text} group-hover:scale-110 transition-transform`}
+                              />
+                            </div>
                           </div>
-                          
-                          {/* Title */}
-                          <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors mb-1">
+
+                          {/* Tahun */}
+                          <h3 className="text-2xl font-bold text-gray-900 mb-1">
                             {semester.tahun}
                           </h3>
-                          <p className="text-sm text-gray-500 font-medium">
+                          
+                          {/* Subtitle */}
+                          <p className="text-sm text-gray-600 font-medium mb-4">
                             Tahun Ajaran {semester.tahun}
                           </p>
-                        </div>
-                        
-                        {/* Icon */}
-                        <div className="w-12 h-12 bg-gray-100 group-hover:bg-indigo-100 rounded-xl flex items-center justify-center transition-all duration-200">
-                          <Eye
-                            size={24}
-                            className="text-gray-400 group-hover:text-indigo-600 transition-colors"
-                            strokeWidth={2}
-                          />
-                        </div>
-                      </div>
 
-                      {/* Footer Info */}
-                      <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Lihat Detail
-                        </span>
-                        <div className="flex items-center gap-1 text-indigo-600 group-hover:gap-2 transition-all">
-                          <span className="text-xs font-bold">Buka</span>
-                          <Eye size={14} strokeWidth={2.5} />
+                          {/* Divider */}
+                          <div className="border-t-2 border-white/50 pt-4">
+                            {/* Action Hint */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                Lihat Detail
+                              </span>
+                              <div className="flex items-center gap-2 text-sm font-bold text-indigo-600 group-hover:gap-3 transition-all">
+                                <span>Buka</span>
+                                <ChevronRight 
+                                  size={16} 
+                                  className="group-hover:translate-x-1 transition-transform"
+                                />
+                              </div>
+                            </div>
+                          </div>
                         </div>
+
+                        {/* Hover Border Glow */}
+                        <div className="absolute inset-0 border-2 border-indigo-400 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ================= MODAL ================= */}
+      {/* ========== MODAL ========== */}
       <TahunAjaranModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
