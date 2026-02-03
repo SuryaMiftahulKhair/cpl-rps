@@ -1,26 +1,24 @@
-// file: src/app/api/kelas/[id]/route.ts
+//file: src/app/api/kelas/[id]/route.ts
+
 import { NextResponse } from "next/server";
 import prisma from "@/../lib/prisma"; 
-
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolvedParams = await params; // Await params dulu agar aman
-    console.log("PARAMS DITERIMA:", resolvedParams); 
+    const resolvedParams = await params;
+    const id = parseInt(resolvedParams.id, 10);
 
-    const id = parseInt((await params).id, 10);
     if (isNaN(id)) {
-      console.log("GAGAL PARSE ID:", resolvedParams.id);
-      return NextResponse.json({ error: "ID Kelas tidak valid" }, { status: 400 });}
+      return NextResponse.json({ error: "ID Kelas tidak valid" }, { status: 400 });
+    }
 
     const kelas = await prisma.kelas.findUnique({
       where: { id },
       include: {
         tahun_ajaran: true,
-        
         matakuliah: {
           include: {
             rps: {
@@ -28,26 +26,22 @@ export async function GET(
               orderBy: { createdAt: 'desc' },
               take: 1,
               include: { 
-                pertemuan: {
-                  include: { cpmk: true }
+                pertemuan: { 
+                    include: { cpmk: true },
+                    orderBy: { pekan_ke: 'asc' }
                 },
                 cpmk: true 
               }
             }
           }
         },
-
         cpmk: true, 
-        
-        rps: true,
-
         komponenNilai: {
           include: {
-            pemetaan_komponen_cpmk: { include: { cpmk: true } }
+             cpmk: true 
           },
           orderBy: { id: 'asc' }
         },
-        
         peserta_kelas: {
           include: {
             mahasiswa: true, 
@@ -60,33 +54,45 @@ export async function GET(
 
     if (!kelas) return NextResponse.json({ error: "Kelas tidak ditemukan" }, { status: 404 });
 
-    const activeRps = Array.isArray(kelas.rps) ? kelas.rps[0] || null : null;
+    // --- DATA OTORISASI RPS ---
+    const activeRps = kelas.matakuliah?.rps?.[0] || null;
+    
+    const formatPenyusun = (data: any): string => {
+        if (!data) return "-";
+        if (Array.isArray(data)) return data.join(", "); 
+        if (typeof data === 'object' && data.nama) return data.nama;
+        return String(data);
+    };
 
     const rpsOtorisasi = activeRps ? {
         kaprodi: activeRps.nama_kaprodi || "-",
         koordinator: activeRps.nama_koordinator || "-",
-        penyusun: activeRps.nama_penyusun || "-"
+        penyusun: formatPenyusun(activeRps.nama_penyusun)
     } : null;
 
+    // --- AVAILABLE CPMK ---
     let availableCPMK: any[] = [];
-    if (kelas.matakuliah?.rps && kelas.matakuliah.rps.length > 0) {
-        availableCPMK = kelas.matakuliah.rps[0].cpmk;
+    if (activeRps) {
+        availableCPMK = activeRps.cpmk;
     } 
     if (availableCPMK.length === 0 && kelas.cpmk.length > 0) {
         availableCPMK = kelas.cpmk;
     }
 
+    // --- LOGIKA DETEKSI SUMBER RPS UNTUK SYNC ---
     let rpsSource = null;
     
-    if (kelas.komponenNilai.length === 0 && kelas.matakuliah?.rps && kelas.matakuliah.rps.length > 0) {
-      const activeRps = kelas.matakuliah.rps[0];
+    if (kelas.komponenNilai.length === 0 && activeRps) {
       
       const evaluasiRps = activeRps.pertemuan
-        .filter((p: any) => (p.bobot_nilai || 0) > 0)
+        .filter((p: any) => (p.bobot_cpmk || 0) > 0) 
         .map((p: any) => ({
 
-          nama: p.metode_pembelajaran || `Evaluasi Pekan ${p.pekan_ke}`,
-          bobot: p.bobot_nilai || 0,
+          nama: p.metode_pembelajaran && p.metode_pembelajaran.trim() !== "" 
+                ? p.metode_pembelajaran 
+                : `Evaluasi Pekan ${p.pekan_ke}`,
+          
+          bobot: p.bobot_cpmk || 0,
 
           cpmk_id: p.cpmk.length > 0 ? p.cpmk[0].id : null,
           cpmk_kode: p.cpmk.length > 0 ? p.cpmk[0].kode_cpmk : null
@@ -119,9 +125,9 @@ export async function GET(
       komponenList: kelas.komponenNilai.map(k => ({
         id: k.id,
         nama: k.nama,
-        bobot: k.bobot,
-        cpmk_id: k.pemetaan_komponen_cpmk.length > 0 ? k.pemetaan_komponen_cpmk[0].cpmk_id : null,
-        nama_cpmk: k.pemetaan_komponen_cpmk.length > 0 ? k.pemetaan_komponen_cpmk[0].cpmk.kode_cpmk : null
+        bobot: k.bobot_nilai,
+        cpmk_id: k.cpmk?.id || null,
+        nama_cpmk: k.cpmk?.kode_cpmk || null
       })),
       
       rpsSource, 

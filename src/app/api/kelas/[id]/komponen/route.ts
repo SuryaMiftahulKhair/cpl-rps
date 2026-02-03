@@ -6,142 +6,181 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const kelasId = parseInt((await params).id, 10);
+    const resolvedParams = await params;
+    const kelasId = parseInt(resolvedParams.id, 10);
     const body = await request.json();
-    
-    // --- MODE 1: SYNC RPS ---
+
+    // --- MODE 1: SYNC RPS (Abaikan, tetap sama) ---
     if (body.action === "sync_rps") {
         const { evaluasi } = body;
         await prisma.$transaction(async (tx) => {
             await tx.komponenNilai.deleteMany({ where: { kelas_id: kelasId } });
             for (const item of evaluasi) {
-                const newK = await tx.komponenNilai.create({
+                if (!item.cpmk_id) continue; 
+                await tx.komponenNilai.create({
                     data: {
                         nama: item.nama,
-                        bobot: parseFloat(item.bobot),
-                        kelas_id: kelasId
+                        bobot_nilai: parseFloat(item.bobot),
+                        kelas_id: kelasId,
+                        cpmk_id: parseInt(item.cpmk_id)
                     }
                 });
-                if (item.cpmk_id) {
-                    await tx.pemetaanKomponenCpmk.create({
-                        data: {
-                            komponen_nilai_id: newK.id,
-                            cpmk_id: parseInt(item.cpmk_id),
-                            bobot: 100 // Default 100% kontribusi ke CPMK tsb
-                        }
-                    });
-                }
             }
         });
-        return NextResponse.json({ message: "Sync RPS Success" });
+        return NextResponse.json({ message: "Sync RPS Berhasil" });
     }
 
-    // --- MODE 2: SIMPAN MANUAL / UPLOAD EXCEL ---
-    const { komponen, dataNilai } = body;
+    // --- MODE 2: IMPORT EXCEL (WITH STRICT MASTER VALIDATION) ---
+    if (body.action === "import_excel") {
+        const { komponen, dataNilai } = body;
 
-    if (!komponen || !Array.isArray(komponen)) {
-        return NextResponse.json({ error: "Data komponen tidak valid" }, { status: 400 });
-    }
-
-    await prisma.$transaction(async (tx) => {
-        await tx.komponenNilai.deleteMany({ where: { kelas_id: kelasId } });
-
-        const mapKomponenId: Record<string, number> = {};
-
-        for (const k of komponen) {
-            const newK = await tx.komponenNilai.create({
-                data: {
-                    nama: k.nama,
-                    bobot: parseFloat(k.bobot),
-                    kelas_id: kelasId
-                }
-            });
-            
-            mapKomponenId[k.nama] = newK.id;
-
-            if (k.cpmk_id) {
-                const cpmkIdInt = parseInt(String(k.cpmk_id)); 
-                
-                if (!isNaN(cpmkIdInt)) {
-
-                    await tx.pemetaanKomponenCpmk.create({
-                        data: {
-                            komponen_nilai_id: newK.id,
-                            cpmk_id: cpmkIdInt,
-                            bobot: 100 
-                        }
-                    });
-                }
-            }
+        if (!dataNilai || !Array.isArray(dataNilai)) {
+            return NextResponse.json({ error: "Data Excel tidak valid" }, { status: 400 });
         }
 
+        let successCount = 0;
+        let failedCount = 0;
+        let errors: string[] = [];
 
-        if (dataNilai && Array.isArray(dataNilai)) {
-            for (const row of dataNilai) {
-                const nimKey = Object.keys(row).find(key => key.toLowerCase() === 'nim');
-                const namaKey = Object.keys(row).find(key => key.toLowerCase() === 'nama');
-                
-                const nim = nimKey ? row[nimKey] : null;
-                const namaMhs = namaKey ? row[namaKey] : "Mahasiswa";
+        await prisma.$transaction(async (tx) => {
+            for (let i = 0; i < dataNilai.length; i++) {
+                const row = dataNilai[i];
+                const rowIndex = i + 1; 
+                const nimKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'nim');
+                const namaKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'nama');
 
-                if (!nim) continue; 
+                const rawNim = nimKey ? row[nimKey] : null;
+                const rawNama = namaKey ? row[namaKey] : null;
 
+                if (!rawNim) {
+                    errors.push(`Baris ${rowIndex}: Kolom NIM kosong.`);
+                    failedCount++;
+                    continue; 
+                }
+
+                const nimString = String(rawNim).trim();
+                const namaExcel = String(rawNama || "").trim().toLowerCase();
+
+                // 2. CEK PESERTA DI KELAS 
                 let peserta = await tx.pesertaKelas.findFirst({
-                    where: { kelas_id: kelasId, nim: String(nim) }
+                    where: {
+                        kelas_id: kelasId,
+                        mahasiswa: { nim: nimString }
+                    }
                 });
 
                 if (!peserta) {
+                    const mhsMaster = await tx.mahasiswa.findUnique({
+                        where: { nim: nimString }
+                    });
+                    if (!mhsMaster) {
+                        console.log(`❌ Gagal: NIM ${nimString} tidak ada di Master Data.`);
+                        errors.push(`Baris ${rowIndex} (NIM ${nimString}): Data mahasiswa tidak ditemukan di database kampus.`);
+                        failedCount++;
+                        continue; 
+                    }
+                    const namaMaster = mhsMaster.nama.toLowerCase();
+                    if (namaExcel && !namaMaster.includes(namaExcel) && !namaExcel.includes(namaMaster)) {
+                        console.log(`❌ Gagal: Nama tidak cocok. Master: ${mhsMaster.nama}, Excel: ${rawNama}`);
+                        errors.push(`Baris ${rowIndex} (NIM ${nimString}): Nama di Excel ("${rawNama}") tidak cocok dengan data Master ("${mhsMaster.nama}").`);
+                        failedCount++;
+                        continue; 
+                    }
+                    console.log(`✨ Auto-register: ${nimString} (${mhsMaster.nama}) ke kelas.`);
                     peserta = await tx.pesertaKelas.create({
-                        data: { 
-                            kelas: {
-                                connect: { id: kelasId }
-                            },
-                            mahasiswa: {
-                                connect: { nim: String(nim) }}
+                        data: {
+                            kelas_id: kelasId,
+                            mahasiswa_id: mhsMaster.id
                         }
                     });
                 }
 
-                // Simpan Nilai per Komponen
-                let nilaiAkhir = 0;
-                for (const k of komponen) {
-                    // Cari nilai di Excel berdasarkan nama komponen
-                    const val = row[k.nama];
-                    const nilaiAngka = parseFloat(val);
-                    const komponenId = mapKomponenId[k.nama];
+                // 3. UPDATE NILAI 
+                let isRowUpdated = false;
 
-                    if (!isNaN(nilaiAngka) && komponenId) {
-                        await tx.nilai.create({
-                            data: {
-                                peserta_kelas_id: peserta.id,
-                                komponen_nilai_id: komponenId,
-                                nilai_komponen: nilaiAngka
-                            }
-                        });
-                        nilaiAkhir += nilaiAngka * (k.bobot / 100);
+                for (const k of komponen) {
+                    const excelKey = Object.keys(row).find(key => 
+                        key.trim().toLowerCase() === k.nama.trim().toLowerCase()
+                    );
+                    
+                    if (excelKey && row[excelKey] !== undefined) {
+                        const nilaiInput = parseFloat(row[excelKey]);
+                        
+                        if (!isNaN(nilaiInput)) {
+                            await tx.nilai.upsert({
+                                where: {
+                                    peserta_kelas_id_komponen_nilai_id: {
+                                        peserta_kelas_id: peserta.id,
+                                        komponen_nilai_id: k.id
+                                    }
+                                },
+                                update: { nilai_komponen: nilaiInput },
+                                create: {
+                                    peserta_kelas_id: peserta.id,
+                                    komponen_nilai_id: k.id,
+                                    nilai_komponen: nilaiInput
+                                }
+                            });
+                            isRowUpdated = true;
+                        }
                     }
                 }
-                
-                // Konversi Huruf
-                let nilaiHuruf = "E";
-                if (nilaiAkhir >= 85) nilaiHuruf = "A";
-                else if (nilaiAkhir >= 80) nilaiHuruf = "A-";
-                else if (nilaiAkhir >= 75) nilaiHuruf = "B+";
-                else if (nilaiAkhir >= 70) nilaiHuruf = "B";
-                else if (nilaiAkhir >= 65) nilaiHuruf = "B-";
-                else if (nilaiAkhir >= 60) nilaiHuruf = "C+";
-                else if (nilaiAkhir >= 50) nilaiHuruf = "C";
-                else if (nilaiAkhir >= 40) nilaiHuruf = "D";
-                
-                await tx.pesertaKelas.update({
-                    where: { id: peserta.id },
-                    data: { nilai_akhir_angka: nilaiAkhir, nilai_huruf: nilaiHuruf }
-                });
-            }
-        }
-    });
 
-    return NextResponse.json({ message: "Data berhasil disimpan" });
+                // 4. HITUNG NILAI AKHIR 
+                if (isRowUpdated) {
+                    const allNilai = await tx.nilai.findMany({
+                        where: { peserta_kelas_id: peserta.id },
+                        include: { komponen: true }
+                    });
+
+                    let totalScore = 0;
+                    allNilai.forEach(n => {
+                        totalScore += (n.nilai_komponen * n.komponen.bobot_nilai) / 100;
+                    });
+
+                    totalScore = parseFloat(totalScore.toFixed(2));
+
+                    let huruf = "E";
+                    if (totalScore >= 85) huruf = "A";
+                    else if (totalScore >= 80) huruf = "A-";
+                    else if (totalScore >= 75) huruf = "B+";
+                    else if (totalScore >= 70) huruf = "B";
+                    else if (totalScore >= 65) huruf = "B-";
+                    else if (totalScore >= 60) huruf = "C+";
+                    else if (totalScore >= 50) huruf = "C";
+                    else if (totalScore >= 40) huruf = "D";
+
+                    await tx.pesertaKelas.update({
+                        where: { id: peserta.id },
+                        data: {
+                            nilai_akhir_angka: totalScore,
+                            nilai_akhir_huruf: huruf
+                        }
+                    });
+                    
+                    successCount++;
+                }
+            }
+        });
+
+        let message = `Import Selesai. Sukses: ${successCount}, Gagal: ${failedCount}.`;
+
+        if (errors.length > 0) {
+            const errorPreview = errors.slice(0, 3).join("\n"); 
+            const moreErrors = errors.length > 3 ? `\n...dan ${errors.length - 3} error lainnya.` : "";
+            
+            return NextResponse.json({ 
+                success: true, 
+                message: message,
+                details: errorPreview + moreErrors,
+                hasError: true
+            });
+        }
+
+        return NextResponse.json({ success: true, message: message, hasError: false });
+    }
+
+    return NextResponse.json({ error: "Action tidak dikenal" }, { status: 400 });
 
   } catch (err: any) {
     console.error("API POST Error:", err);
