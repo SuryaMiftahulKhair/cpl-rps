@@ -1,6 +1,8 @@
+// src/app/api/kurikulum/route.ts
+
 import { NextResponse, NextRequest } from "next/server";
-import prisma from "@/../lib/prisma"; 
-import { getSession } from "@/../lib/auth"; 
+import prisma from "@/../lib/prisma";
+import { getSession } from "@/../lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,8 +15,8 @@ export async function GET(req: NextRequest) {
     }
 
     // --- PERBAIKAN LOGIKA DI SINI ---
-    // Pastikan kita paksa ambil dari URL dulu. 
-    // Jika URL kosong, baru kita cek session. 
+    // Pastikan kita paksa ambil dari URL dulu.
+    // Jika URL kosong, baru kita cek session.
     // Kalau session juga kosong (misal superadmin), kita beri error atau default.
     let finalProdiId: number | null = null;
 
@@ -28,42 +30,49 @@ export async function GET(req: NextRequest) {
     console.log("API Kurikulum - ProdiID yang digunakan:", finalProdiId);
 
     if (!finalProdiId) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "Prodi ID tidak ditemukan. Pastikan sudah memilih Prodi di Sidebar." 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Prodi ID tidak ditemukan. Pastikan sudah memilih Prodi di Sidebar.",
+        },
+        { status: 400 },
+      );
     }
 
     const data = await prisma.kurikulum.findMany({
       where: {
-        prodi_id: finalProdiId 
+        prodi_id: finalProdiId,
       },
       include: {
         _count: {
-          select: { 
-            cpl: true, 
-            mataKuliah: true 
-          }
+          select: {
+            cpl: true,
+            mataKuliah: true,
+          },
         },
-        programStudi: true 
+        programStudi: true,
       },
       orderBy: {
-        tahun: 'desc'
-      }
+        tahun: "desc",
+      },
     });
 
     return NextResponse.json({ success: true, data });
-
   } catch (err: any) {
-    console.error("API Kurikulum Error:", err); 
-    return NextResponse.json({ success: false, error: "Server Error" }, { status: 500 });
+    console.error("API Kurikulum Error:", err);
+    return NextResponse.json(
+      { success: false, error: "Server Error" },
+      { status: 500 },
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
     const { nama, tahun, prodiId } = body; // Ambil prodiId langsung dari body (lebih aman)
@@ -71,25 +80,34 @@ export async function POST(req: NextRequest) {
     // Prioritas: Body > URL > Session
     const { searchParams } = new URL(req.url);
     const urlProdiId = searchParams.get("prodiId");
-    
-    const targetProdiId = prodiId ? Number(prodiId) : (urlProdiId ? Number(urlProdiId) : Number(session.prodiId));
+
+    const targetProdiId = prodiId
+      ? Number(prodiId)
+      : urlProdiId
+        ? Number(urlProdiId)
+        : Number(session.prodiId);
 
     if (!targetProdiId) {
-       return NextResponse.json({ error: "Gagal menentukan Prodi ID untuk data baru" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Gagal menentukan Prodi ID untuk data baru" },
+        { status: 400 },
+      );
     }
 
     const newKurikulum = await prisma.kurikulum.create({
       data: {
         nama,
         tahun: Number(tahun),
-        prodi_id: targetProdiId
-      }
+        prodi_id: targetProdiId,
+      },
     });
 
     return NextResponse.json({ success: true, data: newKurikulum });
-
   } catch (err: any) {
     console.error("Create Kurikulum Error:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500 },
+    );
   }
 }

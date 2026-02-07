@@ -48,6 +48,7 @@ interface MatriksCPLTableProps {
   compactMode?: boolean;
   maxHeight?: string;
   showControls?: boolean;
+  isReadOnly?: boolean;
   onMappingChange?: () => void;
 }
 
@@ -124,6 +125,7 @@ const cplDesignSystem: Record<string, any> = {
 export default function MatriksCPLTable({
   kurikulumId,
   prodiId,
+  isReadOnly = false,
   compactMode = false,
   maxHeight = "max-h-[600px]",
   showControls = true,
@@ -281,6 +283,8 @@ export default function MatriksCPLTable({
           }),
         },
       );
+
+      if (isReadOnly) return;
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
@@ -602,6 +606,8 @@ export default function MatriksCPLTable({
                                 ${currentState === "checked" && `bg-linear-to-br ${design.checked} ${design.border}`}
                                 ${currentState === "saving" && "bg-yellow-50 border-yellow-400 animate-pulse"}
                                 ${currentState === "error" && "bg-red-50 border-red-400 animate-pulse"}
+                                ${isReadOnly ? "cursor-default" : "cursor-pointer hover:bg-gray-100"} 
+                                ${isChecked ? "bg-indigo-50" : "bg-white"}
                               `}
                               onMouseEnter={() => {
                                 if (currentState !== "saving") {

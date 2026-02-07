@@ -402,6 +402,7 @@ export default function LandingPage() {
               compactMode={false}
               maxHeight="max-h-[600px]"
               showControls={true}
+              isReadOnly={true}
               onMappingChange={() => {
                 fetchStats();
               }}
