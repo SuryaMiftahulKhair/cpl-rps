@@ -5,11 +5,12 @@ import prisma from "@/../lib/prisma";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }, // Gunakan Promise
 ) {
   try {
-    const { id } = await params;
+    const { id } = await params; // Wajib di-await
     const kurikulumId = Number(id);
+
     const { searchParams } = new URL(req.url);
     const prodiId = searchParams.get("prodiId");
 
@@ -21,19 +22,15 @@ export async function GET(
         },
       },
       include: {
+        iks: true, // Data centang ada di sini
         rps: { select: { id: true, is_locked: true } },
-        cpl: true,
-        // KUNCI PERBAIKAN: Baris ini WAJIB ada agar centang tetap muncul saat refresh
-        iks: true,
-        _count: {
-          select: { kelas: true, cpl: true },
-        },
       },
       orderBy: { semester: "asc" },
     });
 
     return NextResponse.json({ success: true, data });
   } catch (err: any) {
+    console.error("API GET MK Error:", err); // Cek log di terminal VSCode
     return NextResponse.json(
       { success: false, error: err.message },
       { status: 500 },

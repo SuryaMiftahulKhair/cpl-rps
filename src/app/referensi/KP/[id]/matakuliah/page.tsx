@@ -409,21 +409,17 @@ export default function MatriksCPLPageAFTER() {
         },
       );
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
-        throw new Error(
-          errorData?.error || errorData?.message || "Gagal update IK mapping",
-        );
-      }
+      if (!res.ok) throw new Error("Gagal update IK mapping");
 
+      // --- REVISI DI SINI: Update state utama matakuliahList ---
       setMatakuliahList((prev) =>
         prev.map((mk) => {
           if (mk.id === mkId) {
             const newMapping = { ...mk.ik_mapping };
             if (currentValue) {
-              delete newMapping[kodeIK];
+              delete newMapping[kodeIK]; // Hapus centang
             } else {
-              newMapping[kodeIK] = true;
+              newMapping[kodeIK] = true; // Tambah centang
             }
             return { ...mk, ik_mapping: newMapping };
           }
@@ -435,21 +431,12 @@ export default function MatriksCPLPageAFTER() {
         ...prev,
         [cellKey]: !currentValue ? "checked" : "idle",
       }));
-      setSuccessMessage(
-        currentValue
-          ? "Mapping berhasil dihapus"
-          : "Mapping berhasil ditambahkan",
-      );
-      setTimeout(() => setSuccessMessage(null), 2000);
+
+      // Opsional: panggil loadData() untuk memastikan sinkronisasi database 100%
+      // await loadData();
     } catch (err: any) {
       setCellStates((prev) => ({ ...prev, [cellKey]: "error" }));
       setError(err.message);
-      setTimeout(() => {
-        setCellStates((prev) => ({
-          ...prev,
-          [cellKey]: currentValue ? "checked" : "idle",
-        }));
-      }, 2000);
     }
   };
 
