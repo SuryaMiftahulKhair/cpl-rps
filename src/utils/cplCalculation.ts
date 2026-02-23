@@ -1,27 +1,45 @@
-//file: src/app/utils/cplCalculation.ts
-
 export function calculateAvgKomponen(nilaiList: number[]): number {
   if (nilaiList.length === 0) return 0;
   return nilaiList.reduce((a, b) => a + b, 0) / nilaiList.length;
 }
 
-export function calculateCPMKScore(mappings: { avg: number; bobot: number }[]): number {
-  let score = 0;
+export function calculateCPMKScore(
+  mappings: { nilai: number; bobot: number }[]
+): { score: number; totalBobot: number } {
+  let totalScore = 0;
+  let totalBobot = 0;
+
   mappings.forEach((m) => {
-    score += m.avg * (m.bobot / 100);
+    totalScore += m.nilai * m.bobot;
+    totalBobot += m.bobot;
   });
-  return score;
+
+  if (totalBobot === 0) return { score: 0, totalBobot: 0 };
+
+  return { 
+      score: totalScore / totalBobot, 
+      totalBobot: totalBobot 
+  };
 }
 
-export function calculateCoefficient(
-  sks: number, 
-  ikCount: number, 
-  totalIK: number, 
-  cpmkWeight: number 
+export function calculateIKScore(
+  inputs: { cpmkScore: number; cpmkWeight: number }[]
 ): number {
-  const sksFactor = sks / 144;
-  const weightFactor = cpmkWeight / 100; 
-  const ikFactor = totalIK > 0 ? ikCount / totalIK : 0;
+  if (inputs.length === 0) return 0;
 
-  return sksFactor * weightFactor * ikFactor;
+  const numerator = inputs.reduce((acc, curr) => acc + (curr.cpmkScore * curr.cpmkWeight), 0);
+  const denominator = inputs.reduce((acc, curr) => acc + curr.cpmkWeight, 0);
+
+  return denominator === 0 ? 0 : numerator / denominator;
+}
+
+export function calculateFinalCPL(
+  inputs: { ikScore: number; bobotIK: number }[]
+): number {
+  if (inputs.length === 0) return 0;
+
+  const numerator = inputs.reduce((acc, curr) => acc + (curr.ikScore * curr.bobotIK), 0);
+  const denominator = inputs.reduce((acc, curr) => acc + curr.bobotIK, 0);
+
+  return denominator === 0 ? 0 : numerator / denominator;
 }
