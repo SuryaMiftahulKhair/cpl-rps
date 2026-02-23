@@ -4,7 +4,7 @@ import prisma from "@/../lib/prisma";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { rps_id, kode_cpmk, deskripsi, ik_id, bobot } = body;
+    const { rps_id, kode_cpmk, deskripsi, ik_id, bobot } = body; 
 
     if (!rps_id || !kode_cpmk) {
       return NextResponse.json({ error: "Data wajib diisi" }, { status: 400 });
@@ -14,12 +14,11 @@ export async function POST(req: NextRequest) {
       data: {
         kode_cpmk,
         deskripsi,
-        bobot_to_cpl: bobot ? parseFloat(bobot) : 0,
+        bobot_cpmk: bobot ? parseInt(String(bobot)) : 0, 
 
         rps: {
           connect: { id: Number(rps_id) },
         },
-
         ik: ik_id ? { connect: [{ id: Number(ik_id) }] } : undefined,
       },
     });
