@@ -68,18 +68,6 @@ model MataKuliah {
   @@map("mata_kuliah")
 }
 
-model CPL {
-  id           Int          @id @default(autoincrement())
-  kode_cpl     String
-  deskripsi    String
-  kurikulum_id Int
-  kurikulum    Kurikulum    @relation(fields: [kurikulum_id], references: [id])
-  iks          Ik[]
-  mataKuliah   MataKuliah[] @relation("CPLToMataKuliah")
-
-  @@map("cpl")
-}
-
 model AssasmentArea {
   id           Int       @id @default(autoincrement())
   nama         String
@@ -154,36 +142,16 @@ model RPS {
   @@map("rps")
 }
 
-model RPSPertemuan {
-  id                  Int     @id @default(autoincrement())
-  pekan_ke            Int
-  kemampuan_akhir     String?
-  bahan_kajian        String?
-  metode_pembelajaran String?
-  waktu               String?
-  pengalaman_belajar  String?
-  kriteria_penilaian  String?
-  rps_id              Int
-  bobot_cpmk          Float?
-  rps                 RPS     @relation(fields: [rps_id], references: [id], onDelete: Cascade)
-  cpmk                CPMK[]  @relation("CPMKToPertemuan")
+model CPL {
+  id           Int          @id @default(autoincrement())
+  kode_cpl     String
+  deskripsi    String
+  kurikulum_id Int
+  kurikulum    Kurikulum    @relation(fields: [kurikulum_id], references: [id])
+  iks          Ik[]
+  mataKuliah   MataKuliah[] @relation("CPLToMataKuliah")
 
-  @@map("rps_pertemuan")
-}
-
-model CPMK {
-  id             Int             @id @default(autoincrement())
-  kode_cpmk      String
-  is_locked      Boolean         @default(true)
-  deskripsi      String
-  bobot_to_cpl   Float
-  komponen_nilai KomponenNilai[]
-  kelas          Kelas[]         @relation("CPMKToKelas")
-  rps_pertemuan  RPSPertemuan[]  @relation("CPMKToPertemuan")
-  rps            RPS[]           @relation("CPMKToRPS")
-  ik             Ik[]            @relation("IkaToCPMK")
-
-  @@map("cpmk")
+  @@map("cpl")
 }
 
 model Ik {
@@ -197,8 +165,54 @@ model Ik {
   cpmk       CPMK[]       @relation("IkaToCPMK")
   mataKuliah MataKuliah[] @relation("IkaToMataKuliah")
   rps        RPS[]        @relation("IkaToRPS")
+  sub_cpmk   SubCpmk[]
 
   @@map("ik")
+}
+
+model CPMK {
+  id             Int             @id @default(autoincrement())
+  kode_cpmk      String
+  is_locked      Boolean         @default(true)
+  deskripsi      String
+  bobot_cpmk     Int
+  komponen_nilai KomponenNilai[]
+  kelas          Kelas[]         @relation("CPMKToKelas")
+  rps            RPS[]           @relation("CPMKToRPS")
+  ik             Ik[]            @relation("IkaToCPMK")
+  sub_cpmk       SubCpmk[]
+
+  @@map("cpmk")
+}
+
+model SubCpmk {
+  id            Int            @id @default(autoincrement())
+  kode_sub      String
+  deskripsi     String
+  cpmk_id       Int
+  cpmk          CPMK           @relation(fields: [cpmk_id], references: [id], onDelete: Cascade)
+  ik_id         Int
+  ik            Ik             @relation(fields: [ik_id], references: [id], onDelete: Cascade)
+  rps_pertemuan RPSPertemuan[] @relation("CPMKToPertemuan")
+
+  @@map("sub_cpmk")
+}
+
+model RPSPertemuan {
+  id                  Int       @id @default(autoincrement())
+  pekan_ke            Int
+  kemampuan_akhir     String?
+  bahan_kajian        String?
+  metode_pembelajaran String?
+  waktu               String?
+  pengalaman_belajar  String?
+  kriteria_penilaian  String?
+  rps_id              Int
+  bobot_assesment     Float
+  rps                 RPS       @relation(fields: [rps_id], references: [id], onDelete: Cascade)
+  sub_cpmk            SubCpmk[] @relation("CPMKToPertemuan")
+
+  @@map("rps_pertemuan")
 }
 
 model KomponenNilai {

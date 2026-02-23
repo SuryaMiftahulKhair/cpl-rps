@@ -10,7 +10,7 @@ export async function POST(
     const kelasId = parseInt(resolvedParams.id, 10);
     const body = await request.json();
 
-    // --- MODE 1: SYNC RPS (Abaikan, tetap sama) ---
+    // --- MODE 1: SYNC RPS ---
     if (body.action === "sync_rps") {
         const { evaluasi } = body;
         await prisma.$transaction(async (tx) => {
@@ -30,7 +30,7 @@ export async function POST(
         return NextResponse.json({ message: "Sync RPS Berhasil" });
     }
 
-    // --- MODE 2: IMPORT EXCEL (WITH STRICT MASTER VALIDATION) ---
+    // --- MODE 2: IMPORT EXCEL ---
     if (body.action === "import_excel") {
         const { komponen, dataNilai } = body;
 
@@ -161,6 +161,10 @@ export async function POST(
                     successCount++;
                 }
             }
+        }, { 
+
+            maxWait: 5000, 
+            timeout: 20000 
         });
 
         let message = `Import Selesai. Sukses: ${successCount}, Gagal: ${failedCount}.`;
