@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react"; // Tambah Suspense
 import Link from "next/link";
 import {
   Eye,
@@ -13,8 +13,6 @@ import {
   AlertCircle,
   X,
   ChevronRight,
-  TrendingUp,
-  Users,
 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 import TahunAjaranModal from "@/app/components/TahunAjaranModal";
@@ -39,7 +37,10 @@ async function parseApiError(res: Response): Promise<string> {
   return text || `HTTP ${res.status}`;
 }
 
-export default function DataNilaiPage() {
+// ============================================================
+// 1. KOMPONEN KONTEN UTAMA
+// ============================================================
+function DataNilaiContent() {
   const [semesterList, setSemesterList] = useState<TahunAjaran[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,7 +112,6 @@ export default function DataNilaiPage() {
     }
   };
 
-  // Count semesters by type
   const ganjilCount = semesterList.filter(
     (s) => s.semester === "GANJIL",
   ).length;
@@ -150,7 +150,6 @@ export default function DataNilaiPage() {
         {/* ========== HEADER ========== */}
         <div className="bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-indigo-100/50 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            {/* Left: Title & Info */}
             <div className="flex items-start gap-4">
               <div className="p-3 bg-white rounded-xl shadow-sm border border-indigo-100">
                 <BookOpen size={28} className="text-indigo-600" />
@@ -165,12 +164,11 @@ export default function DataNilaiPage() {
               </div>
             </div>
 
-            {/* Right: Actions */}
             <div className="flex items-center gap-3">
               <button
                 onClick={fetchData}
                 disabled={isLoading || submitting}
-                className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl border-2 border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
+                className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl border-2 border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
                 <RefreshCw
                   size={18}
                   className={isLoading ? "animate-spin" : ""}
@@ -181,7 +179,7 @@ export default function DataNilaiPage() {
               <button
                 onClick={() => setIsModalOpen(true)}
                 disabled={isLoading || submitting}
-                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
                 <Plus size={20} strokeWidth={2.5} />
                 <span>Tambah Semester</span>
               </button>
@@ -191,7 +189,6 @@ export default function DataNilaiPage() {
 
         {/* ========== STATS CARDS ========== */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {/* Total Semester */}
           <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-5 border border-indigo-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-indigo-500 rounded-xl shadow-md">
@@ -208,7 +205,6 @@ export default function DataNilaiPage() {
             </div>
           </div>
 
-          {/* Semester Ganjil */}
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-blue-500 rounded-xl shadow-md">
@@ -229,7 +225,6 @@ export default function DataNilaiPage() {
             </div>
           </div>
 
-          {/* Semester Genap */}
           <div className="bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl p-5 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-emerald-500 rounded-xl shadow-md">
@@ -251,26 +246,8 @@ export default function DataNilaiPage() {
           </div>
         </div>
 
-        {/* ========== ERROR ALERT ========== */}
-        {error && (
-          <div className="mb-6 flex items-start gap-3 text-sm text-red-700 bg-red-50 p-4 rounded-xl border border-red-200">
-            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="font-semibold">Terjadi Kesalahan</p>
-              <p className="mt-1">{error}</p>
-            </div>
-            <button
-              title="Kembali"
-              onClick={() => setError(null)}
-              className="p-1 rounded-lg hover:bg-red-100 transition-colors">
-              <X size={18} className="text-red-600" />
-            </button>
-          </div>
-        )}
-
         {/* ========== MAIN CONTENT ========== */}
         <div className="bg-white shadow-sm rounded-2xl border border-gray-200 overflow-hidden">
-          {/* Section Header */}
           <div className="p-6 border-b border-gray-200 bg-gray-50/50">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-indigo-100 rounded-lg">
@@ -289,136 +266,66 @@ export default function DataNilaiPage() {
             </div>
           </div>
 
-          {/* Content Area */}
           <div className="p-6">
-            {/* Loading State - Skeleton */}
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(6)].map((_, i) => (
                   <div
                     key={i}
                     className="animate-pulse bg-gray-50 rounded-2xl p-6 border-2 border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="h-6 bg-gray-200 rounded-lg w-24 mb-3"></div>
-                        <div className="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                      </div>
-                      <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
-                    </div>
-                    <div className="pt-4 border-t border-gray-200">
-                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-                    </div>
+                    <div className="h-20 bg-gray-200 rounded-xl"></div>
                   </div>
                 ))}
               </div>
             ) : semesterList.length === 0 ? (
-              /* Empty State */
               <div className="text-center py-16">
-                <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
-                  <Calendar size={40} className="text-indigo-500" />
-                </div>
+                <Calendar size={40} className="text-indigo-500 mx-auto mb-5" />
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
                   Belum Ada Data Semester
                 </h3>
-                <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
-                  Tambahkan semester pertama untuk mulai mengelola data nilai
-                  mahasiswa
-                </p>
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                  <Plus size={20} strokeWidth={2.5} />
-                  Tambah Semester Pertama
+                  className="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold">
+                  Tambah Sekarang
                 </button>
               </div>
             ) : (
-              /* Semester Cards Grid */
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {semesterList.map((semester) => {
                   const colors = getSemesterColors(semester.semester);
-
                   return (
                     <Link
                       key={semester.id}
                       href={`/penilaian/datakelas/${semester.id}`}
                       className="group block">
                       <div
-                        className={`
-                        relative bg-gradient-to-br ${colors.bg} 
-                        border-2 ${colors.border} ${colors.hover}
-                        rounded-2xl p-6 
-                        hover:shadow-xl hover:scale-[1.02] 
-                        transition-all duration-200 cursor-pointer
-                        overflow-hidden h-full
-                      `}>
-                        {/* Background Pattern */}
-                        <div className="absolute top-0 right-0 opacity-10">
-                          <svg width="100" height="100" viewBox="0 0 100 100">
-                            <circle
-                              cx="80"
-                              cy="20"
-                              r="40"
-                              fill="currentColor"
-                              className={colors.text}
-                            />
-                          </svg>
-                        </div>
-
-                        {/* Content */}
+                        className={`relative bg-gradient-to-br ${colors.bg} border-2 ${colors.border} ${colors.hover} rounded-2xl p-6 hover:shadow-xl transition-all h-full overflow-hidden`}>
                         <div className="relative">
-                          {/* Header */}
                           <div className="flex items-center justify-between mb-4">
-                            {/* Semester Badge */}
                             <div
-                              className={`
-                              inline-flex items-center gap-2 px-3 py-1.5 
-                              ${colors.badge} text-white rounded-lg 
-                              text-xs font-bold uppercase tracking-wide shadow-sm
-                            `}>
-                              <Calendar size={14} />
-                              <span>{semester.semester}</span>
+                              className={`${colors.badge} text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide`}>
+                              {semester.semester}
                             </div>
-
-                            {/* View Icon */}
-                            <div className="p-2 bg-white/50 backdrop-blur-sm rounded-lg group-hover:bg-white transition-all">
-                              <Eye
-                                size={20}
-                                className={`${colors.text} group-hover:scale-110 transition-transform`}
-                              />
+                            <div className="p-2 bg-white/50 rounded-lg group-hover:bg-white transition-all">
+                              <Eye size={20} className={colors.text} />
                             </div>
                           </div>
-
-                          {/* Tahun */}
                           <h3 className="text-2xl font-bold text-gray-900 mb-1">
                             {semester.tahun}
                           </h3>
-
-                          {/* Subtitle */}
                           <p className="text-sm text-gray-600 font-medium mb-4">
                             Tahun Ajaran {semester.tahun}
                           </p>
-
-                          {/* Divider */}
-                          <div className="border-t-2 border-white/50 pt-4">
-                            {/* Action Hint */}
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                Lihat Detail
-                              </span>
-                              <div className="flex items-center gap-2 text-sm font-bold text-indigo-600 group-hover:gap-3 transition-all">
-                                <span>Buka</span>
-                                <ChevronRight
-                                  size={16}
-                                  className="group-hover:translate-x-1 transition-transform"
-                                />
-                              </div>
+                          <div className="border-t-2 border-white/50 pt-4 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-600 uppercase">
+                              Lihat Detail
+                            </span>
+                            <div className="flex items-center gap-2 text-sm font-bold text-indigo-600 group-hover:gap-3 transition-all">
+                              <span>Buka</span>
+                              <ChevronRight size={16} />
                             </div>
                           </div>
                         </div>
-
-                        {/* Hover Border Glow */}
-                        <div className="absolute inset-0 border-2 border-indigo-400 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                       </div>
                     </Link>
                   );
@@ -429,7 +336,6 @@ export default function DataNilaiPage() {
         </div>
       </div>
 
-      {/* ========== MODAL ========== */}
       <TahunAjaranModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -437,5 +343,26 @@ export default function DataNilaiPage() {
         submitting={submitting}
       />
     </DashboardLayout>
+  );
+}
+
+// ============================================================
+// 2. WRAPPER UTAMA
+// ============================================================
+export default function DataNilaiPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center p-20 bg-gray-50">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="animate-spin text-indigo-600" size={48} />
+            <p className="text-gray-500 font-bold animate-pulse uppercase">
+              MENYIAPKAN DATA PENILAIAN...
+            </p>
+          </div>
+        </div>
+      }>
+      <DataNilaiContent />
+    </Suspense>
   );
 }
