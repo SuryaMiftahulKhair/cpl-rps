@@ -6,12 +6,12 @@ import Header from "../components/Header";
 import MatriksCPLTable from "../components/MatriksCPLTable";
 import { HiOutlineHome, HiOutlineExclamationTriangle } from "react-icons/hi2";
 import { Grid3x3, Loader2, AlertCircle, RefreshCw } from "lucide-react";
-import { useSearchParams } from "next/navigation"; // Ditambahkan untuk integrasi Sidebar
+import { useSearchParams } from "next/navigation";
 
-// --- KOMPONEN KONTEN UTAMA (Semua fitur Kakak ada di sini) ---
+// --- 1. KOMPONEN KONTEN (Isi Dashboard Kakak) ---
 function HomeContent() {
+  // Ambil prodiId dari URL secara dinamis sesuai Zustand Sidebar
   const searchParams = useSearchParams();
-  // Ambil prodiId dari URL (Zustand Sidebar), default ke 1 jika kosong
   const prodiId = searchParams.get("prodiId") || "1";
 
   const [kurikulumList, setKurikulumList] = useState<any[]>([]);
@@ -29,12 +29,9 @@ function HomeContent() {
         cache: "no-store",
       });
 
-      if (!res.ok) {
-        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
-      }
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
 
       const data = await res.json();
-
       if (data.success && data.data?.length > 0) {
         setKurikulumList(data.data);
         setSelectedKurikulum(data.data[0].id);
@@ -50,7 +47,7 @@ function HomeContent() {
 
   useEffect(() => {
     fetchKurikulum();
-  }, [prodiId]); // Ikut refresh kalau prodi di sidebar diganti
+  }, [prodiId]);
 
   return (
     <main className="p-8 space-y-6 bg-white">
@@ -75,7 +72,7 @@ function HomeContent() {
         </div>
       </div>
 
-      {/* ================= MATRIKS CPL SECTION ================= */}
+      {/* MATRIKS CPL SECTION */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -87,17 +84,16 @@ function HomeContent() {
                 Matriks CPL - Mata Kuliah
               </h2>
               <p className="text-sm text-gray-600">
-                Pemetaan Indikator Kinerja (IK) terhadap Mata Kuliah
+                Pemetaan Indikator Kinerja (IK) terhadap Mata Kuliah Prodi ID:{" "}
+                {prodiId}
               </p>
             </div>
           </div>
-
           {!loading && (
             <button
               onClick={fetchKurikulum}
               className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all text-sm font-semibold text-gray-700 shadow-sm">
-              <RefreshCw size={16} />
-              Refresh
+              <RefreshCw size={16} /> Refresh
             </button>
           )}
         </div>
@@ -119,43 +115,18 @@ function HomeContent() {
           </div>
         )}
 
-        {loading && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
-            <div className="flex flex-col items-center justify-center gap-3">
-              <Loader2
-                className="animate-spin text-indigo-700"
-                size={40}
-                strokeWidth={2.5}
-              />
-              <p className="text-sm text-gray-600 font-medium">
-                Memuat kurikulum...
-              </p>
-            </div>
+        {loading ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 flex flex-col items-center gap-3">
+            <Loader2
+              className="animate-spin text-indigo-700"
+              size={40}
+              strokeWidth={2.5}
+            />
+            <p className="text-sm text-gray-600 font-medium">
+              Memuat kurikulum...
+            </p>
           </div>
-        )}
-
-        {!loading && !error && kurikulumList.length > 1 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Pilih Kurikulum:
-            </label>
-            <select
-              value={selectedKurikulum || ""}
-              onChange={(e) => setSelectedKurikulum(Number(e.target.value))}
-              className="w-full md:w-auto px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm font-semibold text-gray-900 hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white shadow-sm">
-              {kurikulumList.map((k) => (
-                <option
-                  key={k.id}
-                  value={k.id}
-                  className="text-gray-900 font-semibold">
-                  {k.nama} ({k.tahun})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {!loading && !error && selectedKurikulum ? (
+        ) : selectedKurikulum ? (
           <MatriksCPLTable
             kurikulumId={selectedKurikulum}
             prodiId={Number(prodiId)}
@@ -163,68 +134,45 @@ function HomeContent() {
             maxHeight="max-h-[500px]"
             showControls={true}
           />
-        ) : !loading && !error && kurikulumList.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
-            <div className="flex flex-col items-center justify-center text-center">
-              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-200">
-                <AlertCircle className="w-10 h-10 text-gray-400" />
-              </div>
+        ) : (
+          !loading && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+              <AlertCircle className="w-10 h-10 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Belum Ada Kurikulum
               </h3>
               <p className="text-sm text-gray-600 mb-6 max-w-md">
-                Silakan tambahkan kurikulum terlebih dahulu untuk dapat melihat
-                matriks CPL - Mata Kuliah
+                Silakan tambahkan kurikulum terlebih dahulu.
               </p>
               <a
                 href="/referensi/KP"
-                className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-all font-semibold shadow-sm hover:shadow-md">
-                <span>Kelola Kurikulum</span>
+                className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 font-semibold shadow-sm">
+                Kelola Kurikulum
               </a>
             </div>
-          </div>
-        ) : null}
+          )
+        )}
 
-        {/* Informasi / Tips */}
-        {!loading && !error && selectedKurikulum && (
+        {/* TIPS SECTION */}
+        {!loading && selectedKurikulum && (
           <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-indigo-700 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-                <span className="text-white font-bold text-lg">💡</span>
+            <div className="flex items-start gap-3 text-sm text-indigo-800">
+              <div className="w-8 h-8 bg-indigo-700 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm text-white font-bold">
+                💡
               </div>
               <div>
-                <h4 className="font-bold text-indigo-900 mb-2 text-sm">
+                <h4 className="font-bold text-indigo-900 mb-1">
                   Tips Penggunaan
                 </h4>
-                <ul className="space-y-1.5 text-xs text-indigo-800">
-                  <li className="flex items-start gap-2">
-                    <span className="text-indigo-600 font-bold mt-0.5">•</span>
-                    <span>
-                      Setiap CPL memiliki <strong>warna unik</strong> untuk
-                      identifikasi cepat
-                    </span>
+                <ul className="list-disc ml-4 space-y-1 text-xs">
+                  <li>
+                    Warna unik untuk tiap CPL membantu identifikasi cepat.
                   </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-indigo-600 font-bold mt-0.5">•</span>
-                    <span>
-                      Gunakan tombol <strong>collapse/expand</strong> untuk
-                      fokus pada CPL tertentu
-                    </span>
+                  <li>
+                    Gunakan <strong>collapse</strong> untuk fokus pada CPL
+                    tertentu.
                   </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-indigo-600 font-bold mt-0.5">•</span>
-                    <span>
-                      <strong>Klik sel</strong> untuk toggle mapping IK ke mata
-                      kuliah
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-indigo-600 font-bold mt-0.5">•</span>
-                    <span>
-                      Gunakan mode <strong>Fullscreen</strong> untuk view yang
-                      lebih luas
-                    </span>
-                  </li>
+                  <li>Klik sel untuk menambah atau menghapus mapping.</li>
                 </ul>
               </div>
             </div>
@@ -235,20 +183,22 @@ function HomeContent() {
   );
 }
 
-// --- WRAPPER UTAMA (Penjaga Layout & Suspense) ---
+// --- 2. WRAPPER UTAMA (Penyedia Suspense Boundary) ---
 export default function HomePage() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <div className="flex flex-col flex-1 bg-white">
         <Header />
-        {/* Suspense menjaga agar Vercel build tidak error */}
+        {/* Suspense membungkus konten yang menggunakan useSearchParams */}
         <Suspense
           fallback={
             <div className="flex-1 flex items-center justify-center p-20 bg-white">
-              <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-4 text-center">
                 <Loader2 className="animate-spin text-indigo-600" size={48} />
-                <p className="text-gray-500 font-medium">Memuat Dashboard...</p>
+                <p className="text-gray-500 font-medium animate-pulse">
+                  Menyiapkan Dashboard...
+                </p>
               </div>
             </div>
           }>
