@@ -21,7 +21,9 @@ export async function PUT(
         metode_pembelajaran: body.metode_pembelajaran,
         waktu: body.waktu,
         kriteria_penilaian: body.kriteria_penilaian,
-        bobot_nilai: Number(body.bobot_nilai) || 0,
+
+        // REVISI: Ganti bobot_nilai menjadi bobot_assesment (sesuai schema.prisma)
+        bobot_assesment: Number(body.bobot_assesment || body.bobot_nilai) || 0,
       },
     });
 
