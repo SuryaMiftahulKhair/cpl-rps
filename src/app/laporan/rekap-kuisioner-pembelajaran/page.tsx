@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react"; // Tambah Suspense
 import Link from "next/link";
-import { Eye, Plus, RefreshCw, Loader2 } from "lucide-react"; 
+import { Eye, Plus, RefreshCw, Loader2 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 import TahunAjaranModal from "@/app/components/TahunAjaranModal";
 
@@ -11,13 +11,14 @@ async function parseApiError(res: Response): Promise<string> {
   let parsed: any = null;
   try {
     parsed = JSON.parse(text);
-  } catch {
-  }
+  } catch {}
   if (parsed?.error) {
     if (Array.isArray(parsed.error)) return parsed.error.join(", ");
     if (typeof parsed.error === "string") return parsed.error;
-    if (Array.isArray(parsed.error.issues)) { 
-      return parsed.error.issues.map((i: any) => `${i.path[0]}: ${i.message}`).join(", ");
+    if (Array.isArray(parsed.error.issues)) {
+      return parsed.error.issues
+        .map((i: any) => `${i.path[0]}: ${i.message}`)
+        .join(", ");
     }
     return JSON.stringify(parsed.error);
   }
@@ -30,8 +31,8 @@ interface TahunAjaran {
   semester: "GANJIL" | "GENAP";
 }
 
-// --- Komponen Halaman Utama ---
-export default function DataKelasPage() {
+// --- KOMPONEN KONTEN UTAMA ---
+function RekapKuisionerContent() {
   const [semesterList, setSemesterList] = useState<TahunAjaran[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -42,11 +43,11 @@ export default function DataKelasPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/tahunAjaran?page=1&limit=50"); 
+      const res = await fetch("/api/tahunAjaran?page=1&limit=50");
       if (!res.ok) throw new Error(await parseApiError(res));
 
       const json = await res.json();
-      const data = Array.isArray(json) ? json : json?.data ?? [];
+      const data = Array.isArray(json) ? json : (json?.data ?? []);
 
       setSemesterList(data);
     } catch (err: any) {
@@ -61,13 +62,22 @@ export default function DataKelasPage() {
     fetchData();
   }, []);
 
-  const handleAddTahunAjaran = async (data: { tahun: string; semester: "GANJIL" | "GENAP" }) => {
+  const handleAddTahunAjaran = async (data: {
+    tahun: string;
+    semester: "GANJIL" | "GENAP";
+  }) => {
     setSubmitting(true);
     setError(null);
 
-    const optimisticId = -Date.now(); 
+    const optimisticId = -Date.now();
     const optimisticItem: TahunAjaran = { id: optimisticId, ...data };
-    setSemesterList((prev) => [optimisticItem, ...prev].sort((a, b) => b.tahun.localeCompare(a.tahun) || b.semester.localeCompare(a.semester)));
+    setSemesterList((prev) =>
+      [optimisticItem, ...prev].sort(
+        (a, b) =>
+          b.tahun.localeCompare(a.tahun) ||
+          b.semester.localeCompare(a.semester),
+      ),
+    );
     setIsModalOpen(false);
 
     try {
@@ -82,11 +92,8 @@ export default function DataKelasPage() {
       const created = await res.json();
 
       setSemesterList((prev) =>
-        prev.map((item) =>
-          item.id === optimisticId ? created : item
-        )
+        prev.map((item) => (item.id === optimisticId ? created : item)),
       );
-
     } catch (err: any) {
       console.error("Create Tahun Ajaran error:", err);
       setError(err?.message || "Gagal menambahkan. Coba lagi.");
@@ -95,37 +102,42 @@ export default function DataKelasPage() {
       setSubmitting(false);
     }
   };
-  
- 
+
   const formatNamaSemester = (tahun: string, semester: "GANJIL" | "GENAP") => {
     const semesterFormatted = semester.toUpperCase();
     return `${semesterFormatted} ${tahun}`;
-  }
+  };
 
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 bg-gray-50 min-h-screen">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Rekap Kuisioner Pembelajaran</h1>
+          <h1 className="text-3xl font-bold text-gray-800">
+            Rekap Kuisioner Pembelajaran
+          </h1>
         </div>
         <div>
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">Pilih Tahun Ajaran</h2>
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">
+              Pilih Tahun Ajaran
+            </h2>
             <div className="flex items-center justify-end mb-4 gap-3">
               <button
                 onClick={() => setIsModalOpen(true)}
                 disabled={loading || submitting}
-                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-lg shadow-sm hover:bg-green-700 transition-all font-medium text-sm disabled:opacity-50"
-              >
+                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-lg shadow-sm hover:bg-green-700 transition-all font-medium text-sm disabled:opacity-50">
                 <Plus size={18} />
                 <span>Tambah</span>
               </button>
-              <button 
-                onClick={fetchData} 
+              <button
+                onClick={fetchData}
                 disabled={loading || submitting}
-                className="flex items-center gap-2 bg-indigo-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-600 transition-colors shadow-md disabled:opacity-50"
-               >
-                 {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                className="flex items-center gap-2 bg-indigo-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-600 transition-colors shadow-md disabled:opacity-50">
+                {loading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={18} />
+                )}
                 <span>{loading ? "Memuat..." : "Refresh Data"}</span>
               </button>
             </div>
@@ -150,15 +162,17 @@ export default function DataKelasPage() {
             ) : (
               semesterList.map((semester) => (
                 <Link
-                  key={semester.id} 
+                  key={semester.id}
                   href={`/laporan/rekap-kuisioner-pembelajaran/${semester.id}`}
-                  className="block" 
-                >
+                  className="block">
                   <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-indigo-400 hover:shadow-lg transition-all duration-200 group cursor-pointer">
                     <div className="flex items-center justify-between">
                       <div className="text-left">
                         <h3 className="text-lg font-bold text-indigo-600 group-hover:text-indigo-700 mb-1">
-                          {formatNamaSemester(semester.tahun, semester.semester)}
+                          {formatNamaSemester(
+                            semester.tahun,
+                            semester.semester,
+                          )}
                         </h3>
                         <p className="text-sm text-gray-500">
                           Tahun Ajaran {semester.tahun}
@@ -176,7 +190,7 @@ export default function DataKelasPage() {
           </div>
         </div>
       </div>
-      
+
       <TahunAjaranModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -184,5 +198,19 @@ export default function DataKelasPage() {
         submitting={submitting}
       />
     </DashboardLayout>
+  );
+}
+
+// --- WRAPPER UTAMA ---
+export default function RekapKuisionerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center p-20 bg-gray-50">
+          <Loader2 className="animate-spin text-indigo-600" size={48} />
+        </div>
+      }>
+      <RekapKuisionerContent />
+    </Suspense>
   );
 }
