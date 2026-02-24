@@ -9,17 +9,24 @@ export async function GET(
     const { id } = await params;
     const rpsId = Number(id);
 
-    // 1. Ambil semua data sesuai standar Manual RPS
+    // 1. Ambil data dengan relasi yang VALID sesuai schema.prisma
     const data = await prisma.rPS.findUnique({
       where: { id: rpsId },
       include: {
         matakuliah: true,
-        cpmk: true,
-        sub_cpmk: true,
-        pertemuan: {
-          // Ganti 'minggu_ke' dengan field yang valid, misal 'id'
-          orderBy: { id: "asc" },
+        cpmk: {
+          include: {
+            sub_cpmk: true, // SubCpmk diambil lewat CPMK (Sesuai Schema)
+          },
         },
+        pertemuan: {
+          // Gunakan 'pekan_ke' (sesuai schema) bukan 'id' agar urutan rapi
+          orderBy: { pekan_ke: "asc" },
+          include: {
+            sub_cpmk: true, // Ambil juga SubCpmk yang dibahas di tiap pertemuan
+          },
+        },
+        ikas: true, // Relasi many-to-many ke model Ik
       },
     });
 
@@ -30,16 +37,15 @@ export async function GET(
       );
     }
 
-    // 2. Logic Generate PDF
-    // Tips: Untuk hasil yang presisi sesuai manual,
-    // Kakak bisa menggunakan library 'jspdf-autotable' atau 'pdfkit'
-
-    // Sementara kita buat response sukses agar error 'Function not implemented' hilang
+    // 2. Response Sukses
+    // Data ini sekarang sudah lengkap untuk di-render ke PDF di sisi Frontend
     return NextResponse.json({
-      message: "Data siap di-generate ke PDF",
+      success: true,
+      message: "Data berhasil ditarik sesuai schema",
       data: data,
     });
   } catch (error: any) {
+    console.error("BUILD ERROR FIX:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
