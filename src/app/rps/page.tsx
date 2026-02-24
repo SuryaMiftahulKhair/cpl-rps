@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import DashboardLayout from "@/app/components/DashboardLayout"; 
-import { 
-  Loader2, 
-  ChevronRight, 
-  Layers, 
+import { useEffect, useState, Suspense } from "react"; // Tambah Suspense
+import DashboardLayout from "@/app/components/DashboardLayout";
+import {
+  Loader2,
+  ChevronRight,
+  Layers,
   BookOpen,
   Calendar,
   AlertCircle,
   FileText,
-  Eye
 } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation"; 
+import { useSearchParams } from "next/navigation";
 
 type Kurikulum = {
   id: number;
@@ -21,7 +20,11 @@ type Kurikulum = {
   tahun: number;
 };
 
-export default function RpsAdminDashboardPage() {
+// ============================================================
+// 1. KOMPONEN KONTEN UTAMA
+// Pindahkan seluruh logika filter kurikulum asli Kakak ke sini
+// ============================================================
+function RpsAdminDashboardContent() {
   const searchParams = useSearchParams();
   const prodiId = searchParams.get("prodiId"); // Ambil prodiId dari URL Sidebar
 
@@ -35,26 +38,25 @@ export default function RpsAdminDashboardPage() {
       if (!prodiId) {
         setLoading(false);
         return;
-      } 
+      }
 
       setLoading(true);
       setError(null);
       try {
         // Step 2: Kirim prodiId ke API Kurikulum untuk filter data S1/S2
         const res = await fetch(`/api/kurikulum?prodiId=${prodiId}`, {
-          cache: 'no-store' // Pastikan selalu ambil data terbaru
-        }); 
-        
+          cache: "no-store", // Pastikan selalu ambil data terbaru
+        });
+
         if (!res.ok) {
           const errData = await res.json();
           throw new Error(errData.error || "Gagal memuat data kurikulum");
         }
-        
-        const jsonResponse = await res.json(); 
-        const data: Kurikulum[] = jsonResponse.data; 
-        
-        setKurikulumList(data); 
-        
+
+        const jsonResponse = await res.json();
+        const data: Kurikulum[] = jsonResponse.data;
+
+        setKurikulumList(data);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -68,10 +70,11 @@ export default function RpsAdminDashboardPage() {
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8">
-        
         {/* ========== BREADCRUMB ========== */}
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-          <span className="hover:text-indigo-600 cursor-pointer transition-colors">RPS</span>
+          <span className="hover:text-indigo-600 cursor-pointer transition-colors">
+            RPS
+          </span>
           <ChevronRight size={16} className="text-gray-400" />
           <span className="font-semibold text-gray-900">Pilih Kurikulum</span>
         </div>
@@ -132,7 +135,6 @@ export default function RpsAdminDashboardPage() {
 
         {/* ========== MAIN CONTENT ========== */}
         <div className="bg-white shadow-sm rounded-2xl border border-gray-200 overflow-hidden">
-          
           {/* Section Header */}
           <div className="p-6 border-b border-gray-200 bg-gray-50/50">
             <div className="flex items-center gap-3">
@@ -140,12 +142,13 @@ export default function RpsAdminDashboardPage() {
                 <Layers size={20} className="text-indigo-600" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-800">Pilih Kurikulum</h2>
+                <h2 className="text-xl font-bold text-gray-800">
+                  Pilih Kurikulum
+                </h2>
                 <p className="text-sm text-gray-600">
-                  {loading 
-                    ? "Memuat data..." 
-                    : `${kurikulumList.length} kurikulum tersedia`
-                  }
+                  {loading
+                    ? "Memuat data..."
+                    : `${kurikulumList.length} kurikulum tersedia`}
                 </p>
               </div>
             </div>
@@ -157,7 +160,9 @@ export default function RpsAdminDashboardPage() {
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="animate-pulse bg-gray-50 rounded-2xl p-6 border-2 border-gray-200">
+                  <div
+                    key={i}
+                    className="animate-pulse bg-gray-50 rounded-2xl p-6 border-2 border-gray-200">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
                       <div className="flex-1">
@@ -181,37 +186,42 @@ export default function RpsAdminDashboardPage() {
                   Belum Ada Kurikulum
                 </h3>
                 <p className="text-sm text-gray-500 max-w-md mx-auto">
-                  {prodiId 
+                  {prodiId
                     ? "Belum ada kurikulum terdaftar untuk prodi ini. Silakan tambahkan kurikulum terlebih dahulu."
-                    : "Silakan pilih program studi dari sidebar untuk melihat kurikulum yang tersedia."
-                  }
+                    : "Silakan pilih program studi dari sidebar untuk melihat kurikulum yang tersedia."}
                 </p>
               </div>
             ) : (
               /* Kurikulum Cards Grid */
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {kurikulumList.map((kur) => (
-                  <Link 
-                    key={kur.id} 
-                    // Step 3: Navigasi ke List MK dengan membawa kurikulumId DAN prodiId
-                    href={`/rps/${kur.id}/list?prodiId=${prodiId}`} 
-                    className="group block"
-                  >
+                  <Link
+                    key={kur.id}
+                    href={`/rps/${kur.id}/list?prodiId=${prodiId}`}
+                    className="group block">
                     <div className="relative bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-2xl p-6 hover:border-indigo-300 hover:shadow-xl hover:scale-[1.02] transition-all duration-200 cursor-pointer overflow-hidden">
-                      
                       {/* Background Pattern */}
                       <div className="absolute top-0 right-0 opacity-5">
                         <svg width="100" height="100" viewBox="0 0 100 100">
-                          <circle cx="80" cy="20" r="40" fill="currentColor" className="text-indigo-600" />
+                          <circle
+                            cx="80"
+                            cy="20"
+                            r="40"
+                            fill="currentColor"
+                            className="text-indigo-600"
+                          />
                         </svg>
                       </div>
 
                       {/* Content */}
                       <div className="relative">
-                        {/* Header */}
                         <div className="flex items-center gap-4 mb-4">
                           <div className="p-3 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-xl group-hover:from-indigo-600 group-hover:to-blue-600 transition-all shadow-sm">
-                            <Layers size={24} className="text-indigo-600 group-hover:text-white transition-colors" strokeWidth={2.5} />
+                            <Layers
+                              size={24}
+                              className="text-indigo-600 group-hover:text-white transition-colors"
+                              strokeWidth={2.5}
+                            />
                           </div>
                           <div className="flex-1">
                             <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors">
@@ -226,9 +236,7 @@ export default function RpsAdminDashboardPage() {
                           </div>
                         </div>
 
-                        {/* Divider */}
                         <div className="border-t-2 border-gray-100 pt-4 mt-4">
-                          {/* Action Hint */}
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
                               <FileText size={14} />
@@ -236,16 +244,14 @@ export default function RpsAdminDashboardPage() {
                             </span>
                             <div className="flex items-center gap-2 text-sm font-bold text-indigo-600 group-hover:gap-3 transition-all">
                               <span>Lihat</span>
-                              <ChevronRight 
-                                size={16} 
+                              <ChevronRight
+                                size={16}
                                 className="group-hover:translate-x-1 transition-transform"
                               />
                             </div>
                           </div>
                         </div>
                       </div>
-
-                      {/* Hover Border Glow */}
                       <div className="absolute inset-0 border-2 border-indigo-400 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                     </div>
                   </Link>
@@ -263,9 +269,13 @@ export default function RpsAdminDashboardPage() {
                 <span className="text-white font-bold text-lg">💡</span>
               </div>
               <div>
-                <h4 className="font-bold text-blue-900 mb-2 text-sm">Informasi</h4>
+                <h4 className="font-bold text-blue-900 mb-2 text-sm">
+                  Informasi
+                </h4>
                 <p className="text-xs text-blue-800 leading-relaxed">
-                  Pilih kurikulum untuk melihat dan mengelola RPS mata kuliah. Setiap kurikulum memiliki daftar mata kuliah dengan RPS yang dapat Anda edit dan kelola.
+                  Pilih kurikulum untuk melihat dan mengelola RPS mata kuliah.
+                  Setiap kurikulum memiliki daftar mata kuliah dengan RPS yang
+                  dapat Anda edit dan kelola.
                 </p>
               </div>
             </div>
@@ -273,5 +283,31 @@ export default function RpsAdminDashboardPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+// ============================================================
+// 2. WRAPPER UTAMA (Penyedia Suspense Boundary)
+// Memberikan keamanan agar proses Build Vercel Sukses
+// ============================================================
+export default function RpsAdminDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gray-50">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <Loader2
+              className="animate-spin text-indigo-600"
+              size={56}
+              strokeWidth={2.5}
+            />
+            <p className="text-gray-500 font-bold tracking-widest animate-pulse uppercase">
+              MENYIAPKAN DAFTAR KURIKULUM...
+            </p>
+          </div>
+        </div>
+      }>
+      <RpsAdminDashboardContent />
+    </Suspense>
   );
 }
