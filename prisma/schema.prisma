@@ -162,10 +162,10 @@ model Ik {
   updatedAt  DateTime     @updatedAt
   cpl_id     Int
   cpl        CPL          @relation(fields: [cpl_id], references: [id])
+  sub_cpmk   SubCpmk[]
   cpmk       CPMK[]       @relation("IkaToCPMK")
   mataKuliah MataKuliah[] @relation("IkaToMataKuliah")
   rps        RPS[]        @relation("IkaToRPS")
-  sub_cpmk   SubCpmk[]
 
   @@map("ik")
 }
@@ -177,21 +177,21 @@ model CPMK {
   deskripsi      String
   bobot_cpmk     Int
   komponen_nilai KomponenNilai[]
+  sub_cpmk       SubCpmk[]
   kelas          Kelas[]         @relation("CPMKToKelas")
   rps            RPS[]           @relation("CPMKToRPS")
   ik             Ik[]            @relation("IkaToCPMK")
-  sub_cpmk       SubCpmk[]
 
   @@map("cpmk")
 }
 
 model SubCpmk {
   id            Int            @id @default(autoincrement())
-  kode_sub_cpmk String
   deskripsi     String
   cpmk_id       Int
-  cpmk          CPMK           @relation(fields: [cpmk_id], references: [id], onDelete: Cascade)
   ik_id         Int
+  kode_sub_cpmk String
+  cpmk          CPMK           @relation(fields: [cpmk_id], references: [id], onDelete: Cascade)
   ik            Ik             @relation(fields: [ik_id], references: [id], onDelete: Cascade)
   rps_pertemuan RPSPertemuan[] @relation("CPMKToPertemuan")
 
