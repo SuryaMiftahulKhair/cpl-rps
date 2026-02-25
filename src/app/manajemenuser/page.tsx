@@ -302,16 +302,23 @@ function ManajemenUserContent() {
                           <td className="px-6 py-4 text-center">
                             <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
+                                title="Ubah"
                                 onClick={() =>
                                   handleResetPassword(user.id, user.nama)
                                 }
                                 className="p-2 text-amber-700 bg-amber-50 border-2 border-amber-200 rounded-lg hover:bg-amber-100">
                                 <HiOutlineKey className="w-5 h-5" />
                               </button>
-                              <button className="p-2 text-indigo-700 bg-indigo-50 border-2 border-indigo-200 rounded-lg hover:bg-indigo-100">
+                              <button
+                                title="Reset Password"
+                                onClick={() =>
+                                  handleResetPassword(user.id, user.nama)
+                                }
+                                className="p-2 text-indigo-700 bg-indigo-50 border-2 border-indigo-200 rounded-lg hover:bg-indigo-100">
                                 <HiOutlinePencilSquare className="w-5 h-5" />
                               </button>
                               <button
+                                title="Hapus"
                                 onClick={() => confirm(`Hapus "${user.nama}"?`)}
                                 className="p-2 text-red-700 bg-red-50 border-2 border-red-200 rounded-lg hover:bg-red-100">
                                 <HiOutlineTrash className="w-5 h-5" />
