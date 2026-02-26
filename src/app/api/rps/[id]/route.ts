@@ -110,26 +110,40 @@ export async function PUT(
     const { section, data } = body;
 
     if (section === "otorisasi") {
-      // Pastikan yang masuk ke database adalah Array String Murni ["Nama A", "Nama B"]
       let cleanPenyusun = data.nama_penyusun;
+
       if (Array.isArray(cleanPenyusun)) {
         cleanPenyusun = cleanPenyusun.map((n: any) =>
           typeof n === "object" ? n.nama : n,
         );
       }
 
+      // Gunakan prisma.rPS (r kecil, PS besar) sesuai penamaan model RPS di schema
       await prisma.rPS.update({
         where: { id: Number(id) },
         data: {
-          nama_penyusun: cleanPenyusun,
-          nama_koordinator: data.nama_koordinator,
-          nama_kaprodi: data.nama_kaprodi,
+          nama_penyusun: cleanPenyusun || [],
+          nama_koordinator: data.nama_koordinator || null,
+          nama_kaprodi: data.nama_kaprodi || null,
         },
       });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    console.error("CRASH PADA API PUT RPS:", error);
+
+    // Jika error karena database tidak terjangkau
+    if (error.message.includes("Can't reach database server")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Koneksi database sibuk, coba beberapa saat lagi.",
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 },
