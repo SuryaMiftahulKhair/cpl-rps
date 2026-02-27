@@ -14,6 +14,7 @@ import {
 import DashboardLayout from "@/app/components/DashboardLayout";
 import { KurikulumModal } from "@/app/components/KurikulumModal";
 import { useSearchParams } from "next/navigation";
+import { useProdiStore } from "@/store/useProdiStore";
 
 interface Kurikulum {
   id: string | number;
@@ -32,6 +33,8 @@ function KurikulumProdiContent() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { activeProdiId, activeProdiName, activeProdiJenjang } =
+    useProdiStore();
 
   const searchParams = useSearchParams();
   const prodiId = searchParams.get("prodiId");
@@ -103,7 +106,7 @@ function KurikulumProdiContent() {
                   Kurikulum Program Studi
                 </h1>
                 <p className="text-sm text-gray-600">
-                  S1 Teknik Informatika •{" "}
+                  {activeProdiJenjang} •{" "}
                   <span className="font-semibold text-indigo-700 ml-1">
                     {kurikulums.length} Kurikulum Aktif
                   </span>

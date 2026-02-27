@@ -1,3 +1,5 @@
+//src/app/components/Sidebar.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -18,7 +20,6 @@ import {
   LucideIcon,
   ChevronRight,
 } from "lucide-react";
-import LogoutButton from "./LogOutButton";
 import { useProdiStore } from "@/store/useProdiStore";
 
 // --- Style Helpers (Enhanced) ---
@@ -36,7 +37,8 @@ const MenuItem: React.FC<{
   isActive: boolean;
   badge?: number; // Optional badge untuk notifikasi
 }> = ({ href, icon: Icon, children, isActive, badge }) => {
-  const { activeProdiId } = useProdiStore();
+  const { activeProdiId, activeProdiName, activeProdiJenjang } =
+    useProdiStore();
   const finalHref = activeProdiId ? `${href}?prodiId=${activeProdiId}` : href;
 
   return (
@@ -99,7 +101,11 @@ const SubMenuItem: React.FC<{
         size={14}
         className={`
                     transition-transform duration-200
-                    ${isActive ? "text-indigo-600" : "text-gray-400 group-hover:translate-x-0.5"}
+                    ${
+                      isActive
+                        ? "text-indigo-600"
+                        : "text-gray-400 group-hover:translate-x-0.5"
+                    }
                 `}
       />
       <span className="text-sm font-medium">{children}</span>
@@ -159,7 +165,8 @@ const CollapsibleMenu: React.FC<{
 };
 
 export default function Sidebar() {
-  const { activeProdiId, setActiveProdi, activeProdiName } = useProdiStore();
+  const { activeProdiId, setActiveProdi, activeProdiName, activeProdiJenjang } =
+    useProdiStore();
   const [openPenilaian, setOpenPenilaian] = useState(false);
   const [openLaporan, setOpenLaporan] = useState(false);
   const [openReferensi, setOpenReferensi] = useState(false);
@@ -175,7 +182,7 @@ export default function Sidebar() {
   const handleProdiChange = (id: string) => {
     const found = listProgram.find((p) => p.id === parseInt(id));
     if (found) {
-      setActiveProdi(found.id, found.nama);
+      setActiveProdi(found.id, found.nama, found.jenjang);
       router.push(`${pathname}?prodiId=${found.id}`);
     }
   };
@@ -185,17 +192,31 @@ export default function Sidebar() {
       try {
         const res = await fetch("/api/auth/profile");
         const result = await res.json();
+
         if (result.success) {
           const prodies = result.user.programStudis;
           setListProgram(prodies);
           setUserRole(result.user.role);
 
           const urlId = searchParams.get("prodiId");
+
+          // 1. Jika ada ID di URL, itu prioritas utama
           if (urlId) {
             const found = prodies.find((p: any) => p.id === parseInt(urlId));
-            if (found) setActiveProdi(found.id, found.nama);
-          } else if (!activeProdiId && prodies.length > 0) {
-            setActiveProdi(prodies[0].id, prodies[0].nama);
+            if (found) {
+              setActiveProdi(found.id, found.nama, found.jenjang);
+              return;
+            }
+          }
+
+          // 2. Validasi: Apakah prodi di storage milik user ini?
+          const isStoredProdiValid = prodies.some(
+            (p: any) => p.id === activeProdiId,
+          );
+
+          // Jika storage kosong ATAU isinya milik orang lain, ambil prodi pertama dari API
+          if ((!activeProdiId || !isStoredProdiValid) && prodies.length > 0) {
+            setActiveProdi(prodies[0].id, prodies[0].nama, prodies[0].jenjang);
           }
         }
       } catch (err) {
@@ -205,7 +226,7 @@ export default function Sidebar() {
       }
     };
     fetchProfile();
-  }, []);
+  }, [searchParams, activeProdiId]);
 
   // Auto-expand menu based on current path
   useEffect(() => {
@@ -280,6 +301,7 @@ export default function Sidebar() {
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
               <span className="text-xs text-white font-medium truncate">
                 Aktif: {activeProdiName}
+                {activeProdiJenjang ? ` (${activeProdiJenjang})` : ""}
               </span>
             </div>
           )}
@@ -355,50 +377,49 @@ export default function Sidebar() {
           </>
         )}
 
-              {userRole === "ADMIN" && (
-        
-                  <>
-                      {/* Monitoring Universitas */}
-                      <MenuItem
-                          href="/monitoring"
-                          icon={Monitor}
-                          isActive={currentPath === "/monitoring"}>
-                          Monitoring Univ
-                      </MenuItem>
+        {userRole === "ADMIN" && (
+          <>
+            {/* Monitoring Universitas */}
+            <MenuItem
+              href="/monitoring"
+              icon={Monitor}
+              isActive={currentPath === "/monitoring"}>
+              Monitoring Univ
+            </MenuItem>
 
-                      {/* Referensi - Collapsible */}
-                      <CollapsibleMenu
-                          title="Referensi"
-                          icon={Layers}
-                          isOpen={openReferensi}
-                          onToggle={() => setOpenReferensi(!openReferensi)}
-                          isPathActive={currentPath.startsWith("/referensi")}>
-                          <SubMenuItem
-                              href="/referensi/KP"
-                              isActive={currentPath.startsWith("/referensi/KP")}>
-                              Kurikulum Prodi
-                          </SubMenuItem>
-                          <SubMenuItem
-                              href="/referensi/JP"
-                              isActive={currentPath === "/referensi/JP"}>
-                              Jenis Penilaian
-                          </SubMenuItem>
-                          <SubMenuItem
-                              href="/referensi/mahasiswa"
-                              isActive={currentPath === "/referensi/mahasiswa"}>
-                              Mahasiswa
-                          </SubMenuItem>
-                      </CollapsibleMenu>
+            {/* Referensi - Collapsible */}
+            <CollapsibleMenu
+              title="Referensi"
+              icon={Layers}
+              isOpen={openReferensi}
+              onToggle={() => setOpenReferensi(!openReferensi)}
+              isPathActive={currentPath.startsWith("/referensi")}>
+              <SubMenuItem
+                href="/referensi/KP"
+                isActive={currentPath.startsWith("/referensi/KP")}>
+                Kurikulum Prodi
+              </SubMenuItem>
+              <SubMenuItem
+                href="/referensi/JP"
+                isActive={currentPath === "/referensi/JP"}>
+                Jenis Penilaian
+              </SubMenuItem>
+              <SubMenuItem
+                href="/referensi/mahasiswa"
+                isActive={currentPath === "/referensi/mahasiswa"}>
+                Mahasiswa
+              </SubMenuItem>
+            </CollapsibleMenu>
 
-                      {/* Manajemen User */}
-                      <MenuItem
-                          href="/manajemenuser"
-                          icon={UsersIcon}
-                          isActive={currentPath === "/manajemenuser"}>
-                          Manajemen User
-                      </MenuItem>
-                  </>
-              )}
+            {/* Manajemen User */}
+            <MenuItem
+              href="/manajemenuser"
+              icon={UsersIcon}
+              isActive={currentPath === "/manajemenuser"}>
+              Manajemen User
+            </MenuItem>
+          </>
+        )}
       </nav>
 
       {/* ========== FOOTER SECTION ========== */}

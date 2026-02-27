@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/../lib/prisma";
+import { Delete } from "lucide-react";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,6 +11,26 @@ export async function POST(req: NextRequest) {
 
     if (!rps_id || !kode_cpmk) {
       return NextResponse.json({ error: "Data wajib diisi" }, { status: 400 });
+    }
+
+    const alreadyUsed = await prisma.ik.findMany({
+      where: {
+        id: { in: ik_ids.map((id: any) => Number(id)) },
+        cpmk: {
+          some: {}, // Ini akan mencari IK yang setidaknya terhubung ke satu CPMK
+        },
+      },
+    });
+
+    if (alreadyUsed.length > 0) {
+      return NextResponse.json(
+        {
+          error: `IK [${alreadyUsed
+            .map((i) => i.kode_ik)
+            .join(", ")}] sudah digunakan oleh CPMK lain!`,
+        },
+        { status: 400 },
+      );
     }
 
     // 2. Simpan ke database menggunakan Prisma Singleton

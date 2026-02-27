@@ -1685,6 +1685,38 @@ export default function DetailRPSPage({
   const [deleteCpmkTarget, setDeleteCpmkTarget] = useState<number | null>(null);
   const [isDeletingCpmk, setIsDeletingCpmk] = useState(false);
 
+  // Di dalam file Page Kakak
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [cpmkToDelete, setCpmkToDelete] = useState<number | null>(null);
+
+  const confirmDeleteCpmk = async () => {
+    if (!cpmkToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      // Pastikan URL-nya mengarah ke ID yang benar
+      const res = await fetch(`/api/rps/cpmk/${cpmkToDelete}`, {
+        method: "DELETE",
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Gagal menghapus data");
+      }
+
+      // SAPU BERSIH: Update UI tanpa refresh manual
+      showSuccess("CPMK berhasil dihapus.");
+      await fetchRPSData(); // Panggil fungsi fetch data Kakak lagi
+      setCpmkToDelete(null); // Tutup modal
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsDeleting(false);
+      setCpmkToDelete(null);
+    }
+  };
+
   // Local state
   const [infoRPS, setInfoRPS] = useState<InfoRPSLocal>({
     nama_mk: "",
@@ -2707,26 +2739,47 @@ export default function DetailRPSPage({
         onSave={handleSaveCpmk}
         isSaving={isSaving}
         nextNo={rpsData?.cpmk?.length ? rpsData.cpmk.length + 1 : 1}
-        // LOGIC SAPU BERSIH: Filter IK yang cpmk_id nya masih kosong (null)
-        availableIks={rpsData.available_iks?.filter((ik: any) => !ik.cpmk_id) || []}
+        availableIks={
+          rpsData?.available_iks?.filter((ik: any) => {
+            return !ik.cpmk || ik.cpmk.length === 0;
+          }) || []
+        }
       />
 
       <DeleteConfirmModal
         isOpen={deleteCpmkTarget !== null}
         onClose={() => setDeleteCpmkTarget(null)}
-        isDeleting={isDeletingCpmk}
+        isDeleting={isDeletingCpmk} // Pastikan state ini yang dipakai
         title="Hapus CPMK?"
-        message="CPMK dan semua Sub-CPMK terkait akan dihapus. Tindakan ini tidak dapat dibatalkan."
+        message="CPMK dan semua Sub-CPMK terkait akan dihapus dari sistem. Tindakan ini tidak dapat dibatalkan."
         onConfirm={async () => {
           if (!deleteCpmkTarget) return;
-          setIsDeletingCpmk(true);
-          setLocalCpmk((p) => p.filter((c) => c.id !== deleteCpmkTarget));
-          setLocalSubCpmk((p) =>
-            p.filter((s) => s.cpmk_id !== deleteCpmkTarget),
-          );
-          setDeleteCpmkTarget(null);
-          setIsDeletingCpmk(false);
-          showSuccess("CPMK dihapus.");
+
+          setIsDeletingCpmk(true); // Mulai loading
+          try {
+            // 1. NEMBAK KE DATABASE (Ini yang tadi hilang)
+            const res = await fetch(`/api/rps/cpmk/${deleteCpmkTarget}`, {
+              method: "DELETE",
+            });
+
+            if (!res.ok) {
+              const errData = await res.json();
+              throw new Error(errData.error || "Gagal menghapus dari database");
+            }
+
+            // 2. UPDATE UI (Hapus dari list lokal agar langsung hilang dari layar)
+            setLocalCpmk((p) => p.filter((c) => c.id !== deleteCpmkTarget));
+            setLocalSubCpmk((p) =>
+              p.filter((s) => s.cpmk_id !== deleteCpmkTarget),
+            );
+
+            showSuccess("CPMK berhasil dihapus permanen.");
+            setDeleteCpmkTarget(null); // Tutup modal
+          } catch (e: any) {
+            alert("Error: " + e.message);
+          } finally {
+            setIsDeletingCpmk(false); // Matikan loading
+          }
         }}
       />
 

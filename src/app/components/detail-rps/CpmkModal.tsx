@@ -1,8 +1,9 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { X, Save, Loader2, Target, Percent, Check } from "lucide-react";
+import { X, Save, Loader2, Target, Percent, Check, Book } from "lucide-react";
 import { useEffect } from "react";
+import { useProdiStore } from "@/store/useProdiStore";
 
 interface CpmkModalProps {
   isOpen: boolean;
@@ -32,6 +33,8 @@ export default function CpmkModal({
 
   // Memantau perubahan pada ik_ids untuk update UI secara realtime
   const selectedIks = watch("ik_ids") || [];
+  const { activeProdiJenjang } = useProdiStore();
+  const isS1 = activeProdiJenjang === "S1";
 
   // Reset form setiap kali modal dibuka
   useEffect(() => {
@@ -114,100 +117,120 @@ export default function CpmkModal({
           </div>
 
           {/* ========== PEMETAAN IK (BANYAK PILIHAN) ========== */}
-          <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
-                  Petakan ke Indikator Kinerja (IK)
-                </p>
-                <p className="text-[9px] text-gray-500 mt-0.5">
-                  *Anda dapat memilih lebih dari satu IK
-                </p>
+          {isS1 ? (
+            <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
+                    Petakan ke Indikator Kinerja (IK)
+                  </p>
+                  <p className="text-[9px] text-gray-500 mt-0.5">
+                    *Anda dapat memilih lebih dari satu IK
+                  </p>
+                </div>
+                <span
+                  className={`text-[10px] px-2.5 py-1 rounded-full font-bold transition-all ${
+                    selectedIks.length > 0
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "bg-gray-200 text-gray-500"
+                  }`}>
+                  {selectedIks.length} Terpilih
+                </span>
               </div>
-              <span
-                className={`text-[10px] px-2.5 py-1 rounded-full font-bold transition-all ${
-                  selectedIks.length > 0
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "bg-gray-200 text-gray-500"
-                }`}>
-                {selectedIks.length} Terpilih
-              </span>
-            </div>
 
-            {!availableIks || availableIks.length === 0 ? (
-              <div className="text-center py-8 bg-white rounded-lg border border-dashed border-slate-300">
-                <p className="text-sm text-gray-400 italic">
-                  Tidak ada IK yang tersedia untuk dipetakan.
+              {!availableIks || availableIks.length === 0 ? (
+                <div className="text-center py-8 bg-white rounded-lg border border-dashed border-slate-300">
+                  <p className="text-sm text-gray-400 italic">
+                    Tidak ada IK yang tersedia untuk dipetakan.
+                  </p>
+                </div>
+              ) : (
+                <div className="max-h-56 overflow-y-auto space-y-2.5 pr-2 custom-scrollbar">
+                  {availableIks.map((ik: any) => {
+                    const isSelected = selectedIks
+                      .map(Number)
+                      .includes(Number(ik.id));
+                    return (
+                      <label
+                        key={ik.id}
+                        className={`flex items-start gap-3 p-3.5 rounded-xl cursor-pointer border-2 transition-all duration-200 ${
+                          isSelected
+                            ? "bg-indigo-50/80 border-indigo-500 shadow-sm"
+                            : "bg-white border-slate-100 hover:border-slate-300 hover:bg-gray-50"
+                        }`}>
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            value={ik.id}
+                            {...register("ik_ids", {
+                              required: "Minimal pilih satu IK",
+                            })}
+                            className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
+                          />
+                        </div>
+                        <div className="text-[11px] leading-relaxed flex-1">
+                          <div className="flex justify-between items-center mb-1">
+                            <span
+                              className={`font-black tracking-tight ${
+                                isSelected
+                                  ? "text-indigo-700"
+                                  : "text-slate-700"
+                              }`}>
+                              [{ik.cpl_kode || "N/A"}] {ik.kode}
+                            </span>
+                            {isSelected && (
+                              <Check
+                                size={14}
+                                className="text-indigo-600"
+                                strokeWidth={3}
+                              />
+                            )}
+                          </div>
+                          <span
+                            className={`${
+                              isSelected
+                                ? "text-indigo-900/80 font-medium"
+                                : "text-gray-500"
+                            } block line-clamp-2`}>
+                            {ik.deskripsi}
+                          </span>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-5 bg-amber-50 border-2 border-amber-100 rounded-xl flex items-center gap-4">
+              <div className="p-3 bg-amber-100 rounded-full text-amber-600">
+                <Book size={24} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-amber-900">
+                  Info Kurikulum {activeProdiJenjang}
+                </p>
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  Pada jenjang <strong>{activeProdiJenjang}</strong>, CPMK tidak
+                  memerlukan pemetaan ke Indikator Kinerja (IK). Silakan
+                  langsung simpan CPMK Anda.
                 </p>
               </div>
-            ) : (
-              <div className="max-h-56 overflow-y-auto space-y-2.5 pr-2 custom-scrollbar">
-                {availableIks.map((ik: any) => {
-                  const isSelected = selectedIks
-                    .map(Number)
-                    .includes(Number(ik.id));
-                  return (
-                    <label
-                      key={ik.id}
-                      className={`flex items-start gap-3 p-3.5 rounded-xl cursor-pointer border-2 transition-all duration-200 ${
-                        isSelected
-                          ? "bg-indigo-50/80 border-indigo-500 shadow-sm"
-                          : "bg-white border-slate-100 hover:border-slate-300 hover:bg-gray-50"
-                      }`}>
-                      <div className="relative flex items-center">
-                        <input
-                          type="checkbox"
-                          value={ik.id}
-                          {...register("ik_ids", {
-                            required: "Minimal pilih satu IK",
-                          })}
-                          className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
-                        />
-                      </div>
-                      <div className="text-[11px] leading-relaxed flex-1">
-                        <div className="flex justify-between items-center mb-1">
-                          <span
-                            className={`font-black tracking-tight ${
-                              isSelected ? "text-indigo-700" : "text-slate-700"
-                            }`}>
-                            [{ik.cpl_kode || "N/A"}] {ik.kode}
-                          </span>
-                          {isSelected && (
-                            <Check
-                              size={14}
-                              className="text-indigo-600"
-                              strokeWidth={3}
-                            />
-                          )}
-                        </div>
-                        <span
-                          className={`${
-                            isSelected
-                              ? "text-indigo-900/80 font-medium"
-                              : "text-gray-500"
-                          } block line-clamp-2`}>
-                          {ik.deskripsi}
-                        </span>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* ========== FOOTER ACTIONS ========== */}
           <div className="flex justify-end gap-3 pt-5 border-t sticky bottom-0 bg-white">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-sm text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors">
+              className="px-5 py-2.5 text-sm text-gray-500 font-bold">
               Batal
             </button>
             <button
               type="submit"
-              disabled={isSaving || selectedIks.length === 0}
-              className="px-6 py-2.5 bg-teal-600 text-white rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold shadow-lg shadow-teal-100 hover:bg-teal-700 hover:shadow-teal-200 transition-all">
+              disabled={isSaving || (isS1 && selectedIks.length === 0)} // Jika S1, tombol mati kalau IK belum dipilih
+              className="px-6 py-2.5 bg-teal-600 text-white rounded-xl flex items-center gap-2 disabled:opacity-50 font-bold shadow-lg">
               {isSaving ? (
                 <Loader2 className="animate-spin" size={18} />
               ) : (
