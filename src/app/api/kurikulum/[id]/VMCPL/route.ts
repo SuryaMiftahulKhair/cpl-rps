@@ -13,11 +13,6 @@ export async function GET(
     const { id } = await params;
     const kurikulumId = Number(id);
 
-    const session = await getSession();
-    if (!session || !session.prodiId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const kurikulum = await prisma.kurikulum.findUnique({
       where: { id: kurikulumId },
       include: {
@@ -34,10 +29,6 @@ export async function GET(
         { error: "Kurikulum tidak ditemukan" },
         { status: 404 },
       );
-    }
-
-    if (kurikulum.prodi_id !== Number(session.prodiId)) {
-      return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
     }
 
     return NextResponse.json({ success: true, data: kurikulum });

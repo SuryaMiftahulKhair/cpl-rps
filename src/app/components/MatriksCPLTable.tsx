@@ -263,6 +263,11 @@ export default function MatriksCPLTable({
     kodeIK: string,
     currentValue: boolean,
   ) => {
+    if (isReadOnly) {
+      setError("Anda tidak memiliki izin untuk mengubah mapping.");
+      return;
+    }
+
     const cellKey = `${mkId}-${kodeIK}`;
     setCellStates((prev) => ({ ...prev, [cellKey]: "active" }));
 
@@ -335,15 +340,12 @@ export default function MatriksCPLTable({
     }
   };
 
-  const semesterGroups = matakuliahList.reduce(
-    (acc, mk) => {
-      const sem = mk.semester || 0;
-      if (!acc[sem]) acc[sem] = [];
-      acc[sem].push(mk);
-      return acc;
-    },
-    {} as { [key: number]: MatakuliahCPL[] },
-  );
+  const semesterGroups = matakuliahList.reduce((acc, mk) => {
+    const sem = mk.semester || 0;
+    if (!acc[sem]) acc[sem] = [];
+    acc[sem].push(mk);
+    return acc;
+  }, {} as { [key: number]: MatakuliahCPL[] });
 
   const sortedSemesters = Object.keys(semesterGroups)
     .map(Number)
@@ -360,7 +362,11 @@ export default function MatriksCPLTable({
 
   return (
     <div
-      className={`${isFullscreen ? "fixed inset-0 z-50 bg-white p-8 overflow-auto" : "bg-white"}`}>
+      className={`${
+        isFullscreen
+          ? "fixed inset-0 z-50 bg-white p-8 overflow-auto"
+          : "bg-white"
+      }`}>
       {/* Controls */}
       {showControls && (
         <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -429,7 +435,9 @@ export default function MatriksCPLTable({
           </p>
           <div className="flex items-center gap-2">
             <div
-              className={`w-4 h-4 rounded-full bg-linear-to-r ${cplDesignSystem[currentVisibleCPL]?.primary || "bg-gray-400"}`}></div>
+              className={`w-4 h-4 rounded-full bg-linear-to-r ${
+                cplDesignSystem[currentVisibleCPL]?.primary || "bg-gray-400"
+              }`}></div>
             <span className="font-bold text-gray-900 text-lg">
               {currentVisibleCPL}
             </span>
@@ -496,7 +504,11 @@ export default function MatriksCPLTable({
                       <th
                         key={cpl.id}
                         colSpan={ikCount || 1}
-                        className={`border-2 border-white/30 px-2 py-4 text-center font-bold text-white text-xs bg-linear-to-br ${design.primary} ${isFirstOfGroup ? "border-l-4 border-l-white" : ""}`}>
+                        className={`border-2 border-white/30 px-2 py-4 text-center font-bold text-white text-xs bg-linear-to-br ${
+                          design.primary
+                        } ${
+                          isFirstOfGroup ? "border-l-4 border-l-white" : ""
+                        }`}>
                         <div className="flex flex-col items-center gap-1.5">
                           <div className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">
                             {cpl.kode_cpl}
@@ -559,7 +571,9 @@ export default function MatriksCPLTable({
                   return mkInSemester.map((mk, mkIdx) => (
                     <tr
                       key={mk.id}
-                      className={`group transition-colors ${mkIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-indigo-50/50`}>
+                      className={`group transition-colors ${
+                        mkIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"
+                      } hover:bg-indigo-50/50`}>
                       {mkIdx === 0 && (
                         <td
                           rowSpan={mkInSemester.length}
@@ -599,18 +613,38 @@ export default function MatriksCPLTable({
                           return (
                             <td
                               key={ik.id}
-                              className={`relative border-2 px-2 py-2 text-center cursor-pointer transition-all duration-200
-                                ${isFirstIKofCPL ? "border-l-4 border-l-slate-400" : "border-gray-300"}
-                                ${currentState === "idle" && "bg-white hover:bg-blue-50 hover:border-blue-300"}
-                                ${currentState === "hover" && "bg-blue-50 border-blue-300"}
-                                ${currentState === "checked" && `bg-linear-to-br ${design.checked} ${design.border}`}
-                                ${currentState === "saving" && "bg-yellow-50 border-yellow-400 animate-pulse"}
-                                ${currentState === "error" && "bg-red-50 border-red-400 animate-pulse"}
-                                ${isReadOnly ? "cursor-default" : "cursor-pointer hover:bg-gray-100"} 
-                                ${isChecked ? "bg-indigo-50" : "bg-white"}
-                              `}
+                              // MODIFIKASI: Gunakan pointer-events-none jika isReadOnly agar klik tidak menembus ke fungsi
+                              className={`relative border-2 px-2 py-2 text-center transition-all duration-200
+    ${isFirstIKofCPL ? "border-l-4 border-l-slate-400" : "border-gray-300"}
+    ${
+      currentState === "idle" &&
+      "bg-white hover:bg-blue-50 hover:border-blue-300"
+    }
+    ${currentState === "hover" && "bg-blue-50 border-blue-300"}
+    ${
+      currentState === "checked" &&
+      `bg-linear-to-br ${design.checked} ${design.border}`
+    }
+    ${
+      currentState === "saving" &&
+      "bg-yellow-50 border-yellow-400 animate-pulse"
+    }
+    ${currentState === "error" && "bg-red-50 border-red-400 animate-pulse"}
+    ${isChecked ? "bg-indigo-50" : "bg-white"}
+    /* SAPU BERSIH: Matikan kursor dan event jika Read Only */
+    ${
+      isReadOnly
+        ? "cursor-default pointer-events-none select-none"
+        : "cursor-pointer hover:bg-gray-100"
+    } 
+  `}
+                              // Pengaman tambahan: Jika ReadOnly, onClick tidak akan melakukan apa-apa
+                              onClick={() =>
+                                !isReadOnly &&
+                                handleCellClick(mk.id, ik.kode_ik, isChecked)
+                              }
                               onMouseEnter={() => {
-                                if (currentState !== "saving") {
+                                if (!isReadOnly && currentState !== "saving") {
                                   setCellStates((prev) => ({
                                     ...prev,
                                     [cellKey]: isChecked ? "checked" : "hover",
@@ -618,17 +652,16 @@ export default function MatriksCPLTable({
                                 }
                               }}
                               onMouseLeave={() => {
-                                if (currentState !== "saving") {
+                                if (!isReadOnly && currentState !== "saving") {
                                   setCellStates((prev) => ({
                                     ...prev,
                                     [cellKey]: isChecked ? "checked" : "idle",
                                   }));
                                 }
                               }}
-                              onClick={() =>
-                                handleCellClick(mk.id, ik.kode_ik, isChecked)
-                              }
-                              title={`${mk.nama} - ${ik.kode_ik}${ik.deskripsi ? ": " + ik.deskripsi : ""}`}>
+                              title={`${mk.nama} - ${ik.kode_ik}${
+                                ik.deskripsi ? ": " + ik.deskripsi : ""
+                              }`}>
                               <div className="flex items-center justify-center h-8">
                                 {currentState === "checked" && (
                                   <CheckCircle
@@ -643,14 +676,17 @@ export default function MatriksCPLTable({
                                   <AlertCircle className="w-4 h-4 text-red-600" />
                                 )}
                               </div>
-                              {(currentState === "hover" ||
-                                currentState === "idle") && (
-                                <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                                  <div className="absolute top-1 right-1 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase">
-                                    {isChecked ? "Hapus" : "Tambah"}
+
+                              {/* Label Tambah/Hapus hanya muncul jika BUKAN ReadOnly */}
+                              {!isReadOnly &&
+                                (currentState === "hover" ||
+                                  currentState === "idle") && (
+                                  <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                                    <div className="absolute top-1 right-1 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase">
+                                      {isChecked ? "Hapus" : "Tambah"}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
                             </td>
                           );
                         });

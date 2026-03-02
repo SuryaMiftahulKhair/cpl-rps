@@ -28,6 +28,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  const { pathname } = request.nextUrl;
+
+  if (
+    pathname.includes("/api/kurikulum") ||
+    pathname.includes("/api/matakuliah")
+  ) {
+    return NextResponse.next();
+  }
+
   // 4. Jika ada session, validasi apakah tokennya valid
   if (sessionCookie) {
     try {

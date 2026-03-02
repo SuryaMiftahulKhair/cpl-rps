@@ -1,24 +1,23 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import MatriksCPLTable from "../components/MatriksCPLTable";
 import { HiOutlineHome, HiOutlineExclamationTriangle } from "react-icons/hi2";
 import { Grid3x3, Loader2, AlertCircle, RefreshCw } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useProdiStore } from "@/store/useProdiStore";
+import { url } from "inspector";
 
-// ============================================================
-// 1. KOMPONEN KONTEN UTAMA
-// Memuat seluruh logika Dashboard, Sidebar, dan Header
-// agar berada di bawah satu kontrol Suspense yang sama.
-// ============================================================
 function HomeContent() {
   const searchParams = useSearchParams();
-  // Ambil prodiId dari URL secara dinamis (ngikutin Sidebar)
-  const prodiId = searchParams.get("prodiId") || "1";
+  const router = useRouter();
+  const pathname = usePathname();
+  const { activeProdiId, setActiveProdi } = useProdiStore();
 
-  // State untuk kurikulum
+  // 1. Tambahkan state prodiId lokal agar tidak hanya mengandalkan URL/Store yang delay
+  const [currentProdiId, setCurrentProdiId] = useState<number | null>(null);
   const [kurikulumList, setKurikulumList] = useState<any[]>([]);
   const [selectedKurikulum, setSelectedKurikulum] = useState<number | null>(
     null,
@@ -26,44 +25,64 @@ function HomeContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchKurikulum = async () => {
+  // 2. FUNGSI VALIDASI PRODI TERBARU (Paling Penting!)
+  useEffect(() => {
+    const validateAndSyncProdi = async () => {
+      try {
+        const res = await fetch("/api/auth/profile");
+        const result = await res.json();
+
+        if (result.success && result.user.programStudis.length > 0) {
+          // Ambil prodi pertama dari database (S3 jika Kakak login S3)
+          const dbProdi = result.user.programStudis[0];
+          const urlProdiId = searchParams.get("prodiId");
+
+          // Jika URL kosong atau tidak sama dengan prodi user di database, PAKSA sinkron
+          if (!urlProdiId || parseInt(urlProdiId) !== dbProdi.id) {
+            setActiveProdi(dbProdi.id, dbProdi.nama, dbProdi.jenjang);
+            setCurrentProdiId(dbProdi.id);
+            router.replace(`${pathname}?prodiId=${dbProdi.id}`);
+          } else {
+            setCurrentProdiId(parseInt(urlProdiId));
+          }
+        }
+      } catch (err) {
+        console.error("Gagal sinkron prodi:", err);
+      }
+    };
+
+    validateAndSyncProdi();
+  }, [pathname, router]); // Berjalan sekali saat masuk halaman
+
+  // 3. FETCH KURIKULUM berdasarkan currentProdiId yang sudah divalidasi
+  const fetchKurikulum = useCallback(async () => {
+    if (!currentProdiId) return;
+
     setLoading(true);
     setError(null);
     try {
-      console.log("Fetching kurikulum for prodiId:", prodiId);
-
-      const res = await fetch(`/api/kurikulum?prodiId=${prodiId}`, {
+      const res = await fetch(`/api/kurikulum?prodiId=${currentProdiId}`, {
         cache: "no-store",
       });
-
-      if (!res.ok) {
-        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
-      }
-
       const data = await res.json();
-      console.log("Kurikulum data received:", data);
 
       if (data.success && data.data?.length > 0) {
         setKurikulumList(data.data);
         setSelectedKurikulum(data.data[0].id);
-        console.log("Selected kurikulum:", data.data[0].id);
       } else {
-        console.log("No kurikulum data found");
         setKurikulumList([]);
         setSelectedKurikulum(null);
       }
     } catch (err: any) {
-      console.error("Failed to fetch kurikulum:", err);
       setError(err.message || "Gagal mengambil data kurikulum");
-      setKurikulumList([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentProdiId]);
 
   useEffect(() => {
     fetchKurikulum();
-  }, [prodiId]); // Refresh otomatis jika prodi di URL berubah
+  }, [fetchKurikulum]);
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -109,7 +128,7 @@ function HomeContent() {
                   </h2>
                   <p className="text-sm text-gray-600">
                     Pemetaan Indikator Kinerja (IK) terhadap Mata Kuliah Prodi
-                    ID: {prodiId}
+                    ID: {currentProdiId}
                   </p>
                 </div>
               </div>
@@ -185,7 +204,7 @@ function HomeContent() {
             {!loading && !error && selectedKurikulum ? (
               <MatriksCPLTable
                 kurikulumId={selectedKurikulum}
-                prodiId={Number(prodiId)}
+                prodiId={currentProdiId || 0}
                 compactMode={false}
                 maxHeight="max-h-[500px]"
                 showControls={true}
