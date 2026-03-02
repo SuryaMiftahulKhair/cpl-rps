@@ -16,7 +16,7 @@ export async function POST(req: Request) {
           where: {
             kelas: {
                 tahun_ajaran_id: semester_ids && semester_ids.length > 0 
-                  ? { in: semester_ids.map((id: any) => Number(id)) } 
+                  ? { in: semester_ids.map(Number) } 
                   : undefined
             }
           },
@@ -42,7 +42,10 @@ export async function POST(req: Request) {
 
     const allCPL = await prisma.cPL.findMany({ 
         orderBy: { kode_cpl: 'asc' }, 
-        include: { iks: true } 
+        include: { 
+            iks: true,
+            cpmk_direct: true 
+        } 
     });
 
     const enrollments = await prisma.pesertaKelas.findMany({
@@ -50,7 +53,7 @@ export async function POST(req: Request) {
         mahasiswa_id: student.id,
         kelas: {
           tahun_ajaran_id: semester_ids && semester_ids.length > 0 
-            ? { in: semester_ids.map((id: any) => Number(id)) } 
+            ? { in: semester_ids.map(Number) } 
             : undefined
         }
       },
@@ -60,7 +63,7 @@ export async function POST(req: Request) {
             matakuliah: true,
             komponenNilai: {
               include: {
-                cpmk: { include: { sub_cpmk: true } } 
+                cpmk: { include: { sub_cpmk: true } }
               }
             }
           }
@@ -69,12 +72,17 @@ export async function POST(req: Request) {
       }
     });
 
-    interface IKDataCollection {
-        ik_id: number;
+    interface IKData {
         inputs: { cpmkScore: number; cpmkWeight: number }[];
         contributing_courses: Set<number>; 
     }
-    const ikMap: Record<number, IKDataCollection> = {};
+    const ikMap: Record<number, IKData> = {};
+
+    interface CplDirectData {
+        totalScoreWeighted: number;
+        totalBobot: number;
+    }
+    const cplDirectMap: Record<number, CplDirectData> = {};
 
     for (const enrollment of enrollments) {
       const kelas = enrollment.kelas;
@@ -87,63 +95,84 @@ export async function POST(req: Request) {
           nilaiMap[n.komponen_nilai_id] = n.nilai_komponen;
       });
 
-      const subCpmkData: Record<number, { inputs: {nilai: number, bobot: number}[], ikId: number }> = {};
-
+      const cpmkGroup: Record<number, { inputs: { nilai: number, bobot: number }[], obj: any }> = {};
+      
       kelas.komponenNilai.forEach(komp => {
-          const val = nilaiMap[komp.id] || 0;
-          const bobot = komp.bobot_nilai;
-
-          if (komp.cpmk && komp.cpmk.sub_cpmk) {
-              komp.cpmk.sub_cpmk.forEach(sub => {
-                  if (!subCpmkData[sub.id]) {
-                      subCpmkData[sub.id] = { inputs: [], ikId: sub.ik_id };
-                  }
-                  subCpmkData[sub.id].inputs.push({ nilai: val, bobot: bobot });
-              });
+          if (!komp.cpmk_id) return;
+          
+          if (!cpmkGroup[komp.cpmk_id]) {
+              cpmkGroup[komp.cpmk_id] = { inputs: [], obj: komp.cpmk };
           }
+          
+          const val = nilaiMap[komp.id] || 0;
+          cpmkGroup[komp.cpmk_id].inputs.push({ nilai: val, bobot: komp.bobot_nilai });
       });
 
-      Object.values(subCpmkData).forEach(sub => {
-          const result = calculateCPMKScore(sub.inputs);
+      Object.values(cpmkGroup).forEach(group => {
+          const result = calculateCPMKScore(group.inputs);
+          
+          if (result.totalBobot === 0 || result.score <= 0) return;
 
-          if (result.totalBobot > 0) {
-              if (!ikMap[sub.ikId]) {
-                  ikMap[sub.ikId] = { 
-                      ik_id: sub.ikId, 
-                      inputs: [], 
-                      contributing_courses: new Set() 
-                  };
-              }
-              ikMap[sub.ikId].inputs.push({
-                  cpmkScore: result.score,
-                  cpmkWeight: 1 
+          const cpmk = group.obj;
+          
+          const hasSubCpmk = Array.isArray(cpmk.sub_cpmk) && cpmk.sub_cpmk.length > 0;
+
+          if (hasSubCpmk) {
+              (cpmk.sub_cpmk as any[]).forEach((sub) => {
+                  const ikId = Number(sub.ik_id);
+                  if (!ikId) return;
+
+                  if (!ikMap[ikId]) {
+                      ikMap[ikId] = { inputs: [], contributing_courses: new Set() };
+                  }
+                  ikMap[ikId].inputs.push({ cpmkScore: result.score, cpmkWeight: 1 });
+                  ikMap[ikId].contributing_courses.add(mkId);
               });
-              ikMap[sub.ikId].contributing_courses.add(mkId);
+          } 
+          else if (cpmk.cpl_id) {
+              const cplId = Number(cpmk.cpl_id);
+              const bobotCpmk = cpmk.bobot_cpmk ? Number(cpmk.bobot_cpmk) : 1; 
+
+              if (!cplDirectMap[cplId]) {
+                  cplDirectMap[cplId] = { totalScoreWeighted: 0, totalBobot: 0 };
+              }
+              
+              cplDirectMap[cplId].totalScoreWeighted += (result.score * bobotCpmk);
+              cplDirectMap[cplId].totalBobot += bobotCpmk;
           }
       });
     }
 
     const cplData = allCPL.map(cpl => {
-        const childIKs = Object.values(ikMap).filter(ikData => {
-            return cpl.iks.some(ikMaster => ikMaster.id === ikData.ik_id);
-        });
+        const isS1Logic = cpl.iks && cpl.iks.length > 0;
+        let finalCplValue = 0;
 
-        const cplInputs = childIKs.map(ikData => {
-            const scoreIK = calculateIKScore(ikData.inputs);
-            const bobotIK = ikData.contributing_courses.size;
+        if (isS1Logic) {
+            const relatedIKData = cpl.iks.map(ikMaster => {
+                const ikCalcData = ikMap[ikMaster.id];
+                if (!ikCalcData) return null;
 
-            return {
-                ikScore: scoreIK,
-                bobotIK: bobotIK
-            };
-        });
+                const skorIK = calculateIKScore(ikCalcData.inputs);
+                const bobotIK = ikCalcData.contributing_courses.size;
 
-        const finalCPLScore = calculateFinalCPL(cplInputs);
+                return { ikScore: skorIK, bobotIK: bobotIK };
+            }).filter(Boolean) as { ikScore: number, bobotIK: number }[];
+
+            if (relatedIKData.length > 0) {
+                finalCplValue = calculateFinalCPL(relatedIKData);
+            }
+
+        } else {
+            const directData = cplDirectMap[cpl.id];
+            if (directData && directData.totalBobot > 0) {
+                finalCplValue = directData.totalScoreWeighted / directData.totalBobot;
+            }
+        }
 
         return {
             code: cpl.kode_cpl,          
             description: cpl.deskripsi,   
-            nilai: parseFloat(finalCPLScore.toFixed(2)), 
+            nilai: parseFloat(finalCplValue.toFixed(2)), 
             cplLo: "", 
             descriptionEn: ""
         };
