@@ -2379,11 +2379,7 @@ export default function DetailRPSPage({
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-center border border-gray-200">
-                          <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg border border-emerald-200 font-bold text-sm">
-                            {item.bobot_to_cpl || 0}%
-                          </span>
-                        </td>
+
                         <td className="px-4 py-3 text-center border border-gray-200">
                           <button
                             title="Hapus"
