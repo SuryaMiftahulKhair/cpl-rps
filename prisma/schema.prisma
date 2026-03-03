@@ -150,7 +150,8 @@ model CPL {
   kurikulum    Kurikulum    @relation(fields: [kurikulum_id], references: [id])
   iks          Ik[]
   mataKuliah   MataKuliah[] @relation("CPLToMataKuliah")
-  cpmks         CPMK[]       @relation("CPMKToCPL")
+  cpmks        CPMK[]       @relation("CPMKToCPL")
+
   @@map("cpl")
 }
 
@@ -178,10 +179,10 @@ model CPMK {
   bobot_cpmk     Int
   komponen_nilai KomponenNilai[]
   sub_cpmk       SubCpmk[]
+  cpl            CPL[]           @relation("CPMKToCPL")
   kelas          Kelas[]         @relation("CPMKToKelas")
   rps            RPS[]           @relation("CPMKToRPS")
   ik             Ik[]            @relation("IkaToCPMK")
-  cpl            CPL[]           @relation("CPMKToCPL")
 
   @@map("cpmk")
 }
