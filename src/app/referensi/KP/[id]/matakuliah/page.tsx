@@ -470,7 +470,7 @@ export default function MatriksCPLPageAFTER() {
               <button
                 onClick={handleExportExcel}
                 disabled={loading || matakuliahList.length === 0}
-                className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 font-semibold disabled:opacity-50">
+                className="inline-flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-green-700 transition-all duration-200 font-semibold disabled:opacity-50">
                 <Download size={18} strokeWidth={2.5} />
                 Export Excel
               </button>
@@ -491,14 +491,14 @@ export default function MatriksCPLPageAFTER() {
         {/* STATS CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {[
-            { label: "Mata Kuliah", value: matakuliahList.length, icon: <Layers className="w-7 h-7 text-white" strokeWidth={2} /> },
-            { label: "Total CPL", value: sortedCPL.length, icon: <Target className="w-7 h-7 text-white" strokeWidth={2} /> },
-            { label: "Total IK", value: allIK.length, icon: <CheckCircle className="w-7 h-7 text-white" strokeWidth={2} /> },
-            { label: "Total Mapping", value: totalMapping, icon: <Grid3x3 className="w-7 h-7 text-white" strokeWidth={2} /> },
+            { label: "Mata Kuliah", value: matakuliahList.length, icon: <Layers className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-blue-600" },
+            { label: "Total CPL", value: sortedCPL.length, icon: <Target className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-green-600" },
+            { label: "Total IK", value: allIK.length, icon: <CheckCircle className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-purple-600" },
+            { label: "Total Mapping", value: totalMapping, icon: <Grid3x3 className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-orange-600" },
           ].map((card, i) => (
             <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                <div className={`w-14 h-14 ${card.bgColor} rounded-xl flex items-center justify-center shadow-md`}>
                   {card.icon}
                 </div>
                 <div>
