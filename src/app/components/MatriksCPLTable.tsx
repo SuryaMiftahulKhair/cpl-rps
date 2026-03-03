@@ -355,10 +355,9 @@ export default function MatriksCPLTable({
     0,
   );
 
-  // FIXED: Konsisten width untuk sticky columns
-  const semesterColWidth = "100px";
-  const mkColWidth = compactMode ? "200px" : "300px";
-  const mkColLeft = "100px"; // Konsisten dengan semesterColWidth
+  const semesterColWidth = "4rem"; // Sekitar 64px
+  const mkColWidth = compactMode ? "12rem" : "18rem"; // 192px sampai 288px
+  const mkColLeft = "4rem"; // Harus sama dengan semesterColWidth biar gak tumpang tindih
 
   return (
     <div
@@ -488,8 +487,12 @@ export default function MatriksCPLTable({
                     className="border-2 border-white/20 px-4 py-3 text-center font-bold text-white sticky bg-linear-to-r from-indigo-600 to-blue-600 z-30 text-xs shadow-[4px_0_12px_-2px_rgba(79,70,229,0.3)]"
                     style={{
                       minWidth: mkColWidth,
-                      width: mkColWidth,
+                      // Biarkan lebar aslinya fleksibel
+                      width: "auto",
+                      // Jarak dari kiri harus pas dengan lebar kolom sebelumnya
                       left: mkColLeft,
+                      // Tambahkan background solid supaya teks CPL yang lewat di bawahnya gak kelihatan tembus
+                      backgroundColor: "#4f46e5",
                     }}>
                     MATA KULIAH
                   </th>

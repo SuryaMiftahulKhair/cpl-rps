@@ -31,6 +31,9 @@ import MatriksCPLTable from "@/app/components/MatriksCPLTable";
 export default function LandingPage() {
   const router = useRouter();
 
+  const [prodiList, setProdiList] = useState<any[]>([]);
+  const [selectedProdi, setSelectedProdi] = useState<number>(1); // Default ke S1 (ID: 1)
+
   // State untuk kurikulum
   const [kurikulumList, setKurikulumList] = useState<any[]>([]);
   const [selectedKurikulum, setSelectedKurikulum] = useState<number | null>(
@@ -51,13 +54,27 @@ export default function LandingPage() {
     totalMapping: 0,
   });
 
+  useEffect(() => {
+    const fetchProdi = async () => {
+      try {
+        const res = await fetch("/api/public/prodi", { cache: "no-store" });
+        const data = await res.json();
+        setProdiList(data.data || []);
+      } catch (err) {
+        console.error("Failed to fetch prodi list:", err);
+      }
+    };
+
+    fetchProdi();
+  }, []);
+
   const fetchKurikulum = async () => {
     setLoading(true);
     setError(null);
     setDemoMode(false);
 
     try {
-      const res = await fetch(`/api/kurikulum?prodiId=${prodiId}`, {
+      const res = await fetch(`/api/kurikulum?prodiId=${selectedProdi}`, {
         cache: "no-store",
       });
 
@@ -110,7 +127,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     fetchKurikulum();
-  }, []);
+  }, [selectedProdi]);
 
   const fetchStats = async () => {
     if (!selectedKurikulum) return;
@@ -415,7 +432,7 @@ export default function LandingPage() {
         )}
 
         {/* KURIKULUM SELECTOR */}
-        {!loading && !error && kurikulumList.length > 0 && (
+        {!loading && !error && (
           <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-8 mb-8">
             <div className="flex items-center justify-between flex-wrap gap-6">
               <div className="flex items-center gap-4">
@@ -427,27 +444,46 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <label className="block text-lg font-bold text-gray-900 mb-1">
-                    Pilih Kurikulum
+                    Pilih Prodi & Kurikulum
                   </label>
                   <p className="text-sm text-gray-600">
-                    Lihat matriks pemetaan CPL untuk kurikulum yang dipilih
+                    Lihat matriks pemetaan CPL untuk jenjang dan kurikulum yang
+                    dipilih
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* SELECTOR PRODI (GABUNGAN BARU) */}
+                <select
+                  value={selectedProdi}
+                  onChange={(e) => setSelectedProdi(Number(e.target.value))}
+                  className="px-6 py-3.5 border-2 border-gray-300 rounded-xl text-base font-semibold text-gray-900 hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white shadow-sm min-w-[200px]">
+                  {prodiList.length > 0 ? (
+                    prodiList.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nama}
+                      </option>
+                    ))
+                  ) : (
+                    <option value={1}>S1 Teknik Informatika</option>
+                  )}
+                </select>
+
+                {/* SELECTOR KURIKULUM */}
                 <select
                   value={selectedKurikulum || ""}
                   onChange={(e) => setSelectedKurikulum(Number(e.target.value))}
                   className="px-6 py-3.5 border-2 border-gray-300 rounded-xl text-base font-semibold text-gray-900 hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white shadow-sm min-w-[320px]">
-                  {kurikulumList.map((k) => (
-                    <option
-                      key={k.id}
-                      value={k.id}
-                      className="text-gray-900 font-semibold">
-                      {k.nama} ({k.tahun})
-                    </option>
-                  ))}
+                  {kurikulumList.length > 0 ? (
+                    kurikulumList.map((k) => (
+                      <option key={k.id} value={k.id}>
+                        {k.nama} ({k.tahun})
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Belum ada kurikulum</option>
+                  )}
                 </select>
 
                 <button
@@ -460,7 +496,6 @@ export default function LandingPage() {
             </div>
           </div>
         )}
-
         {/* MATRIKS CPL TABLE */}
         {!loading && !error && selectedKurikulum ? (
           <div className="space-y-8">
