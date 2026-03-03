@@ -70,38 +70,15 @@ export default function CpmkModal({
           onSubmit={handleSubmit(onSave)}
           className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
           {/* ========== KODE & BOBOT ========== */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
-                Kode CPMK
-              </label>
-              <input
-                {...register("kode", { required: true })}
-                className="w-full border p-2.5 rounded-lg bg-gray-50 text-sm text-gray-900 border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                <Percent size={10} /> Bobot ke CPL
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  {...register("bobot", {
-                    required: true,
-                    valueAsNumber: true,
-                  })}
-                  className="w-full border p-2.5 rounded-lg bg-white text-sm text-gray-900 border-slate-200 pr-8 focus:ring-2 focus:ring-teal-500 outline-none transition-all"
-                  placeholder="0"
-                />
-                <span className="absolute right-3 top-3 text-xs text-gray-400 font-bold">
-                  %
-                </span>
-              </div>
-            </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+              Kode CPMK
+            </label>
+            <input
+              {...register("kode", { required: true })}
+              className="w-full border p-2.5 rounded-lg bg-gray-50 text-sm text-gray-900 border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+            />
           </div>
 
           {/* ========== DESKRIPSI ========== */}
