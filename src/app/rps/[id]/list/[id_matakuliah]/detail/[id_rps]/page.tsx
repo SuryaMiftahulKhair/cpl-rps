@@ -134,7 +134,7 @@ interface RPSData {
   cpl?: CPLItem[];
   pertemuan: any[];
   available_iks: any[];
-  matakuliah: { nama: string; kode_mk: string; sks: string };
+  matakuliah: { nama: string; kode_mk: string; sks: string; cpl?: any[] };
 }
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -937,7 +937,7 @@ function SubCpmkModal({
         />
       }>
       <form id="sub-cpmk-form" onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <FormField label="Parent CPMK" required>
             <select
               value={form.cpmk_id}
@@ -958,18 +958,6 @@ function SubCpmkModal({
               readOnly
               value={autoKode(form.cpmk_id)}
               className={`${inputCls} bg-gray-100 text-gray-500 cursor-not-allowed`}
-            />
-          </FormField>
-          <FormField label="Bobot (%)">
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={form.bobot}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, bobot: Number(e.target.value) }))
-              }
-              className={inputCls}
             />
           </FormField>
         </div>
@@ -1200,6 +1188,110 @@ function PertemuanModal({
             className={textareaCls}
           />
         </FormField>
+      </form>
+    </Modal>
+  );
+}
+
+// ==========================================
+// MODAL: ASSESSMENT
+// ==========================================
+function AssessmentModal({
+  isOpen,
+  onClose,
+  subCpmkList,
+  editingItem,
+  onAdd,
+  onUpdate,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  subCpmkList: SubCPMKLocal[];
+  editingItem: any | null;
+  onAdd: (d: any) => void;
+  onUpdate: (id: any, d: any) => void;
+}) {
+  const [form, setForm] = useState({
+    sub_cpmk_id: "",
+    assessment_type: "formative",
+    bobot: 0,
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editingItem) {
+        setForm({
+          sub_cpmk_id: editingItem.sub_cpmk_id,
+          assessment_type: editingItem.assessment_type,
+          bobot: editingItem.bobot,
+        });
+      } else {
+        setForm({ sub_cpmk_id: "", assessment_type: "formative", bobot: 0 });
+      }
+    }
+  }, [isOpen, editingItem]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.sub_cpmk_id) {
+      alert("Pilih Sub-CPMK");
+      return;
+    }
+    if (editingItem) onUpdate(editingItem.id, form);
+    else onAdd(form);
+    onClose();
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={editingItem ? "Edit Assessment" : "Tambah Assessment"}
+      icon={<ClipboardList size={18} />}
+      footer={
+        <ModalFooter
+          onCancel={onClose}
+          formId="assessment-form"
+          confirmLabel={editingItem ? "Update" : "Tambah"}
+        />
+      }>
+      <form id="assessment-form" onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <FormField label="Sub-CPMK" required>
+            <select
+              value={form.sub_cpmk_id}
+              onChange={(e) => setForm((p) => ({ ...p, sub_cpmk_id: e.target.value }))}
+              className={inputCls}>
+              <option value="">-- Pilih Sub-CPMK --</option>
+              {subCpmkList.map((s) => (
+                <option key={s.id} value={String(s.id)}>
+                  {s.kode} — {s.deskripsi.substring(0, 40)}...
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label="Tipe Assessment" required>
+            <select
+              value={form.assessment_type}
+              onChange={(e) => setForm((p) => ({ ...p, assessment_type: e.target.value }))}
+              className={inputCls}>
+              <option value="formative">Formative</option>
+              <option value="summative">Summative</option>
+            </select>
+          </FormField>
+
+          <FormField label="Bobot (%)" required>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={form.bobot}
+              onChange={(e) => setForm((p) => ({ ...p, bobot: Number(e.target.value) }))}
+              className={inputCls}
+            />
+          </FormField>
+        </div>
       </form>
     </Modal>
   );
@@ -1733,6 +1825,8 @@ export default function DetailRPSPage({
   });
   const [localCpmk, setLocalCpmk] = useState<CPMK[]>([]);
   const [localSubCpmk, setLocalSubCpmk] = useState<SubCPMKLocal[]>([]);
+  const [localCpl, setLocalCpl] = useState<CPLItem[]>([]);
+  const [localIk, setLocalIk] = useState<any[]>([]);
   const [deskripsi, setDeskripsi] = useState<DeskripsiLocal>({
     deskripsi_mk: "",
     materi_pembelajaran: "",
@@ -1741,6 +1835,9 @@ export default function DetailRPSPage({
   const [timPengajaran, setTimPengajaran] = useState<TimDosenItem[]>([]);
   const [mkSyarat, setMkSyarat] = useState<MKSyaratItem[]>([]);
   const [pertemuanRows, setPertemuanRows] = useState<PertemuanRow[]>([]);
+  const [assessments, setAssessments] = useState<any[]>([]);
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false);
+  const [editingAssessment, setEditingAssessment] = useState<any>(null);
 
   const showSuccess = useCallback((msg: string) => {
     setSuccessMsg(msg);
@@ -1802,6 +1899,49 @@ export default function DetailRPSPage({
         })),
       ),
     );
+    // Set CPL dari matakuliah.cpl
+    if (rpsData.matakuliah?.cpl && Array.isArray(rpsData.matakuliah.cpl)) {
+      setLocalCpl(
+        rpsData.matakuliah.cpl.map((c: any) => ({
+          kode: c.kode_cpl,
+          deskripsi: c.deskripsi,
+        })),
+      );
+    } else {
+      setLocalCpl([]);
+    }
+
+    // Extract unique IK dari semua CPMK dengan mapping ke CPL berdasarkan pattern kode
+    const ikMap = new Map<string, { kode: string; deskripsi: string; cpl_list: string[] }>();
+    
+    // Kumpulkan semua IK yang unik
+    if (rpsData.cpmk && Array.isArray(rpsData.cpmk)) {
+      rpsData.cpmk.forEach((cpmk: any) => {
+        if (cpmk.ik && Array.isArray(cpmk.ik)) {
+          cpmk.ik.forEach((ik: any) => {
+            if (ik.kode_ik && !ikMap.has(ik.kode_ik)) {
+              // Extract CPL dari pattern IK kode (misal: 2.1 → CPL-2, 3.2 → CPL-3)
+              let cplList: string[] = [];
+              const ikKode = String(ik.kode_ik).trim();
+              const match = ikKode.match(/^(\d+)[\.\-]/);
+              
+              if (match) {
+                const cplNum = match[1];
+                cplList = [`CPL-${cplNum}`];
+              }
+              
+              ikMap.set(ik.kode_ik, {
+                kode: ik.kode_ik,
+                deskripsi: ik.deskripsi || "",
+                cpl_list: cplList,
+              });
+            }
+          });
+        }
+      });
+    }
+
+    setLocalIk(Array.from(ikMap.values()));
     setDeskripsi({
       deskripsi_mk: rpsData.deskripsi_mk || "",
       materi_pembelajaran: rpsData.materi_pembelajaran || "",
@@ -2290,28 +2430,106 @@ export default function DetailRPSPage({
         </div>
 
         {/* ===== CPL ===== */}
-        {rpsData.cpl && rpsData.cpl.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden mb-6">
-            <SectionHeader
-              title="CPL-PRODI yang Dibebankan pada MK"
-              icon={<Target size={20} />}
-            />
-            <div className="p-6 space-y-3">
-              {rpsData.cpl.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex gap-3 p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
-                  <span className="font-bold text-indigo-700 bg-white border-2 border-indigo-300 px-3 py-1 rounded-lg text-sm whitespace-nowrap h-fit">
-                    {item.kode}
-                  </span>
-                  <p className="text-gray-900 text-sm leading-relaxed font-medium">
-                    {item.deskripsi}
-                  </p>
-                </div>
-              ))}
-            </div>
+        <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden mb-6">
+          <SectionHeader
+            title="CPL-PRODI yang Dibebankan pada MK"
+            icon={<Target size={20} />}
+          />
+          <div className="p-6 bg-gray-50/30">
+            {localCpl && localCpl.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-200 text-gray-800">
+                      <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-20">
+                        Kode
+                      </th>
+                      <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400">
+                        Deskripsi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {localCpl.map((item: any, idx: number) => (
+                      <tr key={idx}>
+                        <td className="px-3 py-2 border border-gray-300">
+                          <span className="font-bold text-white text-xs bg-indigo-600 px-2 py-1 rounded">
+                            {item.kode}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-900 border border-gray-300">
+                          {item.deskripsi}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-center text-sm text-gray-500 py-4">Belum ada CPL yang dibebankan</p>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* ===== INDIKATOR KINERJA ===== */}
+        <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden mb-6">
+          <SectionHeader
+            title="Indikator Kinerja (IK)"
+            icon={<Award size={20} />}
+          />
+          <div className="p-6 bg-gray-50/30">
+            {localIk && localIk.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-200 text-gray-800">
+                      <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-20">
+                        Kode
+                      </th>
+                      <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400">
+                        Deskripsi
+                      </th>
+                      <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-32">
+                        CPL
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {localIk.map((item: any, idx: number) => (
+                      <tr key={idx}>
+                        <td className="px-3 py-2 border border-gray-300">
+                          <span className="font-bold text-white text-xs bg-emerald-600 px-2 py-1 rounded">
+                            {item.kode}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-900 border border-gray-300">
+                          {item.deskripsi || "-"}
+                        </td>
+                        <td className="px-3 py-2 border border-gray-300">
+                          <div className="flex flex-wrap gap-1">
+                            {item.cpl_list && item.cpl_list.length > 0 ? (
+                              item.cpl_list.map((cpl: string, cplIdx: number) => (
+                                <span
+                                  key={cplIdx}
+                                  className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-200 font-semibold">
+                                  {cpl}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-gray-500 italic">-</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-center text-sm text-gray-500 py-4">Belum ada Indikator Kinerja</p>
+            )}
+          </div>
+        </div>
 
         {/* ===== CPMK ===== */}
         <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden mb-6">
@@ -2340,9 +2558,6 @@ export default function DetailRPSPage({
                       </th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-800 uppercase border border-gray-200">
                         IK
-                      </th>
-                      <th className="px-4 py-3 text-xs font-bold text-gray-800 uppercase border border-gray-200 w-24 text-center">
-                        Bobot
                       </th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-800 uppercase border border-gray-200 w-20 text-center">
                         Aksi
@@ -2454,9 +2669,6 @@ export default function DetailRPSPage({
                           <p className="text-sm text-gray-900 flex-1">
                             {sc.deskripsi}
                           </p>
-                          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
-                            {sc.bobot}%
-                          </span>
                           <div className="flex gap-1">
                             <button
                               title="Edit"
@@ -2489,6 +2701,145 @@ export default function DetailRPSPage({
               <div className="text-center py-10">
                 <Layers size={36} className="mx-auto mb-2 text-gray-300" />
                 <p className="text-sm text-gray-600">Belum ada Sub-CPMK.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ===== ASSESSMENT ===== */}
+        <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden mb-6">
+          <SectionHeader
+            title="Penilaian (Assessment)"
+            icon={<ClipboardList size={20} />}
+            action={
+              <button
+                onClick={() => {
+                  setEditingAssessment(null);
+                  setShowAssessmentModal(true);
+                }}
+                disabled={localSubCpmk.length === 0}
+                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all">
+                <Plus size={16} /> Tambah Assessment
+              </button>
+            }
+          />
+          <div className="p-6 overflow-x-auto">
+            {assessments.length > 0 ? (
+              <table className="w-full text-left border-collapse" style={{ minWidth: "1400px" }}>
+                <thead>
+                  <tr className="bg-gray-200 text-gray-800">
+                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-20">
+                      CPL yang dibebankan pada MK
+                    </th>
+                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-16">
+                      IK
+                    </th>
+                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-20">
+                      CPMK
+                    </th>
+                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-32">
+                      SUB CPMK
+                    </th>
+                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-28">
+                      Bentuk Asesmen*
+                    </th>
+                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-16 text-center">
+                      Bobot
+                    </th>
+                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-16 text-center">
+                      Nilai
+                    </th>
+                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-20 text-center">
+                      Skor Mahasiswa
+                    </th>
+                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-20 text-center">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {assessments.map((assessment, assessmentIdx) => {
+                    const subCpmk = localSubCpmk.find((s) => s.id === Number(assessment.sub_cpmk_id));
+                    const parentCpmk = localCpmk.find((c) => c.id === subCpmk?.cpmk_id);
+                    
+                    return (
+                      <tr key={assessment.id} className={assessmentIdx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                        <td className="px-4 py-3 text-xs font-bold text-indigo-700 bg-indigo-50 border border-gray-300 align-top">
+                          {parentCpmk?.ik && parentCpmk.ik.length > 0 ? (
+                            <div className="font-bold text-white bg-indigo-600 px-2 py-1 rounded text-center">
+                              CPL-{String(parentCpmk.ik[0].kode_ik).match(/^(\d+)[\.\-]/)?.[1] || "-"}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs font-bold text-emerald-700 bg-emerald-50 border border-gray-300 align-top">
+                          <div className="flex flex-col gap-1">
+                            {parentCpmk?.ik && parentCpmk.ik.map((ikItem: any, ikIdx: number) => (
+                              <span
+                                key={ikIdx}
+                                className="inline-block bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded border border-emerald-300 font-bold text-xs">
+                                {ikItem.kode_ik}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs font-bold text-blue-700 bg-blue-50 border border-gray-300 align-top">
+                          <span className="inline-block bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-300 font-bold">
+                            {parentCpmk?.kode_cpmk}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs font-semibold text-gray-800 border border-gray-300">
+                          <span className="inline-block bg-orange-100 text-orange-700 px-2 py-1 rounded border border-orange-200 font-bold text-xs">
+                            {subCpmk?.kode}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-gray-700 border border-gray-300 text-center">
+                          <span className={`inline-block px-3 py-1 rounded text-xs font-bold ${
+                            assessment.assessment_type === 'formative'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-purple-100 text-purple-700'
+                          }`}>
+                            {assessment.assessment_type === 'formative' ? 'Formative' : 'Summative'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center text-xs font-bold text-gray-900 border border-gray-300">
+                          {assessment.bobot}%
+                        </td>
+                        <td className="px-3 py-2 text-center text-xs text-gray-500 border border-gray-300">-</td>
+                        <td className="px-3 py-2 text-center text-xs text-gray-500 border border-gray-300">-</td>
+                        <td className="px-3 py-2 text-center border border-gray-300">
+                          <div className="flex gap-1 justify-center">
+                            <button
+                              title="Edit"
+                              onClick={() => {
+                                setEditingAssessment(assessment);
+                                setShowAssessmentModal(true);
+                              }}
+                              className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                              <PenLine size={14} />
+                            </button>
+                            <button
+                              title="Hapus"
+                              onClick={() => {
+                                setAssessments((p) => p.filter((a) => a.id !== assessment.id));
+                                showSuccess("Assessment dihapus.");
+                              }}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-12">
+                <ClipboardList size={40} className="mx-auto mb-3 text-indigo-300" />
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Belum Ada Assessment</h3>
+                <p className="text-sm text-gray-600">Klik "Tambah Assessment" untuk menambahkan penilaian.</p>
               </div>
             )}
           </div>
@@ -2715,6 +3066,43 @@ export default function DetailRPSPage({
             ),
           );
           showSuccess("Sub-CPMK diperbarui.");
+        }}
+      />
+
+      <AssessmentModal
+        isOpen={showAssessmentModal}
+        onClose={() => {
+          setShowAssessmentModal(false);
+          setEditingAssessment(null);
+        }}
+        subCpmkList={localSubCpmk}
+        editingItem={editingAssessment}
+        onAdd={(d) => {
+          setAssessments((p) => [
+            ...p,
+            {
+              id: Date.now(),
+              sub_cpmk_id: Number(d.sub_cpmk_id),
+              assessment_type: d.assessment_type,
+              bobot: Number(d.bobot),
+            },
+          ]);
+          showSuccess("Assessment ditambahkan.");
+        }}
+        onUpdate={(id, d) => {
+          setAssessments((p) =>
+            p.map((a) =>
+              a.id !== id
+                ? a
+                : {
+                    ...a,
+                    sub_cpmk_id: Number(d.sub_cpmk_id),
+                    assessment_type: d.assessment_type,
+                    bobot: Number(d.bobot),
+                  },
+            ),
+          );
+          showSuccess("Assessment diperbarui.");
         }}
       />
 
