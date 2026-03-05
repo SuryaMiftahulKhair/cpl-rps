@@ -369,6 +369,11 @@ export default function Sidebar() {
                 CPL Mahasiswa
               </SubMenuItem>
               <SubMenuItem
+                href="/laporan/cpl-matakuliah"
+                isActive={currentPath === "/laporan/cpl-matakuliah"}>
+                CPL Matakuliah
+              </SubMenuItem>
+              <SubMenuItem
                 href="/laporan/rekap-metode"
                 isActive={currentPath.startsWith("/laporan/rekap-metode")}>
                 Rekap Metode
