@@ -13,10 +13,16 @@ export async function GET(
     const data = await prisma.rPS.findUnique({
       where: { id: rpsId },
       include: {
-        matakuliah: true,
+        matakuliah: {
+          include: {
+            cpl: true, // Ambil CPL yang dibebankan pada MK
+          },
+        },
         cpmk: {
           include: {
             sub_cpmk: true, // SubCpmk diambil lewat CPMK (Sesuai Schema)
+            cpl: true, // Ambil CPL yang terkait dengan CPMK
+            ik: true, // Ambil IK untuk mapping
           },
         },
         pertemuan: {
@@ -26,7 +32,11 @@ export async function GET(
             sub_cpmk: true, // Ambil juga SubCpmk yang dibahas di tiap pertemuan
           },
         },
-        ikas: true, // Relasi many-to-many ke model Ik
+        ikas: {
+          include: {
+            cpl: true, // Ambil CPL dari IK untuk correlation
+          },
+        },
       },
     });
 

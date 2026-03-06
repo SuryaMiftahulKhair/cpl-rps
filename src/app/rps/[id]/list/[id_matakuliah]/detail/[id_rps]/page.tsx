@@ -2762,16 +2762,47 @@ export default function DetailRPSPage({
                     const subCpmk = localSubCpmk.find((s) => s.id === Number(assessment.sub_cpmk_id));
                     const parentCpmk = localCpmk.find((c) => c.id === subCpmk?.cpmk_id);
                     
+                    // Get CPL codes yang dibebankan pada MK dan terkait dengan IK melalui CPMK
+                    const getCplCodes = (): string => {
+                      if (!rpsData || !parentCpmk) return "-";
+                      
+                      // Ambil semua CPL dari matakuliah.cpl
+                      const matakuliahCpls = (rpsData.matakuliah?.cpl || []) as any[];
+                      if (matakuliahCpls.length === 0) return "-";
+                      
+                      // Cari IK yang terkait dengan CPMK ini
+                      const rpsDataCpmk = rpsData.cpmk.find((c: any) => c.id === parentCpmk.id);
+                      if (!rpsDataCpmk || !(rpsDataCpmk as any).ik) return "-";
+                      
+                      const ikList = ((rpsDataCpmk as any).ik || []) as any[];
+                      if (ikList.length === 0) return "-";
+                      
+                      // Extract angka pertama dari IK kode (misal: 2.1 → 2, 3.2 → 3)
+                      const ikNumbers = new Set<string>();
+                      ikList.forEach((ik: any) => {
+                        const match = String(ik.kode_ik).match(/^(\d+)[\.\-]/);
+                        if (match) ikNumbers.add(match[1]);
+                      });
+                      
+                      // Cari CPL yang sesuai dengan IK numbers dari matakuliahCpls
+                      const matchedCpls: string[] = [];
+                      matakuliahCpls.forEach((cpl: any) => {
+                        // Extract angka dari CPL kode (misal: CPL-2 → 2)
+                        const cplMatch = String(cpl.kode_cpl).match(/\d+/);
+                        if (cplMatch && ikNumbers.has(cplMatch[0])) {
+                          matchedCpls.push(cpl.kode_cpl);
+                        }
+                      });
+                      
+                      return matchedCpls.length > 0 ? matchedCpls.join(", ") : "-";
+                    };
+                    
                     return (
                       <tr key={assessment.id} className={assessmentIdx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                         <td className="px-4 py-3 text-xs font-bold text-indigo-700 bg-indigo-50 border border-gray-300 align-top">
-                          {parentCpmk?.ik && parentCpmk.ik.length > 0 ? (
-                            <div className="font-bold text-white bg-indigo-600 px-2 py-1 rounded text-center">
-                              CPL-{String(parentCpmk.ik[0].kode_ik).match(/^(\d+)[\.\-]/)?.[1] || "-"}
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">-</span>
-                          )}
+                          <div className="font-bold text-white bg-indigo-600 px-2 py-1 rounded text-center">
+                            {getCplCodes()}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-xs font-bold text-emerald-700 bg-emerald-50 border border-gray-300 align-top">
                           <div className="flex flex-col gap-1">
@@ -3361,11 +3392,11 @@ export default function DetailRPSPage({
                     padding: "7px 8px",
                     fontSize: "11px",
                   }}>
-                  CPL-PRODI yang dibebankan pada MK
+                  CPL yang dibebankan pada MK
                 </td>
               </tr>
-              {rpsData.cpl && rpsData.cpl.length > 0 ? (
-                rpsData.cpl.map((cpl, idx) => (
+              {localCpl && localCpl.length > 0 ? (
+                localCpl.map((cpl, idx) => (
                   <tr key={idx}>
                     <td
                       style={{
@@ -3403,7 +3434,58 @@ export default function DetailRPSPage({
                     padding: "7px 8px",
                     fontSize: "11px",
                   }}>
-                  IK ⇒ Capaian Pembelajaran Mata Kuliah (CPMK)
+                  CPL ⇒ IK
+                </td>
+              </tr>
+              {localCpl && localCpl.length > 0 ? (
+                localCpl.map((cpl, cplIdx) => {
+                  // Cari semua IK yang terkait dengan CPL ini berdasarkan nomor
+                  const cplNum = String(cpl.kode).match(/\d+/)?.[0];
+                  const relatedIks = localCpmk
+                    .flatMap((cpmk) => (cpmk.ik || []).map((ik) => ({ ik, cpmk })))
+                    .filter((item) => {
+                      const ikNum = String(item.ik.kode_ik).match(/^(\d+)[\.\-]/)?.[1];
+                      return ikNum === cplNum;
+                    })
+                    .map((item) => item.ik)
+                    .filter(
+                      (value, index, self) =>
+                        self.findIndex((v) => v.kode_ik === value.kode_ik) === index
+                    ); // Unique
+
+                  return relatedIks.length > 0 ? (
+                    <tr key={cplIdx}>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          fontWeight: "bold",
+                          fontSize: "11px",
+                        }}
+                        className="light-gray-cell">
+                        {cpl.kode}
+                      </td>
+                      <td style={{ fontSize: "11px" }}>
+                        {relatedIks.map((ik) => (
+                          <div key={ik.kode_ik} style={{ marginBottom: "4px" }}>
+                            <strong>{ik.kode_ik}</strong>: {ik.deskripsi}
+                          </div>
+                        ))}
+                      </td>
+                    </tr>
+                  ) : null;
+                })
+              ) : null}
+              <tr>
+                <td
+                  colSpan={2}
+                  className="gray-cell"
+                  style={{
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    padding: "7px 8px",
+                    fontSize: "11px",
+                  }}>
+                  IK ⇒ CPMK
                 </td>
               </tr>
               {localCpmk.map((cpmk, idx) => (
@@ -3455,8 +3537,171 @@ export default function DetailRPSPage({
                   </td>
                 </tr>
               ))}
+              <tr>
+                <td
+                  colSpan={2}
+                  className="gray-cell"
+                  style={{
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    padding: "7px 8px",
+                    fontSize: "11px",
+                  }}>
+                  KORELASI ANTARA CPL/IK/CPMK terhadap Sub CPMK & ASESMEN
+                </td>
+              </tr>
             </tbody>
           </table>
+
+          {/* PAGE BREAK 1: Halaman 2 dimulai dari sini */}
+          <div style={{ pageBreakBefore: "always" }} />
+
+          {/* TABEL KORELASI LENGKAP - CPL | IK | CPMK | SUB-CPMK | ASESMEN | BOBOT */}
+          <table className="rps-table">
+            <thead>
+              <tr>
+                <th rowSpan={2} style={{ width: "10%", fontSize: "10px" }}>
+                  CPL yang<br />dibebankan<br />pada MK
+                </th>
+                <th rowSpan={2} style={{ width: "8%", fontSize: "10px" }}>
+                  IK
+                </th>
+                <th rowSpan={2} style={{ width: "10%", fontSize: "10px" }}>
+                  CPMK
+                </th>
+                <th rowSpan={2} style={{ width: "12%", fontSize: "10px" }}>
+                  SUB CPMK
+                </th>
+                <th colSpan={2} style={{ width: "25%", textAlign: "center", fontSize: "10px" }}>
+                  Bentuk Asesmen
+                </th>
+                <th rowSpan={2} style={{ width: "8%", fontSize: "10px" }}>
+                  Bobot (%)
+                </th>
+                <th rowSpan={2} style={{ width: "17%", fontSize: "10px" }}>
+                  Keterangan
+                </th>
+              </tr>
+              <tr>
+                <th style={{ width: "12.5%", fontSize: "10px" }}>Formative</th>
+                <th style={{ width: "12.5%", fontSize: "10px" }}>Sumative</th>
+              </tr>
+            </thead>
+            <tbody>
+              {localCpmk.length > 0 ? (
+                localCpmk.map((cpmk, cpmkIdx) => {
+                  const subCpmkList = localSubCpmk.filter((s) => s.cpmk_id === cpmk.id);
+                  
+                  // Get CPL codes dari rpsData (yang memiliki relasi cpl)
+                  const getCplCodesForPdf = (): string => {
+                    if (!rpsData) return "-";
+                    const rpsDataCpmk = rpsData.cpmk.find((c: any) => c.id === cpmk.id);
+                    if (!rpsDataCpmk) return "-";
+                    
+                    // Ambil CPL dari matakuliah yang dibebankan
+                    const matakuliahCpls = (rpsData.matakuliah?.cpl || []) as any[];
+                    if (matakuliahCpls.length === 0) return "-";
+                    
+                    // Cari IK yang terkait dengan CPMK ini
+                    const ikList = ((rpsDataCpmk as any).ik || []) as any[];
+                    if (ikList.length === 0) return "-";
+                    
+                    // Extract angka pertama dari IK kode
+                    const ikNumbers = new Set<string>();
+                    ikList.forEach((ik: any) => {
+                      const match = String(ik.kode_ik).match(/^(\d+)[\.\-]/);
+                      if (match) ikNumbers.add(match[1]);
+                    });
+                    
+                    // Cocokkan CPL yang sesuai
+                    const matchedCpls: string[] = [];
+                    matakuliahCpls.forEach((cpl: any) => {
+                      const cplMatch = String(cpl.kode_cpl).match(/\d+/);
+                      if (cplMatch && ikNumbers.has(cplMatch[0])) {
+                        matchedCpls.push(cpl.kode_cpl);
+                      }
+                    });
+                    
+                    return matchedCpls.length > 0 ? matchedCpls.join(", ") : "-";
+                  };
+
+                  const ikForCpmk = cpmk.ik?.[0];
+
+                  return (
+                    <tr key={cpmkIdx}>
+                      <td style={{ textAlign: "center", fontSize: "10px" }}>
+                        {getCplCodesForPdf()}
+                      </td>
+                      <td style={{ textAlign: "center", fontSize: "10px" }}>
+                        {ikForCpmk?.kode_ik || "-"}
+                      </td>
+                      <td style={{ textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>
+                        {cpmk.kode_cpmk}
+                      </td>
+                      <td style={{ fontSize: "10px" }}>
+                        {subCpmkList.length > 0
+                          ? subCpmkList.map((s) => s.kode).join("; ")
+                          : "-"}
+                      </td>
+                      <td style={{ textAlign: "center", fontSize: "10px" }}></td>
+                      <td style={{ textAlign: "center", fontSize: "10px" }}></td>
+                      <td style={{ textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>
+                        -
+                      </td>
+                      <td style={{ fontSize: "10px" }}></td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: "center", fontSize: "10px", fontStyle: "italic" }}>
+                    Belum ada data CPMK
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          <table className="rps-table">
+            <tbody>
+              <tr>
+                <td
+                  rowSpan={2}
+                  style={{
+                    width: "15%",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    verticalAlign: "top",
+                    padding: "10px 8px",
+                    fontSize: "11px",
+                  }}>
+                  Referensi
+                </td>
+                <td
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    padding: "6px 8px",
+                    backgroundColor: "#f0f0f0",
+                  }}>
+                  Daftar Pustaka
+                </td>
+              </tr>
+              <tr>
+                <td
+                  style={{
+                    fontSize: "11px",
+                    padding: "6px 8px",
+                    lineHeight: "1.6",
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: deskripsi.daftar_pustaka || "-",
+                  }}
+                />
+              </tr>
+            </tbody>
+          </table>
+
           <table className="rps-table">
             <tbody>
               <tr>
