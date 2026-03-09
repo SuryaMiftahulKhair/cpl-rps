@@ -3134,39 +3134,84 @@ export default function DetailRPSPage({
         cpmkList={localCpmk}
         subList={localSubCpmk}
         editingItem={editingSubCpmk}
-        onAdd={(d) => {
-          const parent = localCpmk.find((c) => c.id === Number(d.cpmk_id));
-          if (!parent) return;
-          const base = parent.kode_cpmk.replace(/^CPMK[-.]?/i, "");
-          const count = localSubCpmk.filter(
-            (s) => s.cpmk_id === Number(d.cpmk_id),
-          ).length;
-          setLocalSubCpmk((p) => [
-            ...p,
-            {
-              id: Date.now(),
-              cpmk_id: Number(d.cpmk_id),
-              kode: `Sub-CPMK-${base}.${count + 1}`,
+        onAdd={async (d) => {
+          setIsSaving(true);
+          try {
+            const parentCpmk = localCpmk.find(
+              (c) => c.id === Number(d.cpmk_id),
+            );
+
+            // FIX: Atasi 'parentCpmk is undefined'
+            if (!parentCpmk) {
+              alert("Pilih Parent CPMK terlebih dahulu");
+              return;
+            }
+
+            // FIX: Atasi error property 'id' dengan type casting (as any) atau opsional chaining
+            // Kita ambil IK ID jika prodiId '1', selain itu null
+            const targetIkId =
+              prodiId === "1" ? (parentCpmk.ik?.[0] as any)?.id : null;
+
+            const payload = {
+              cpmk_id: d.cpmk_id,
               deskripsi: d.deskripsi,
-              bobot: d.bobot,
-            },
-          ]);
-          showSuccess("Sub-CPMK ditambahkan.");
+              ik_id: targetIkId,
+              kode_sub_cpmk: `Sub-${parentCpmk.kode_cpmk}.${
+                localSubCpmk.filter((s) => s.cpmk_id === d.cpmk_id).length + 1
+              }`,
+            };
+
+            const res = await fetch("/api/rps/sub-cpmk", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            if (res.ok) {
+              await fetchRPSData();
+              setShowSubCpmkModal(false);
+              showSuccess("Sub-CPMK berhasil ditambahkan!");
+            }
+          } catch (e) {
+            alert("Terjadi kesalahan sistem.");
+          } finally {
+            setIsSaving(false);
+          }
         }}
-        onUpdate={(id, d) => {
-          setLocalSubCpmk((p) =>
-            p.map((s) =>
-              s.id !== id
-                ? s
-                : {
-                    ...s,
-                    deskripsi: d.deskripsi,
-                    bobot: d.bobot,
-                    cpmk_id: Number(d.cpmk_id),
-                  },
-            ),
-          );
-          showSuccess("Sub-CPMK diperbarui.");
+        onUpdate={async (id, d) => {
+          // SEKARANG ONUPDATE JUGA TEMBAK API BIAR GAK ILANG PAS REFRESH
+          setIsSaving(true);
+          try {
+            const parentCpmk = localCpmk.find(
+              (c) => c.id === Number(d.cpmk_id),
+            );
+            const targetIkId =
+              prodiId === "1" ? (parentCpmk?.ik?.[0] as any)?.id : null;
+
+            const payload = {
+              cpmk_id: Number(d.cpmk_id),
+              deskripsi: d.deskripsi,
+              ik_id: targetIkId,
+              kode_sub_cpmk: editingSubCpmk?.kode || "Sub-CPMK", // Tetap gunakan kode lama
+            };
+
+            const res = await fetch(`/api/rps/sub-cpmk/${id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            if (res.ok) {
+              await fetchRPSData();
+              setShowSubCpmkModal(false);
+              setEditingSubCpmk(null);
+              showSuccess("Sub-CPMK diperbarui permanen.");
+            }
+          } catch (e) {
+            alert("Gagal memperbarui data.");
+          } finally {
+            setIsSaving(false);
+          }
         }}
       />
 

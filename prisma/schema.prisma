@@ -191,10 +191,10 @@ model SubCpmk {
   id            Int            @id @default(autoincrement())
   deskripsi     String
   cpmk_id       Int
-  ik_id         Int
+  ik_id         Int?
   kode_sub_cpmk String
   cpmk          CPMK           @relation(fields: [cpmk_id], references: [id], onDelete: Cascade)
-  ik            Ik             @relation(fields: [ik_id], references: [id], onDelete: Cascade)
+  ik            Ik?             @relation(fields: [ik_id], references: [id], onDelete: Cascade)
   rps_pertemuan RPSPertemuan[] @relation("CPMKToPertemuan")
 
   @@map("sub_cpmk")
