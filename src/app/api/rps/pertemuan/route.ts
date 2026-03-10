@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
         pengalaman_belajar: body.pengalaman_belajar || "",
         kriteria_penilaian: body.kriteria_penilaian || "",
         waktu: body.waktu || "",
+        sub_cpmk: body.sub_cpmk_id ? { connect: { id: body.sub_cpmk_id } } : undefined,
       },
     });
 

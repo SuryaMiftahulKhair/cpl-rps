@@ -1,3 +1,4 @@
+//file: src/app/api/kelas/[id]/komponen/route.ts
 import { NextResponse } from "next/server";
 import prisma from "@/../lib/prisma";
 
@@ -12,21 +13,50 @@ export async function POST(
 
     // --- MODE 1: SYNC RPS ---
     if (body.action === "sync_rps") {
-        const { evaluasi } = body;
+        
         await prisma.$transaction(async (tx) => {
+            const kelas = await tx.kelas.findUnique({
+                where: { id: kelasId }
+            });
+
+            if (!kelas || !kelas.rps_id) {
+                throw new Error("Kelas tidak ditemukan atau RPS belum diset.");
+            }
+
             await tx.komponenNilai.deleteMany({ where: { kelas_id: kelasId } });
-            for (const item of evaluasi) {
-                if (!item.cpmk_id) continue; 
-                await tx.komponenNilai.create({
-                    data: {
-                        nama: item.nama,
-                        bobot_nilai: parseFloat(item.bobot),
-                        kelas_id: kelasId,
-                        cpmk_id: parseInt(item.cpmk_id)
-                    }
-                });
+
+            const pertemuanRPS = await tx.rPSPertemuan.findMany({
+                where: { 
+                    rps_id: kelas.rps_id,
+                    bobot_assesment: { gt: 0 } 
+                },
+                include: {
+                    sub_cpmk: true 
+                }
+            });
+
+            for (const p of pertemuanRPS) {
+                let targetCpmkId = null;
+
+                if (p.sub_cpmk && p.sub_cpmk.length > 0) {
+                    targetCpmkId = p.sub_cpmk[0].cpmk_id; 
+                }
+
+                if (targetCpmkId) {
+                    await tx.komponenNilai.create({
+                        data: {
+                            nama: p.kemampuan_akhir || `Evaluasi Pekan ${p.pekan_ke}`,
+                            bobot_nilai: p.bobot_assesment, 
+                            kelas_id: kelasId,
+                            cpmk_id: targetCpmkId
+                        }
+                    });
+                } else {
+                    console.warn(`Pekan ${p.pekan_ke} dilewati karena belum di-tag ke Sub-CPMK manapun`);
+                }
             }
         });
+
         return NextResponse.json({ message: "Sync RPS Berhasil" });
     }
 

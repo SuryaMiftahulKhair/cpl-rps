@@ -83,7 +83,7 @@ interface CPMK {
   bobot_to_cpl: number;
   kode_ik?: string;
   ik?: Array<{ kode_ik: string; deskripsi: string }>;
-  sub_cpmk?: Array<{ kode: string; deskripsi: string }>;
+  sub_cpmk?: Array<{ id: number; kode_sub_cpmk: string; kode?: string; deskripsi: string }>;
 }
 interface CPLItem {
   kode: string;
@@ -1954,16 +1954,16 @@ export default function DetailRPSPage({
 
     // 6. SUB-CPMK
     setLocalSubCpmk(
-      rpsData.cpmk.flatMap((c) =>
-        (c.sub_cpmk || []).map((sc, i) => ({
-          id: c.id * 1000 + i,
-          cpmk_id: c.id,
-          kode: sc.kode,
-          deskripsi: sc.deskripsi,
-          bobot: 0,
-        })),
-      ),
-    );
+  rpsData.cpmk.flatMap((c) =>
+    (c.sub_cpmk || []).map((sc) => ({
+      id: sc.id, 
+      cpmk_id: c.id,
+      kode: sc.kode_sub_cpmk || sc.kode || "SUB-CPMK", 
+      deskripsi: sc.deskripsi,
+      bobot: 0,
+    }))
+  )
+);
 
     // 7. DESKRIPSI & REFERENSI
     setDeskripsi({

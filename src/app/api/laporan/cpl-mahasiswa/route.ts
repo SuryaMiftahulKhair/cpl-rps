@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         orderBy: { kode_cpl: 'asc' }, 
         include: { 
             iks: true,
-            cpmk_direct: true 
+            cpmk: true 
         } 
     });
 

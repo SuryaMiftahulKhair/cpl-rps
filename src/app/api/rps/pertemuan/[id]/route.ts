@@ -21,6 +21,11 @@ export async function PUT(
         metode_pembelajaran: body.metode_pembelajaran,
         waktu: body.waktu,
         kriteria_penilaian: body.kriteria_penilaian,
+        sub_cpmk: body.sub_cpmk_id ? {
+            set: [{ id: Number(body.sub_cpmk_id) }] 
+        } : {
+            set: [] 
+        },
 
         // REVISI: Ganti bobot_nilai menjadi bobot_assesment (sesuai schema.prisma)
         bobot_assesment: Number(body.bobot_assesment || body.bobot_nilai) || 0,
