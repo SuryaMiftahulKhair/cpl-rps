@@ -19,7 +19,7 @@ export interface CourseItem {
   code: string;
   name: string;
   class_name: string;
-  scores: Record<string, number>; // { "CPL-01": 80, "CPL-02": 75 }
+  scores: Record<string, number>; 
 }
 
 export type FilterType = "SEMUA" | "TAHUN" | "SEMESTER";
@@ -92,9 +92,18 @@ export const useCPLProdi = () => {
         
         const json = await res.json();
         
-        // Simpan data dari backend
-        setRadarData(json.radarData || []);
+        if (json.cplData && Array.isArray(json.cplData)) {
+            const formattedRadar: RadarItem[] = json.cplData.map((item: any) => ({
+                subject: item.kode_cpl,
+                prodi: item.nilai_rata_rata || 0,
+                target: 75 
+            }));
+            setRadarData(formattedRadar);
+        } else {
+            setRadarData([]);
+        }
         setCourseList(json.courseData || []);
+
     } catch (error) {
         console.error(error);
         alert("Gagal memuat data grafik");
@@ -104,22 +113,15 @@ export const useCPLProdi = () => {
   };
 
   return {
-    // Data
     semesterList,
     uniqueYears,
     radarData,
     courseList,
-
-    // UI State
     loading,
     hasSearched,
-
-    // Filter State
     filterType, setFilterType,
     selectedYear, setSelectedYear,
     selectedSemesterId, setSelectedSemesterId,
-
-    // Actions
     loadReport
   };
 };

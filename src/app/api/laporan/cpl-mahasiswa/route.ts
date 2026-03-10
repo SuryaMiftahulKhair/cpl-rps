@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         orderBy: { kode_cpl: 'asc' }, 
         include: { 
             iks: true,
-            cpmk: true 
+            cpmks: true 
         } 
     });
 
@@ -63,7 +63,12 @@ export async function POST(req: Request) {
             matakuliah: true,
             komponenNilai: {
               include: {
-                cpmk: { include: { sub_cpmk: true } }
+                cpmk: { 
+                  include: { 
+                    sub_cpmk: { include: { ik: true } },
+                    cpl: true 
+                  } 
+                }
               }
             }
           }
@@ -114,8 +119,8 @@ export async function POST(req: Request) {
           if (result.totalBobot === 0 || result.score <= 0) return;
 
           const cpmk = group.obj;
-          
           const hasSubCpmk = Array.isArray(cpmk.sub_cpmk) && cpmk.sub_cpmk.length > 0;
+          const hasDirectCpl = Array.isArray(cpmk.cpl) && cpmk.cpl.length > 0;
 
           if (hasSubCpmk) {
               (cpmk.sub_cpmk as any[]).forEach((sub) => {
@@ -129,16 +134,19 @@ export async function POST(req: Request) {
                   ikMap[ikId].contributing_courses.add(mkId);
               });
           } 
-          else if (cpmk.cpl_id) {
-              const cplId = Number(cpmk.cpl_id);
-              const bobotCpmk = cpmk.bobot_cpmk ? Number(cpmk.bobot_cpmk) : 1; 
+          
+          if (hasDirectCpl) {
+              (cpmk.cpl as any[]).forEach((cplObj) => {
+                  const cplId = Number(cplObj.id);
+                  const bobotCpmk = cpmk.bobot_cpmk ? Number(cpmk.bobot_cpmk) : 1; 
 
-              if (!cplDirectMap[cplId]) {
-                  cplDirectMap[cplId] = { totalScoreWeighted: 0, totalBobot: 0 };
-              }
-              
-              cplDirectMap[cplId].totalScoreWeighted += (result.score * bobotCpmk);
-              cplDirectMap[cplId].totalBobot += bobotCpmk;
+                  if (!cplDirectMap[cplId]) {
+                      cplDirectMap[cplId] = { totalScoreWeighted: 0, totalBobot: 0 };
+                  }
+                  
+                  cplDirectMap[cplId].totalScoreWeighted += (result.score * bobotCpmk);
+                  cplDirectMap[cplId].totalBobot += bobotCpmk;
+              });
           }
       });
     }

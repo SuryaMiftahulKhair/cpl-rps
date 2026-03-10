@@ -49,7 +49,12 @@ export async function POST(req: Request) {
             const komponenList = await prisma.komponenNilai.findMany({
                 where: { kelas_id: { in: rpsData.classIds } },
                 include: {
-                    cpmk: { include: { sub_cpmk: true } }, 
+                    cpmk: { 
+                        include: { 
+                            sub_cpmk: { include: { ik: true } }, 
+                            cpl: true                            
+                        } 
+                    }, 
                     nilai: true
                 }
             });
@@ -82,13 +87,15 @@ export async function POST(req: Request) {
 
                 if (cpmkObj?.sub_cpmk) {
                     cpmkObj.sub_cpmk.forEach((sub: any) => {
-                         if (!mkIkWeighted[sub.ik_id]) mkIkWeighted[sub.ik_id] = { val: 0, w: 0 };
-                         mkIkWeighted[sub.ik_id].val += (finalScore * populasi);
-                         mkIkWeighted[sub.ik_id].w += populasi;
+                         if (sub.ik_id) {
+                             if (!mkIkWeighted[sub.ik_id]) mkIkWeighted[sub.ik_id] = { val: 0, w: 0 };
+                             mkIkWeighted[sub.ik_id].val += (finalScore * populasi);
+                             mkIkWeighted[sub.ik_id].w += populasi;
+                         }
                     });
                 }
 
-                if (cpmkObj?.cpl_id) {
+                if (cpmkObj?.cpl && cpmkObj.cpl.length > 0) {
                      if (!mkCpmkWeighted[Number(cpmkId)]) mkCpmkWeighted[Number(cpmkId)] = { val: 0, w: 0 };
                      mkCpmkWeighted[Number(cpmkId)].val += (finalScore * populasi);
                      mkCpmkWeighted[Number(cpmkId)].w += populasi;
@@ -105,7 +112,6 @@ export async function POST(req: Request) {
             cpmkScoresGlobal[Number(id)].push(d.val / d.w);
         }
     }
-
     const chartData = allCPL.map(cpl => {
         const hasIK = cpl.iks && cpl.iks.length > 0;
 
