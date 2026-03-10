@@ -1991,24 +1991,25 @@ export default function DetailRPSPage({
       );
 
     // 9. PERTEMUAN
+    // 9. PERTEMUAN (SINKRONISASI DENGAN SCHEMA BARU)
     if (rpsData.pertemuan) {
       setPertemuanRows(
         rpsData.pertemuan.map((p: any) => ({
-          id: uid(),
-          db_id: p.id,
+          id: uid(), // ID sementara untuk render React
+          db_id: p.id, // ID asli dari database
           pekan_mulai: p.pekan_ke,
           pekan_sampai: p.pekan_ke,
           sub_cpmk_id: String(p.sub_cpmk_id || ""),
-          indikator: p.indikator || "",
-          teknik_kriteria: p.teknik_kriteria || "",
-          luring_bentuk: p.bahan_kajian || "",
-          luring_metode: p.metode_pembelajaran || "",
-          luring_waktu: p.waktu || "",
-          daring_bentuk: p.daring_bentuk || "",
-          daring_metode: p.daring_metode || "",
-          daring_waktu: p.daring_waktu || "",
-          materi: p.materi_pembelajaran || p.pengalaman_belajar || "",
-          bobot: Number(p.bobot_cpmk) || 0,
+          indikator: p.kriteria_penilaian || "", // Sesuai schema: kriteria_penilaian
+          teknik_kriteria: "", // Jika Kakak butuh field ini, bisa ditambahkan ke schema nanti
+          luring_bentuk: p.bahan_kajian || "", // Sesuai schema: bahan_kajian
+          luring_metode: p.metode_pembelajaran || "", // Sesuai schema: metode_pembelajaran
+          luring_waktu: p.waktu || "", // Sesuai schema: waktu
+          daring_bentuk: "",
+          daring_metode: "",
+          daring_waktu: "",
+          materi: p.pengalaman_belajar || "", // Sesuai schema: pengalaman_belajar
+          bobot: Number(p.bobot_assesment) || 0, // PENTING: Sesuai schema 'bobot_assesment'
         })),
       );
     }
@@ -2041,77 +2042,71 @@ export default function DetailRPSPage({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             rps_id: Number(id_rps),
-            pekan_ke: form.pekan_mulai,
+            pekan_ke: Number(form.pekan_mulai),
             bahan_kajian: form.luring_bentuk,
-            pengalaman_belajar: form.materi,
+            pengalaman_belajar: form.materi, // Materi masuk ke pengalaman_belajar di DB
             waktu: form.luring_waktu,
-            bobot_nilai: form.bobot,
+            bobot_nilai: Number(form.bobot), // API Kakak minta 'bobot_nilai'
             metode_pembelajaran: form.luring_metode,
-            indikator: form.indikator,
-            teknik_kriteria: form.teknik_kriteria,
-            materi_pembelajaran: form.materi,
-            daring_bentuk: form.daring_bentuk,
-            daring_metode: form.daring_metode,
-            daring_waktu: form.daring_waktu,
+            kriteria_penilaian: form.indikator, // API Kakak minta 'kriteria_penilaian'
             sub_cpmk_id: form.sub_cpmk_id ? Number(form.sub_cpmk_id) : null,
+            // Tambahan agar API tidak error:
+            kemampuan_akhir: form.indikator,
           }),
         });
+
         if (res.ok) {
-          const json = await res.json();
-          setPertemuanRows((prev) => [
-            ...prev,
-            { ...form, id: uid(), db_id: json.data?.id },
-          ]);
+          await fetchRPSData(); // SAPU BERSIH: Ambil data terbaru dari DB
           showSuccess("Pertemuan berhasil ditambahkan.");
-        } else throw new Error("Gagal menyimpan");
+        } else {
+          throw new Error("Gagal menyimpan ke server");
+        }
       } catch (e: any) {
         alert(e.message);
       } finally {
         setIsSaving(false);
       }
     },
-    [id_rps, showSuccess],
+    [id_rps, fetchRPSData, showSuccess],
   );
 
   const handleUpdatePertemuan = useCallback(
     async (form: PertemuanRow) => {
       setIsSaving(true);
       try {
-        if (form.db_id) {
-          const res = await fetch(
-            `/api/rps/pertemuan/${form.db_id}?prodiId=${prodiId}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                pekan_ke: form.pekan_mulai,
-                bahan_kajian: form.luring_bentuk,
-                pengalaman_belajar: form.materi,
-                waktu: form.luring_waktu,
-                bobot_nilai: form.bobot,
-                metode_pembelajaran: form.luring_metode,
-                indikator: form.indikator,
-                teknik_kriteria: form.teknik_kriteria,
-                materi_pembelajaran: form.materi,
-                daring_bentuk: form.daring_bentuk,
-                daring_metode: form.daring_metode,
-                daring_waktu: form.daring_waktu,
-                sub_cpmk_id: form.sub_cpmk_id ? Number(form.sub_cpmk_id) : null,
-              }),
-            },
-          );
-        }
-        setPertemuanRows((prev) =>
-          prev.map((r) => (r.id === form.id ? form : r)),
+        if (!form.db_id) return;
+
+        const res = await fetch(
+          `/api/rps/pertemuan/${form.db_id}?prodiId=${prodiId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pekan_ke: Number(form.pekan_mulai),
+              bahan_kajian: form.luring_bentuk,
+              pengalaman_belajar: form.materi,
+              waktu: form.luring_waktu,
+              bobot_assesment: Number(form.bobot), // Sesuai schema model RPSPertemuan
+              metode_pembelajaran: form.luring_metode,
+              kriteria_penilaian: form.indikator,
+              sub_cpmk_id: form.sub_cpmk_id ? Number(form.sub_cpmk_id) : null,
+            }),
+          },
         );
-        showSuccess("Pertemuan berhasil diperbarui.");
+
+        if (res.ok) {
+          await fetchRPSData(); // SAPU BERSIH: Biar data DB masuk ke layar
+          showSuccess("Pertemuan berhasil diperbarui.");
+        } else {
+          throw new Error("Gagal update ke server");
+        }
       } catch (e: any) {
         alert(e.message);
       } finally {
         setIsSaving(false);
       }
     },
-    [prodiId, showSuccess],
+    [prodiId, fetchRPSData, showSuccess],
   );
 
   const handleDeletePertemuan = useCallback(
