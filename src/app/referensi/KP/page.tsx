@@ -5,11 +5,12 @@ import Link from "next/link";
 import {
   Layers,
   Plus,
-  Calendar,
   Loader2,
-  Target,
-  BookOpen,
   ChevronRight,
+  Pencil,
+  Trash2,
+  Eye,
+  BookOpen,
 } from "lucide-react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 import { KurikulumModal } from "@/app/components/KurikulumModal";
@@ -30,6 +31,8 @@ interface Kurikulum {
 function KurikulumProdiContent() {
   const [kurikulums, setKurikulums] = useState<Kurikulum[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingKurikulum, setEditingKurikulum] = useState<Kurikulum | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +84,45 @@ function KurikulumProdiContent() {
       setError(err?.message || "Terjadi kesalahan saat menyimpan.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEditKurikulum = async (nama: string, tahun: number) => {
+    if (!editingKurikulum) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/kurikulum/${editingKurikulum.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nama, tahun }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success)
+        throw new Error(json.error || "Gagal menyimpan perubahan");
+      setEditingKurikulum(null);
+      loadData();
+    } catch (err: any) {
+      setError(err?.message || "Terjadi kesalahan saat menyimpan.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteKurikulum = async (id: string | number) => {
+    if (!confirm("Yakin ingin menghapus kurikulum ini? Semua data terkait (CPL, Mata Kuliah) akan ikut terhapus.")) return;
+    setDeletingId(Number(id));
+    setError(null);
+    try {
+      const res = await fetch(`/api/kurikulum/${id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok || !json.success)
+        throw new Error(json.error || "Gagal menghapus");
+      loadData();
+    } catch (err: any) {
+      setError(err?.message || "Terjadi kesalahan saat menghapus.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -213,17 +255,36 @@ function KurikulumProdiContent() {
                         </div>
                       </td>
                       <td className="px-6 py-5 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Link
                             href={`/referensi/KP/${item.id}/VMCPL?prodiId=${prodiId}`}
-                            className="p-2 border rounded-lg hover:bg-indigo-50 text-indigo-600 font-semibold text-sm">
-                            Detail
+                            className="p-2.5 text-indigo-600 border-2 border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
+                            title="Detail CPL">
+                            <Eye size={16} />
                           </Link>
                           <Link
                             href={`/referensi/KP/${item.id}/matakuliah?prodiId=${prodiId}`}
-                            className="p-2 border rounded-lg hover:bg-orange-50 text-orange-600 font-semibold text-sm">
-                            MK
+                            className="p-2.5 text-orange-600 border-2 border-orange-200 rounded-lg hover:bg-orange-50 transition-colors"
+                            title="Mata Kuliah">
+                            <BookOpen size={16} />
                           </Link>
+                          <button
+                            onClick={() => setEditingKurikulum(item)}
+                            className="p-2.5 text-yellow-600 border-2 border-yellow-200 rounded-lg hover:bg-yellow-50 transition-colors"
+                            title="Edit Kurikulum">
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteKurikulum(item.id)}
+                            disabled={deletingId === Number(item.id)}
+                            className="p-2.5 text-red-600 border-2 border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                            title="Hapus Kurikulum">
+                            {deletingId === Number(item.id) ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <Trash2 size={16} />
+                            )}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -240,6 +301,22 @@ function KurikulumProdiContent() {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleAddKurikulum}
         submitting={submitting}
+      />
+
+      <KurikulumModal
+        isOpen={!!editingKurikulum}
+        onClose={() => setEditingKurikulum(null)}
+        onSubmit={handleEditKurikulum}
+        submitting={submitting}
+        initialData={
+          editingKurikulum
+            ? {
+                id: Number(editingKurikulum.id),
+                nama: editingKurikulum.nama,
+                tahun: editingKurikulum.tahun,
+              }
+            : undefined
+        }
       />
     </DashboardLayout>
   );

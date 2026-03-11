@@ -25,7 +25,6 @@ const kurikulumSchema = z.object({
     .min(1, "Tahun kurikulum wajib diisi")
     .superRefine((val, ctx) => {
       const str = val.trim();
-      const currentYear = new Date().getFullYear();
       
       // Check format first
       if (!/^\d{4}$/.test(str) && !/^\d{4}\/\d{4}$/.test(str)) {
@@ -39,17 +38,10 @@ const kurikulumSchema = z.object({
       // Single year validation
       if (/^\d{4}$/.test(str)) {
         const year = Number(str);
-        if (year < 2000) {
+        if (year < 2020) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Tahun tidak boleh kurang dari 2000",
-          });
-          return;
-        }
-        if (year > currentYear + 1) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Tahun tidak boleh lebih dari ${currentYear + 1}`,
+            message: "Tahun tidak boleh kurang dari 2020",
           });
           return;
         }
@@ -59,17 +51,10 @@ const kurikulumSchema = z.object({
       if (/^\d{4}\/\d{4}$/.test(str)) {
         const [year1, year2] = str.split('/').map(Number);
         
-        if (year1 < 2000) {
+        if (year1 < 2020) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Tahun tidak boleh kurang dari 2000",
-          });
-          return;
-        }
-        if (year1 > currentYear + 1) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Tahun tidak boleh lebih dari ${currentYear + 1}`,
+            message: "Tahun tidak boleh kurang dari 2020",
           });
           return;
         }
@@ -95,6 +80,7 @@ interface KurikulumModalProps {
   onClose: () => void;
   onSubmit: (nama: string, tahun: number) => Promise<void>;
   submitting: boolean;
+  initialData?: { id: number; nama: string; tahun: number };
 }
 
 // ========================================
@@ -106,7 +92,9 @@ export function KurikulumModal({
   onClose,
   onSubmit,
   submitting,
+  initialData,
 }: KurikulumModalProps) {
+  const isEditMode = !!initialData;
   const {
     register,
     handleSubmit,
@@ -125,12 +113,14 @@ export function KurikulumModal({
   // Watch tahunMulai untuk menampilkan format n/n+1
   const tahunMulai = watch("tahunMulai");
 
-  // Reset form saat modal dibuka/ditutup
+  // Reset form saat modal dibuka/ditutup, atau isi data saat mode edit
   useEffect(() => {
     if (!isOpen) {
-      reset();
+      reset({ nama: "", tahunMulai: "" });
+    } else if (initialData) {
+      reset({ nama: initialData.nama, tahunMulai: String(initialData.tahun) });
     }
-  }, [isOpen, reset]);
+  }, [isOpen, initialData, reset]);
 
   // Handle form submission
   const handleFormSubmit = async (data: KurikulumFormData) => {
@@ -160,7 +150,7 @@ export function KurikulumModal({
               <Layers size={20} className="text-indigo-600" />
             </div>
             <h2 className="text-xl font-bold text-gray-800">
-              Tambah Kurikulum
+              {isEditMode ? "Edit Kurikulum" : "Tambah Kurikulum"}
             </h2>
           </div>
           <button
@@ -305,7 +295,7 @@ export function KurikulumModal({
                   Menyimpan...
                 </span>
               ) : (
-                "Simpan"
+                isEditMode ? "Simpan Perubahan" : "Simpan"
               )}
             </button>
           </div>

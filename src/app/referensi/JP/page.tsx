@@ -296,7 +296,7 @@ function JenisPenilaianContent() {
                 <h1 className="text-3xl font-bold text-gray-900 mb-1">
                   Jenis Penilaian
                 </h1>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-900">
                   Kelola jenis-jenis penilaian yang tersedia untuk RPS
                   Matakuliah
                 </p>
@@ -325,7 +325,7 @@ function JenisPenilaianContent() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Cari berdasarkan nama atau basis penilaian..."
-                    className="w-full py-2.5 pl-11 pr-4 text-sm bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                    className="w-full py-2.5 pl-11 pr-4 text-sm text-gray-900 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                   />
                 </div>
               </div>
@@ -338,7 +338,7 @@ function JenisPenilaianContent() {
                   <select
                     value={filterBasis}
                     onChange={(e) => setFilterBasis(e.target.value)}
-                    className="w-full py-2.5 pl-10 pr-10 text-sm bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all appearance-none cursor-pointer">
+                    className="w-full py-2.5 pl-10 pr-10 text-sm text-gray-900 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all appearance-none cursor-pointer">
                     <option value="all">Semua Basis Penilaian</option>
                     {uniqueBasis.map((basis) => (
                       <option key={basis} value={basis}>
@@ -353,7 +353,7 @@ function JenisPenilaianContent() {
                 </div>
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
+            <div className="mt-4 flex items-center gap-2 text-sm text-gray-900">
               <span className="font-semibold text-gray-900">
                 {filteredData.length}
               </span>
@@ -408,7 +408,7 @@ function JenisPenilaianContent() {
                     <tr
                       key={item.id}
                       className="group hover:bg-indigo-50/40 transition-all duration-150">
-                      <td className="px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm text-gray-900">
                         {index + 1}
                       </td>
                       <td className="px-6 py-4">

@@ -194,8 +194,8 @@ model SubCpmk {
   ik_id         Int?
   kode_sub_cpmk String
   cpmk          CPMK           @relation(fields: [cpmk_id], references: [id], onDelete: Cascade)
-  ik            Ik?             @relation(fields: [ik_id], references: [id], onDelete: Cascade)
-  rps_pertemuan RPSPertemuan[] @relation("SubCPMKToPertemuan")
+  ik            Ik?            @relation(fields: [ik_id], references: [id], onDelete: Cascade)
+  rps_pertemuan RPSPertemuan[] @relation("CPMKToPertemuan")
 
   @@map("sub_cpmk")
 }
@@ -212,7 +212,7 @@ model RPSPertemuan {
   rps_id              Int
   bobot_assesment     Float
   rps                 RPS       @relation(fields: [rps_id], references: [id], onDelete: Cascade)
-  sub_cpmk            SubCpmk[] @relation("SubCPMKToPertemuan")
+  sub_cpmk            SubCpmk[] @relation("CPMKToPertemuan")
 
   @@map("rps_pertemuan")
 }

@@ -55,3 +55,93 @@ export async function GET(
     );
   }
 }
+
+import { getSession } from "@/../lib/auth";
+
+/**
+ * PUT: Mengupdate nama dan tahun kurikulum berdasarkan ID.
+ */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id: idString } = await params;
+    const id = Number(idString);
+    if (isNaN(id)) {
+      return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { nama, tahun } = body;
+
+    if (!nama || !tahun) {
+      return NextResponse.json({ error: "Nama dan tahun wajib diisi" }, { status: 400 });
+    }
+
+    const updated = await prisma.kurikulum.update({
+      where: { id },
+      data: { nama: nama.trim(), tahun: Number(tahun) },
+    });
+
+    return NextResponse.json({ success: true, data: updated });
+  } catch (err: any) {
+    console.error("PUT /api/kurikulum/[id] error:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE: Menghapus kurikulum berdasarkan ID.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id: idString } = await params;
+    const id = Number(idString);
+    if (isNaN(id)) {
+      return NextResponse.json({ error: "ID tidak valid" }, { status: 400 });
+    }
+
+    // Cek relasi yang masih ada sebelum menghapus
+    const [mkCount, cplCount, areaCount] = await Promise.all([
+      prisma.mataKuliah.count({ where: { kurikulum_id: id } }),
+      prisma.cPL.count({ where: { kurikulum_id: id } }),
+      prisma.assasmentArea.count({ where: { kurikulum_id: id } }),
+    ]);
+
+    const blockers: string[] = [];
+    if (mkCount > 0) blockers.push(`${mkCount} Mata Kuliah`);
+    if (cplCount > 0) blockers.push(`${cplCount} CPL`);
+    if (areaCount > 0) blockers.push(`${areaCount} Assessment Area`);
+
+    if (blockers.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Kurikulum tidak dapat dihapus karena masih memiliki: ${blockers.join(", ")}. Hapus semua data terkait terlebih dahulu.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    await prisma.kurikulum.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error("DELETE /api/kurikulum/[id] error:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}

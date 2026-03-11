@@ -87,7 +87,7 @@ export default function CplIkTab({ kurikulumId, prodiId }: CplIkTabProps) {
 
   // Navigasi ke halaman Matriks CPL
   const handleViewMatriks = () => {
-    router.push(`/referensi/KP/${kurikulumId}/matriks-cpl?prodiId=${prodiId}`);
+    router.push(`/referensi/KP/${kurikulumId}/matakuliah?prodiId=${prodiId}`);
   };
 
   // Hitung total IK
