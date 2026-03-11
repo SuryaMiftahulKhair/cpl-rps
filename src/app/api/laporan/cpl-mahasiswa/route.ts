@@ -40,14 +40,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Mahasiswa tidak ditemukan" }, { status: 404 });
     }
 
-    const allCPL = await prisma.cPL.findMany({ 
-        orderBy: { kode_cpl: 'asc' }, 
-        include: { 
-            iks: true,
-            cpmks: true 
-        } 
-    });
-
     const enrollments = await prisma.pesertaKelas.findMany({
       where: {
         mahasiswa_id: student.id,
@@ -60,7 +52,7 @@ export async function POST(req: Request) {
       include: {
         kelas: {
           include: {
-            matakuliah: true,
+            matakuliah: true, 
             komponenNilai: {
               include: {
                 cpmk: { 
@@ -75,6 +67,21 @@ export async function POST(req: Request) {
         },
         nilai: true
       }
+    });
+
+    const activeKurikulumIds = Array.from(
+        new Set(enrollments.map(e => e.kelas.matakuliah?.kurikulum_id).filter(Boolean))
+    ) as number[];
+
+    const allCPL = await prisma.cPL.findMany({ 
+        where: {
+            kurikulum_id: { in: activeKurikulumIds } 
+        },
+        orderBy: { kode_cpl: 'asc' }, 
+        include: { 
+            iks: true,
+            cpmks: true 
+        } 
     });
 
     interface IKData {

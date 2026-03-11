@@ -6,22 +6,32 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { semester_ids } = body;
 
-    const allCPL = await prisma.cPL.findMany({ 
-        orderBy: { kode_cpl: 'asc' },
-        include: { 
-            iks: true,
-            cpmks: true 
-        }
-    });
-
     const classes = await prisma.kelas.findMany({
       where: {
         tahun_ajaran_id: semester_ids?.length > 0 ? { in: semester_ids.map(Number) } : undefined
       },
       select: {
-        id: true, matakuliah_id: true, rps_id: true,
-        peserta_kelas: { select: { mahasiswa_id: true } }
+        id: true, 
+        matakuliah_id: true, 
+        rps_id: true,
+        peserta_kelas: { select: { mahasiswa_id: true } },
+        matakuliah: { select: { kurikulum_id: true } } 
       }
+    });
+
+    const activeKurikulumIds = Array.from(
+        new Set(classes.map(c => c.matakuliah?.kurikulum_id).filter(Boolean))
+    ) as number[];
+
+    const allCPL = await prisma.cPL.findMany({ 
+        where: {
+            kurikulum_id: { in: activeKurikulumIds } 
+        },
+        orderBy: { kode_cpl: 'asc' },
+        include: { 
+            iks: true,
+            cpmks: true 
+        }
     });
 
     const mkGroups: Record<number, Record<number, { classIds: number[], studentCount: number }>> = {};
@@ -112,6 +122,7 @@ export async function POST(req: Request) {
             cpmkScoresGlobal[Number(id)].push(d.val / d.w);
         }
     }
+    
     const chartData = allCPL.map(cpl => {
         const hasIK = cpl.iks && cpl.iks.length > 0;
 
