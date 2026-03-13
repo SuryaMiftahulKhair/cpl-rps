@@ -88,12 +88,9 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
   }, [kodekelas]);
 
   // --- LOGIC: SYNC RPS ---
+ // --- LOGIC: SYNC RPS (Versi Baru yang Lebih Cerdas) ---
   const handleSyncRPS = async () => {
-    if (!data?.rpsSource) return;
-
-    const confirmMsg = `Deteksi data penilaian dari RPS:\n\n` + 
-      data.rpsSource.evaluasi.map(e => `- ${e.nama} (${e.bobot}%)`).join("\n") +
-      `\n\nApakah Anda ingin menggunakan format ini?`;
+    const confirmMsg = "Sinkronisasi akan mereset komponen nilai lama dan menarik bobot penilaian terbaru langsung dari RPS. Lanjutkan?";
 
     if (!confirm(confirmMsg)) return;
 
@@ -102,16 +99,14 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
       const res = await fetch(`/api/kelas/${kodekelas}/komponen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          action: "sync_rps", 
-          evaluasi: data.rpsSource.evaluasi 
-        })
+        // Perhatikan: Kita tidak perlu lagi mengirimkan 'evaluasi' karena Backend sudah mandiri
+        body: JSON.stringify({ action: "sync_rps" }) 
       });
 
-      if (!res.ok) throw new Error("Gagal sinkronisasi");
+      if (!res.ok) throw new Error("Gagal melakukan sinkronisasi dengan RPS");
       
-      alert("Berhasil menarik data dari RPS!");
-      fetchData();
+      alert("Berhasil menarik data penilaian dari RPS!");
+      fetchData(); // Refresh tampilan tabel
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -258,11 +253,11 @@ export default function DetailKelasPage({ params }: { params: Promise<{ semester
                 <div className="p-2 bg-indigo-100 rounded-lg"><Award className="w-5 h-5 text-indigo-600" /></div>
                 <h2 className="font-bold text-gray-900">Komponen Penilaian</h2>
               </div>
-              {komponenList.length === 0 && rpsSource && (
+              { 
                 <button onClick={handleSyncRPS} disabled={isProcessing} className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex gap-2 items-center hover:bg-orange-600 transition-all">
                   <RefreshCw size={16} /> Sync RPS
                 </button>
-              )}
+              }
             </div>
 
             <div className="p-6">
