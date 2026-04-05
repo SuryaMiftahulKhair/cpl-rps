@@ -1,4 +1,3 @@
-// src/hooks/useCPLMatakuliah.ts
 import { useState, useEffect, useMemo } from 'react';
 
 // --- Types ---
@@ -52,19 +51,22 @@ export const useCPLMatakuliah = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        // Fetch Tahun Ajaran
         const resSemester = await fetch("/api/tahunAjaran");
         const jsonSemester = await resSemester.json();
         const dataSemester = Array.isArray(jsonSemester) ? jsonSemester : jsonSemester.data || [];
         setSemesterList(dataSemester);
 
-        // Fetch Daftar Matakuliah
         const resCourse = await fetch("/api/matakuliah");
         const jsonCourse = await resCourse.json();
-        const dataCourse = Array.isArray(jsonCourse) ? jsonCourse : jsonCourse.data || [];
+        const rawCourse = Array.isArray(jsonCourse) ? jsonCourse : jsonCourse.data || [];
+        
+        const dataCourse = rawCourse.map((c: any) => ({
+            id: c.id,
+            code: c.kode_mk || c.code || "",
+            name: c.nama || c.name || ""
+        }));
         setMatakuliahList(dataCourse);
 
-        // Set default values
         if (dataSemester.length > 0) {
           setSelectedSemesterId(String(dataSemester[0].id));
           setSelectedYear(dataSemester[0].tahun);
@@ -79,12 +81,10 @@ export const useCPLMatakuliah = () => {
     fetchInitialData();
   }, []);
 
-  // Helper: Ambil Tahun Unik
   const uniqueYears = useMemo(() => {
     return Array.from(new Set(semesterList.map(s => s.tahun)));
   }, [semesterList]);
 
-  // 2. Action: Load Data Grafik (POST ke Backend)
   const loadReport = async () => {
     if (!selectedCourseId) {
       alert("Pilih matakuliah terlebih dahulu");
@@ -94,14 +94,11 @@ export const useCPLMatakuliah = () => {
     setLoading(true);
     setHasSearched(true);
 
-    // Logic ID Semester berdasarkan Filter
     let semesterIds: number[] = [];
     if (filterType === "SEMUA") {
       semesterIds = semesterList.map(s => Number(s.id));
     } else if (filterType === "TAHUN") {
-      semesterIds = semesterList
-        .filter(s => s.tahun === selectedYear)
-        .map(s => Number(s.id));
+      semesterIds = semesterList.filter(s => s.tahun === selectedYear).map(s => Number(s.id));
     } else {
       semesterIds = [Number(selectedSemesterId)];
     }
@@ -111,47 +108,36 @@ export const useCPLMatakuliah = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          course_id: Number(selectedCourseId),
+          matakuliah_id: Number(selectedCourseId), // Sesuaikan dengan DB
           semester_ids: semesterIds,
         }),
       });
 
       const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal memuat data");
 
-      // Simpan data dari backend
-      setRadarData(json.radarData || []);
+      const formattedRadar = (json.radarData || []).map((item: any) => ({
+          subject: item.subject,
+          prodi: item.prodi || 0,
+          target: 75 
+      }));
+
+      setRadarData(formattedRadar);
       setClassDetails(json.classData || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Gagal memuat data grafik");
+      alert(error.message);
+      setRadarData([]);
+      setClassDetails([]);
     } finally {
       setLoading(false);
     }
   };
 
   return {
-    // Data
-    semesterList,
-    matakuliahList,
-    uniqueYears,
-    radarData,
-    classDetails,
-
-    // UI State
-    loading,
-    hasSearched,
-
-    // Filter State
-    filterType,
-    setFilterType,
-    selectedYear,
-    setSelectedYear,
-    selectedSemesterId,
-    setSelectedSemesterId,
-    selectedCourseId,
-    setSelectedCourseId,
-
-    // Actions
+    semesterList, matakuliahList, uniqueYears, radarData, classDetails,
+    loading, hasSearched, filterType, setFilterType, selectedYear, setSelectedYear,
+    selectedSemesterId, setSelectedSemesterId, selectedCourseId, setSelectedCourseId,
     loadReport,
   };
 };
