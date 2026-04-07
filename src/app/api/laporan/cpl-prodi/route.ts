@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/../lib/prisma";
 
+import { 
+  calculateAvgKomponen, 
+  calculateCPMKScore, 
+  calculateIKScore, 
+  calculateFinalCPL 
+} from "@/utils/cplCalculation"; 
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -72,28 +79,32 @@ export async function POST(req: Request) {
             const componentScores: Record<number, number> = {}; 
             komponenList.forEach(k => {
                 if (k.nilai.length > 0) {
-                     componentScores[k.id] = k.nilai.reduce((a, b) => a + b.nilai_komponen, 0) / k.nilai.length;
+                     const nilaiMahasiswaList = k.nilai.map(n => n.nilai_komponen);
+                     componentScores[k.id] = calculateAvgKomponen(nilaiMahasiswaList);
                 }
             });
 
-            const cpmkRawScores: Record<number, { total: number, bobot: number }> = {};
+            const cpmkMappings: Record<number, { nilai: number; bobot: number }[]> = {};
             
             komponenList.forEach(k => {
                 const score = componentScores[k.id];
                 if (score !== undefined) {
-                    if (!cpmkRawScores[k.cpmk_id]) cpmkRawScores[k.cpmk_id] = { total: 0, bobot: 0 };
-                    cpmkRawScores[k.cpmk_id].total += (score * k.bobot_nilai);
-                    cpmkRawScores[k.cpmk_id].bobot += k.bobot_nilai;
+                    if (!cpmkMappings[k.cpmk_id]) cpmkMappings[k.cpmk_id] = [];
+                    cpmkMappings[k.cpmk_id].push({ nilai: score, bobot: k.bobot_nilai });
                 }
             });
 
             const cpmkMap = new Map();
             komponenList.forEach(k => cpmkMap.set(k.cpmk_id, k.cpmk));
 
-            for (const [cpmkId, data] of Object.entries(cpmkRawScores)) {
-                if (data.bobot === 0) continue;
-                const finalScore = data.total / data.bobot; 
-                const cpmkObj = cpmkMap.get(Number(cpmkId));
+            for (const [cpmkIdStr, mappings] of Object.entries(cpmkMappings)) {
+                const cpmkId = Number(cpmkIdStr);
+                
+                const { score: finalScore, totalBobot } = calculateCPMKScore(mappings);
+                
+                if (totalBobot === 0) continue; 
+                
+                const cpmkObj = cpmkMap.get(cpmkId);
 
                 if (cpmkObj?.sub_cpmk) {
                     cpmkObj.sub_cpmk.forEach((sub: any) => {
@@ -106,9 +117,9 @@ export async function POST(req: Request) {
                 }
 
                 if (cpmkObj?.cpl && cpmkObj.cpl.length > 0) {
-                     if (!mkCpmkWeighted[Number(cpmkId)]) mkCpmkWeighted[Number(cpmkId)] = { val: 0, w: 0 };
-                     mkCpmkWeighted[Number(cpmkId)].val += (finalScore * populasi);
-                     mkCpmkWeighted[Number(cpmkId)].w += populasi;
+                     if (!mkCpmkWeighted[cpmkId]) mkCpmkWeighted[cpmkId] = { val: 0, w: 0 };
+                     mkCpmkWeighted[cpmkId].val += (finalScore * populasi);
+                     mkCpmkWeighted[cpmkId].w += populasi;
                 }
             }
         }
@@ -127,44 +138,50 @@ export async function POST(req: Request) {
         const hasIK = cpl.iks && cpl.iks.length > 0;
 
         if (hasIK) {
-            let totalVal = 0, totalBobot = 0;
+            const ikInputs: { ikScore: number; bobotIK: number }[] = [];
+            let countMk = 0;
+
             cpl.iks.forEach(ik => {
                 const scores = ikScoresGlobal[ik.id];
                 if (scores?.length > 0) {
-                    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-                    const weight = scores.length;
-                    totalVal += (avg * weight);
-                    totalBobot += weight;
+                    const avg = calculateAvgKomponen(scores);
+                    const weight = scores.length; 
+                    
+                    ikInputs.push({ ikScore: avg, bobotIK: weight });
+                    countMk += weight;
                 }
             });
+
+            const finalNilai = calculateFinalCPL(ikInputs);
+
             return {
                 kode_cpl: cpl.kode_cpl,
                 deskripsi: cpl.deskripsi,
-                nilai_rata_rata: totalBobot > 0 ? parseFloat((totalVal / totalBobot).toFixed(2)) : 0,
-                jumlah_mk_terlibat: totalBobot
+                nilai_rata_rata: countMk > 0 ? parseFloat(finalNilai.toFixed(2)) : 0,
+                jumlah_mk_terlibat: countMk
             };
 
         } else {
-            let totalVal = 0, totalBobot = 0;
+            const cpmkInputs: { cpmkScore: number; cpmkWeight: number }[] = [];
             let countMk = 0;
 
             cpl.cpmks.forEach(cpmk => {
                 const scores = cpmkScoresGlobal[cpmk.id];
                 if (scores?.length > 0) {
-                    const avgCpmkScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-                    
+                    const avgCpmkScore = calculateAvgKomponen(scores);
                     const bobot = cpmk.bobot_cpmk || 1; 
-
-                    totalVal += (avgCpmkScore * bobot);
-                    totalBobot += bobot;
+                    
+                    cpmkInputs.push({ cpmkScore: avgCpmkScore, cpmkWeight: bobot });
                     countMk++;
                 }
             });
 
+            const finalNilai = calculateIKScore(cpmkInputs);
+
             return {
                 kode_cpl: cpl.kode_cpl,
                 deskripsi: cpl.deskripsi,
-                nilai_rata_rata: totalBobot > 0 ? parseFloat((totalVal / totalBobot).toFixed(2)) : 0,
+                nilai_rata_rata: countMk > 0 ? parseFloat(finalNilai.toFixed(2)) : 0,
                 jumlah_mk_terlibat: countMk 
             };
         }

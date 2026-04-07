@@ -91,8 +91,7 @@ export async function POST(req: Request) {
     const ikMap: Record<number, IKData> = {};
 
     interface CplDirectData {
-        totalScoreWeighted: number;
-        totalBobot: number;
+        inputs: { cpmkScore: number; cpmkWeight: number }[];
     }
     const cplDirectMap: Record<number, CplDirectData> = {};
 
@@ -128,6 +127,8 @@ export async function POST(req: Request) {
           const cpmk = group.obj;
           const hasSubCpmk = Array.isArray(cpmk.sub_cpmk) && cpmk.sub_cpmk.length > 0;
           const hasDirectCpl = Array.isArray(cpmk.cpl) && cpmk.cpl.length > 0;
+          
+          const bobotCpmk = cpmk.bobot_cpmk ? Number(cpmk.bobot_cpmk) : 1; 
 
           if (hasSubCpmk) {
               (cpmk.sub_cpmk as any[]).forEach((sub) => {
@@ -137,7 +138,7 @@ export async function POST(req: Request) {
                   if (!ikMap[ikId]) {
                       ikMap[ikId] = { inputs: [], contributing_courses: new Set() };
                   }
-                  ikMap[ikId].inputs.push({ cpmkScore: result.score, cpmkWeight: 1 });
+                  ikMap[ikId].inputs.push({ cpmkScore: result.score, cpmkWeight: bobotCpmk });
                   ikMap[ikId].contributing_courses.add(mkId);
               });
           } 
@@ -145,14 +146,12 @@ export async function POST(req: Request) {
           if (hasDirectCpl) {
               (cpmk.cpl as any[]).forEach((cplObj) => {
                   const cplId = Number(cplObj.id);
-                  const bobotCpmk = cpmk.bobot_cpmk ? Number(cpmk.bobot_cpmk) : 1; 
 
                   if (!cplDirectMap[cplId]) {
-                      cplDirectMap[cplId] = { totalScoreWeighted: 0, totalBobot: 0 };
+                      cplDirectMap[cplId] = { inputs: [] };
                   }
                   
-                  cplDirectMap[cplId].totalScoreWeighted += (result.score * bobotCpmk);
-                  cplDirectMap[cplId].totalBobot += bobotCpmk;
+                  cplDirectMap[cplId].inputs.push({ cpmkScore: result.score, cpmkWeight: bobotCpmk });
               });
           }
       });
@@ -179,8 +178,8 @@ export async function POST(req: Request) {
 
         } else {
             const directData = cplDirectMap[cpl.id];
-            if (directData && directData.totalBobot > 0) {
-                finalCplValue = directData.totalScoreWeighted / directData.totalBobot;
+            if (directData && directData.inputs.length > 0) {
+                finalCplValue = calculateIKScore(directData.inputs);
             }
         }
 
