@@ -13,21 +13,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Data wajib diisi" }, { status: 400 });
     }
 
-    const alreadyUsed = await prisma.ik.findMany({
+    // 1. CEK APAKAH IK SUDAH DIPAKAI DI RPS INI (Cari via tabel CPMK)
+    // 1. CEK APAKAH IK SUDAH DIPAKAI DI RPS INI
+    const duplicateCpmk = await prisma.cPMK.findMany({
       where: {
-        id: { in: ik_ids.map((id: any) => Number(id)) },
-        cpmk: {
-          some: {}, // Ini akan mencari IK yang setidaknya terhubung ke satu CPMK
+        // Karena relasi Many-to-Many, kita harus pakai 'some'
+        rps: {
+          some: {
+            id: Number(rps_id),
+          },
         },
+        ik: {
+          some: {
+            id: { in: ik_ids.map((id: any) => Number(id)) },
+          },
+        },
+      },
+      include: {
+        ik: true,
       },
     });
 
-    if (alreadyUsed.length > 0) {
+    if (duplicateCpmk.length > 0) {
+      // Ambil kode-kode IK yang memang duplikat di RPS tersebut
+      const inputIds = ik_ids.map((id: any) => Number(id));
+      const usedIkCodes = duplicateCpmk
+        .flatMap((c) => c.ik)
+        .filter((ik) => inputIds.includes(ik.id))
+        .map((ik) => ik.kode_ik);
+
+      // Menghilangkan duplikat nama kode_ik jika ada
+      const uniqueUsedCodes = Array.from(new Set(usedIkCodes));
+
       return NextResponse.json(
         {
-          error: `IK [${alreadyUsed
-            .map((i) => i.kode_ik)
-            .join(", ")}] sudah digunakan oleh CPMK lain!`,
+          success: false,
+          error: `Gagal! Indikator [${uniqueUsedCodes.join(
+            ", ",
+          )}] sudah digunakan pada ${duplicateCpmk[0].kode_cpmk} di RPS ini.`,
         },
         { status: 400 },
       );
