@@ -66,6 +66,7 @@ export async function POST(req: Request) {
             const komponenList = await prisma.komponenNilai.findMany({
                 where: { kelas_id: { in: rpsData.classIds } },
                 include: {
+                    sub_cpmk: { include: { ik: true } },
                     cpmk: { 
                         include: { 
                             sub_cpmk: { include: { ik: true } }, 
@@ -84,28 +85,47 @@ export async function POST(req: Request) {
                 }
             });
 
-            const cpmkMappings: Record<number, { nilai: number; bobot: number }[]> = {};
+            // PERUBAHAN 2: Menyiapkan dua wadah penampung
+            const ikMappings: Record<number, { nilai: number; bobot: number }[]> = {}; // Untuk Jalur Presisi
+            const cpmkMappings: Record<number, { nilai: number; bobot: number }[]> = {}; // Untuk Jalur Tradisional
             
             komponenList.forEach(k => {
                 const score = componentScores[k.id];
                 if (score !== undefined) {
-                    if (!cpmkMappings[k.cpmk_id]) cpmkMappings[k.cpmk_id] = [];
-                    cpmkMappings[k.cpmk_id].push({ nilai: score, bobot: k.bobot_nilai });
+                    if (k.sub_cpmk_id && k.sub_cpmk?.ik_id) {
+                        const ikId = k.sub_cpmk.ik_id;
+                        if (!ikMappings[ikId]) ikMappings[ikId] = [];
+                        ikMappings[ikId].push({ nilai: score, bobot: k.bobot_nilai });
+                    } 
+                    else if (k.cpmk_id) {
+                        if (!cpmkMappings[k.cpmk_id]) cpmkMappings[k.cpmk_id] = [];
+                        cpmkMappings[k.cpmk_id].push({ nilai: score, bobot: k.bobot_nilai });
+                    }
                 }
             });
 
+            for (const [ikIdStr, mappings] of Object.entries(ikMappings)) {
+                const ikId = Number(ikIdStr);
+                
+                const { score: finalIkScore, totalBobot } = calculateCPMKScore(mappings);
+                
+                if (totalBobot > 0) {
+                     if (!mkIkWeighted[ikId]) mkIkWeighted[ikId] = { val: 0, w: 0 };
+                     mkIkWeighted[ikId].val += (finalIkScore * populasi);
+                     mkIkWeighted[ikId].w += populasi;
+                }
+            }
+
             const cpmkMap = new Map();
-            komponenList.forEach(k => cpmkMap.set(k.cpmk_id, k.cpmk));
+            komponenList.forEach(k => { if (k.cpmk_id) cpmkMap.set(k.cpmk_id, k.cpmk); });
 
             for (const [cpmkIdStr, mappings] of Object.entries(cpmkMappings)) {
                 const cpmkId = Number(cpmkIdStr);
-                
                 const { score: finalScore, totalBobot } = calculateCPMKScore(mappings);
                 
                 if (totalBobot === 0) continue; 
                 
                 const cpmkObj = cpmkMap.get(cpmkId);
-
                 if (cpmkObj?.sub_cpmk) {
                     cpmkObj.sub_cpmk.forEach((sub: any) => {
                          if (sub.ik_id) {
