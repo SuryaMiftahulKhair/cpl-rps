@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/../lib/prisma";
 
+import { 
+  calculateAvgKomponen, 
+  calculateCPMKScore 
+} from "@/utils/cplCalculation"; 
+
 const MINIMAL_KELULUSAN_SKS = 145;
 
 export async function POST(req: Request) {
@@ -23,6 +28,7 @@ export async function POST(req: Request) {
         komponenNilai: {
           include: {
             cpmk: { include: { sub_cpmk: true, cpl: true } },
+            sub_cpmk: { include: { cpmk: { include: { sub_cpmk: true, cpl: true } } } }, // Untuk Jalur Presisi
             nilai: true
           }
         }
@@ -40,15 +46,14 @@ export async function POST(req: Request) {
         where: { kurikulum_id: kurikulumId },
         orderBy: { kode_cpl: 'asc' },
         include: { 
-            iks: { include: { _count: { select: { mataKuliah: true } } } }, 
-            cpmks: { include: { _count: { select: { kelas: true } } } } 
+            iks: true, // Untuk mencari n_pi_cpl
+            cpmks: true 
         }
     });
 
     const bobot_mk = sksMataKuliah / MINIMAL_KELULUSAN_SKS;
 
     const classDataResult: any[] = [];
-    
     const globalCplAccumulator: Record<string, { totalScore: number, count: number, isTargeted: boolean }> = {};
 
     allCPL.forEach(cpl => {
@@ -62,90 +67,92 @@ export async function POST(req: Request) {
         const componentAvgScores: Record<number, number> = {};
         kelas.komponenNilai.forEach(k => {
             if (k.nilai.length > 0) {
-                const totalNilai = k.nilai.reduce((sum, n) => sum + n.nilai_komponen, 0);
-                componentAvgScores[k.id] = totalNilai / k.nilai.length;
-            } else {
-                componentAvgScores[k.id] = 0;
+                const nilaiList = k.nilai.map(n => n.nilai_komponen);
+                componentAvgScores[k.id] = calculateAvgKomponen(nilaiList);
+            }
+        });
+
+        const cpmkMappings: Record<number, { nilai: number; bobot: number }[]> = {};
+        const cpmkObjects: Record<number, any> = {};
+
+        kelas.komponenNilai.forEach(k => {
+            const score = componentAvgScores[k.id];
+            if (score !== undefined) {
+                const cpmkId = k.cpmk_id || k.sub_cpmk?.cpmk_id;
+                
+                if (cpmkId) {
+                    if (!cpmkMappings[cpmkId]) cpmkMappings[cpmkId] = [];
+                    cpmkMappings[cpmkId].push({ nilai: score, bobot: k.bobot_nilai });
+                    
+                    if (!cpmkObjects[cpmkId]) {
+                        cpmkObjects[cpmkId] = k.cpmk || k.sub_cpmk?.cpmk;
+                    }
+                }
             }
         });
 
         const cpmkAchieved: Record<number, number> = {};
-        const cpmkRawScores: Record<number, { total: number, bobot: number }> = {};
-        const cpmkObjects: Record<number, any> = {};
-
-        kelas.komponenNilai.forEach(k => {
-            const avgScore = componentAvgScores[k.id];
-            if (!cpmkRawScores[k.cpmk_id]) {
-                cpmkRawScores[k.cpmk_id] = { total: 0, bobot: 0 };
-                cpmkObjects[k.cpmk_id] = k.cpmk;
-            }
-            cpmkRawScores[k.cpmk_id].total += (avgScore * k.bobot_nilai);
-            cpmkRawScores[k.cpmk_id].bobot += k.bobot_nilai;
-        });
-
-        for (const [cpmkId, data] of Object.entries(cpmkRawScores)) {
-            if (data.bobot > 0) cpmkAchieved[Number(cpmkId)] = data.total / data.bobot;
+        for (const [cpmkIdStr, mappings] of Object.entries(cpmkMappings)) {
+            const { score } = calculateCPMKScore(mappings);
+            cpmkAchieved[Number(cpmkIdStr)] = score; 
         }
 
         const currentClassScores: Record<string, number> = {};
 
         allCPL.forEach(cpl => {
-            const relatedCpmkIds = new Set<number>();
+            let sumKonversi = 0;
+            const konversiCpmkList: { cpmkId: number, konversi: number, nilai_cpmk: number }[] = [];
             
+            const n_pi_cpl = cpl.iks?.length || 0; 
+
             Object.values(cpmkObjects).forEach(cpmk => {
-                const hasLinkedSubCpmk = cpmk.sub_cpmk?.some((sub: any) => cpl.iks.some(ik => ik.id === sub.ik_id));
-                const hasLinkedDirectCpl = cpmk.cpl?.some((c: any) => c.id === cpl.id);
-                if (hasLinkedSubCpmk || hasLinkedDirectCpl) relatedCpmkIds.add(cpmk.id);
-            });
+                let n_pi_cpmk = 0;
+                let isLinked = false;
 
-            let finalCplScore = 0;
+                if (n_pi_cpl > 0) {
+                    const linkedIks = cpmk.sub_cpmk?.filter((sub: any) => cpl.iks.some(ik => ik.id === sub.ik_id)) || [];
+                    n_pi_cpmk = linkedIks.length;
+                    if (n_pi_cpmk > 0) isLinked = true;
+                } else {
+                    const hasDirectCpl = cpmk.cpl?.some((c: any) => c.id === cpl.id);
+                    if (hasDirectCpl) isLinked = true;
+                }
 
-            if (relatedCpmkIds.size > 0) {
-                globalCplAccumulator[cpl.kode_cpl].isTargeted = true;
-
-                const konversiCpmkList: { konversi: number, nilai_cpmk: number }[] = [];
-                let sumKonversi = 0;
-
-                relatedCpmkIds.forEach(cpmkId => {
-                    const cpmk = cpmkObjects[cpmkId];
-                    const nilai_cpmk = cpmkAchieved[cpmkId] || 0;
+                if (isLinked) {
+                    globalCplAccumulator[cpl.kode_cpl].isTargeted = true;
+                    
+                    const nilai_cpmk = cpmkAchieved[cpmk.id] || 0;
                     const bobot_cpmk = (cpmk.bobot_cpmk || 100) / 100;
-                    let bobot_pi_cpl = 1;
 
-                    if (cpmk.sub_cpmk && cpmk.sub_cpmk.length > 0) {
-                        const linkedIks = cpmk.sub_cpmk.map((sub: any) => cpl.iks.find(ik => ik.id === sub.ik_id)).filter(Boolean);
-                        if (linkedIks.length > 0) {
-                            let totalBobotIk = 0;
-                            linkedIks.forEach((ikData: any) => {
-                                const mkTerikat = Math.max(1, ikData._count?.mataKuliah || 1);
-                                totalBobotIk += (1 / mkTerikat);
-                            });
-                            bobot_pi_cpl = totalBobotIk / linkedIks.length;
-                        }
-                    } else if (cpl.cpmks && cpl.cpmks.length > 0) {
-                         bobot_pi_cpl = 1 / cpl.cpmks.length;
+                    let bobot_pi_cpl = 0;
+                    if (n_pi_cpl > 0) {
+                        bobot_pi_cpl = n_pi_cpmk / n_pi_cpl;
+                    } else {
+                        bobot_pi_cpl = 1 / (cpl.cpmks?.length || 1);
                     }
 
                     const koef_cpl = bobot_mk * bobot_cpmk * bobot_pi_cpl;
                     const konversi = koef_cpl * 100;
-                    
-                    konversiCpmkList.push({ konversi, nilai_cpmk });
-                    sumKonversi += konversi;
-                });
 
-                if (sumKonversi > 0) {
-                    konversiCpmkList.forEach(item => {
-                        const persentase = (item.konversi / sumKonversi);
-                        finalCplScore += (persentase * item.nilai_cpmk);
-                    });
+                    konversiCpmkList.push({ cpmkId: cpmk.id, konversi, nilai_cpmk });
+                    sumKonversi += konversi;
                 }
+            });
+
+            let finalCplScore = 0;
+
+            if (sumKonversi > 0) {
+                konversiCpmkList.forEach(item => {
+                    const persentase = (item.konversi / sumKonversi) * 100; 
+                    finalCplScore += (persentase / 100) * item.nilai_cpmk; 
+                });
+            }
            
-                currentClassScores[cpl.kode_cpl] = parseFloat(finalCplScore.toFixed(2));
-                
-                if (finalCplScore > 0) {
-                    globalCplAccumulator[cpl.kode_cpl].totalScore += finalCplScore;
-                    globalCplAccumulator[cpl.kode_cpl].count += 1;
-                }
+            currentClassScores[cpl.kode_cpl] = parseFloat(finalCplScore.toFixed(2));
+            
+            if (sumKonversi > 0) {
+                globalCplAccumulator[cpl.kode_cpl].totalScore += finalCplScore;
+                globalCplAccumulator[cpl.kode_cpl].count += 1;
             }
         });
 
