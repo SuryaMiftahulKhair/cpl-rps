@@ -54,7 +54,7 @@ export async function POST(req: Request) {
 
         for (const rpsIdStr in rpsDict) {
             const rpsData = rpsDict[rpsIdStr];
-            const populasi = rpsData.studentCount;
+            
 
             const komponenList = await prisma.komponenNilai.findMany({
                 where: { kelas_id: { in: rpsData.classIds } },
@@ -94,21 +94,20 @@ export async function POST(req: Request) {
                 if (data.bobot === 0) continue;
                 const finalScore = data.total / data.bobot; 
                 const cpmkObj = cpmkMap.get(Number(cpmkId));
-
                 if (cpmkObj?.sub_cpmk) {
                     cpmkObj.sub_cpmk.forEach((sub: any) => {
                          if (sub.ik_id) {
                              if (!mkIkWeighted[sub.ik_id]) mkIkWeighted[sub.ik_id] = { val: 0, w: 0 };
-                             mkIkWeighted[sub.ik_id].val += (finalScore * populasi);
-                             mkIkWeighted[sub.ik_id].w += populasi;
+                             mkIkWeighted[sub.ik_id].val += finalScore; 
+                             mkIkWeighted[sub.ik_id].w += 1; 
                          }
                     });
                 }
 
                 if (cpmkObj?.cpl && cpmkObj.cpl.length > 0) {
                      if (!mkCpmkWeighted[Number(cpmkId)]) mkCpmkWeighted[Number(cpmkId)] = { val: 0, w: 0 };
-                     mkCpmkWeighted[Number(cpmkId)].val += (finalScore * populasi);
-                     mkCpmkWeighted[Number(cpmkId)].w += populasi;
+                     mkCpmkWeighted[Number(cpmkId)].val += finalScore;
+                     mkCpmkWeighted[Number(cpmkId)].w += 1;
                 }
             }
         }
