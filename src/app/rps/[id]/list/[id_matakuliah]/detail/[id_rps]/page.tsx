@@ -57,7 +57,9 @@ interface PertemuanRow {
   pekan_sampai: number;
   sub_cpmk_id: string;
   indikator: string;
-  teknik_kriteria: string;
+  teknik_penilaian: string;
+  kriteria: string;
+  teknik_kriteria?: string;
   luring_bentuk: string;
   luring_metode: string;
   luring_waktu: string;
@@ -83,7 +85,12 @@ interface CPMK {
   bobot_to_cpl: number;
   kode_ik?: string;
   ik?: Array<{ kode_ik: string; deskripsi: string }>;
-  sub_cpmk?: Array<{ id: number; kode_sub_cpmk: string; kode?: string; deskripsi: string }>;
+  sub_cpmk?: Array<{
+    id: number;
+    kode_sub_cpmk: string;
+    kode?: string;
+    deskripsi: string;
+  }>;
 }
 interface CPLItem {
   kode: string;
@@ -986,7 +993,8 @@ const emptyPertemuan = (nextPekan = 1): PertemuanRow => ({
   pekan_sampai: nextPekan,
   sub_cpmk_id: "",
   indikator: "",
-  teknik_kriteria: "",
+  teknik_penilaian: "",
+  kriteria: "",
   luring_bentuk: "",
   luring_metode: "",
   luring_waktu: "",
@@ -1018,6 +1026,36 @@ function PertemuanModal({
   }, [initial]);
   const set = (k: keyof PertemuanRow, v: any) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  const OPSI_PENILAIAN = ["Tes", "Non-Tes"];
+
+  const OPSI_BENTUK = [
+    "Kuliah",
+    "Responsi",
+    "Tutorial",
+    "Seminar atau yang setara",
+    "Praktikum",
+    "Praktik Studio",
+    "Praktik Bengkel",
+    "Praktik Lapangan",
+    "Penelitian",
+    "Pengabdian Kepada Masyarakat",
+  ];
+
+  const OPSI_METODE = [
+    "Small Group Discussion",
+    "Role-Play & Simulation",
+    "Discovery Learning",
+    "Self-Directed Learning",
+    "Cooperative Learning",
+    "Collaborative Learning",
+    "Contextual Learning",
+    "Project Based Learning",
+  ];
+
+  const OPSI_KRITERIA = ["Kriteria Formative", "Kriteria"];
+
+  const OPSI_INDIKATOR = ["Summative", "Formative"];
 
   return (
     <Modal
@@ -1088,6 +1126,8 @@ function PertemuanModal({
             ))}
           </select>
         </FormField>
+        // ... (Bagian atas kodingan Kakak tetap sama: useState, useEffect, set
+        function)
         {/* Penilaian */}
         <div className="border-2 border-indigo-100 rounded-xl overflow-hidden">
           <div className="bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-800 uppercase tracking-wide border-b border-indigo-100">
@@ -1095,22 +1135,45 @@ function PertemuanModal({
           </div>
           <div className="p-4 grid grid-cols-2 gap-4">
             <FormField label="Indikator">
-              <textarea
-                rows={3}
+              <select
                 value={form.indikator}
                 onChange={(e) => set("indikator", e.target.value)}
-                placeholder="Indikator pencapaian..."
-                className={textareaCls}
-              />
+                className={inputCls}>
+                <option value="">-- Pilih Indikator --</option>
+                {OPSI_INDIKATOR.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
             </FormField>
-            <FormField label="Teknik & Kriteria">
-              <textarea
-                rows={3}
-                value={form.teknik_kriteria}
-                onChange={(e) => set("teknik_kriteria", e.target.value)}
-                placeholder="Teknik & kriteria penilaian..."
-                className={textareaCls}
-              />
+            <FormField label="Kriteria">
+              {/* BERUBAH MENJADI SELECT */}
+              <select
+                value={form.kriteria}
+                onChange={(e) => set("kriteria", e.target.value)}
+                className={inputCls}>
+                <option value="">-- Pilih Kriteria --</option>
+                {OPSI_KRITERIA.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            <FormField label="Teknik Penilaian">
+              {/* BERUBAH MENJADI SELECT */}
+              <select
+                value={form.teknik_penilaian}
+                onChange={(e) => set("teknik_penilaian", e.target.value)}
+                className={inputCls}>
+                <option value="">-- Pilih Teknik --</option>
+                {OPSI_PENILAIAN.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
             </FormField>
           </div>
         </div>
@@ -1121,20 +1184,32 @@ function PertemuanModal({
           </div>
           <div className="p-4 grid grid-cols-3 gap-4">
             <FormField label="Bentuk">
-              <input
+              {/* BERUBAH MENJADI SELECT */}
+              <select
                 value={form.luring_bentuk}
                 onChange={(e) => set("luring_bentuk", e.target.value)}
-                placeholder="mis. Kuliah, Praktikum"
-                className={inputCls}
-              />
+                className={inputCls}>
+                <option value="">-- Pilih Bentuk --</option>
+                {OPSI_BENTUK.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
             </FormField>
             <FormField label="Metode">
-              <input
+              {/* BERUBAH MENJADI SELECT */}
+              <select
                 value={form.luring_metode}
                 onChange={(e) => set("luring_metode", e.target.value)}
-                placeholder="mis. Ceramah, PBL"
-                className={inputCls}
-              />
+                className={inputCls}>
+                <option value="">-- Pilih Metode --</option>
+                {OPSI_METODE.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
             </FormField>
             <FormField label="Estimasi Waktu">
               <input
@@ -1153,20 +1228,32 @@ function PertemuanModal({
           </div>
           <div className="p-4 grid grid-cols-3 gap-4">
             <FormField label="Bentuk">
-              <input
+              {/* BERUBAH MENJADI SELECT */}
+              <select
                 value={form.daring_bentuk}
                 onChange={(e) => set("daring_bentuk", e.target.value)}
-                placeholder="mis. E-Learning"
-                className={inputCls}
-              />
+                className={inputCls}>
+                <option value="">-- Pilih Bentuk --</option>
+                {OPSI_BENTUK.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
             </FormField>
             <FormField label="Metode">
-              <input
+              {/* BERUBAH MENJADI SELECT */}
+              <select
                 value={form.daring_metode}
                 onChange={(e) => set("daring_metode", e.target.value)}
-                placeholder="mis. Flipped Classroom"
-                className={inputCls}
-              />
+                className={inputCls}>
+                <option value="">-- Pilih Metode --</option>
+                {OPSI_METODE.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
             </FormField>
             <FormField label="Estimasi Waktu">
               <input
@@ -1954,16 +2041,16 @@ export default function DetailRPSPage({
 
     // 6. SUB-CPMK
     setLocalSubCpmk(
-  rpsData.cpmk.flatMap((c) =>
-    (c.sub_cpmk || []).map((sc) => ({
-      id: sc.id, 
-      cpmk_id: c.id,
-      kode: sc.kode_sub_cpmk || sc.kode || "SUB-CPMK", 
-      deskripsi: sc.deskripsi,
-      bobot: 0,
-    }))
-  )
-);
+      rpsData.cpmk.flatMap((c) =>
+        (c.sub_cpmk || []).map((sc) => ({
+          id: sc.id,
+          cpmk_id: c.id,
+          kode: sc.kode_sub_cpmk || sc.kode || "SUB-CPMK",
+          deskripsi: sc.deskripsi,
+          bobot: 0,
+        })),
+      ),
+    );
 
     // 7. DESKRIPSI & REFERENSI
     setDeskripsi({
@@ -2002,6 +2089,8 @@ export default function DetailRPSPage({
           sub_cpmk_id: String(p.sub_cpmk_id || ""),
           indikator: p.kriteria_penilaian || "", // Sesuai schema: kriteria_penilaian
           teknik_kriteria: "", // Jika Kakak butuh field ini, bisa ditambahkan ke schema nanti
+          teknik_penilaian: "", // Required field from PertemuanRow type
+          kriteria: "", // Required field from PertemuanRow type
           luring_bentuk: p.bahan_kajian || "", // Sesuai schema: bahan_kajian
           luring_metode: p.metode_pembelajaran || "", // Sesuai schema: metode_pembelajaran
           luring_waktu: p.waktu || "", // Sesuai schema: waktu
@@ -2732,210 +2821,6 @@ export default function DetailRPSPage({
               <div className="text-center py-10">
                 <Layers size={36} className="mx-auto mb-2 text-gray-300" />
                 <p className="text-sm text-gray-600">Belum ada Sub-CPMK.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ===== ASSESSMENT ===== */}
-        <div className="bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden mb-6">
-          <SectionHeader
-            title="Penilaian (Assessment)"
-            icon={<ClipboardList size={20} />}
-            action={
-              <button
-                onClick={() => {
-                  setEditingAssessment(null);
-                  setShowAssessmentModal(true);
-                }}
-                disabled={localSubCpmk.length === 0}
-                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all">
-                <Plus size={16} /> Tambah Assessment
-              </button>
-            }
-          />
-          <div className="p-6 overflow-x-auto">
-            {assessments.length > 0 ? (
-              <table
-                className="w-full text-left border-collapse"
-                style={{ minWidth: "1400px" }}>
-                <thead>
-                  <tr className="bg-gray-200 text-gray-800">
-                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-20">
-                      CPL yang dibebankan pada MK
-                    </th>
-                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-16">
-                      IK
-                    </th>
-                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-20">
-                      CPMK
-                    </th>
-                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-32">
-                      SUB CPMK
-                    </th>
-                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-28">
-                      Bentuk Asesmen*
-                    </th>
-                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-16 text-center">
-                      Bobot
-                    </th>
-                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-16 text-center">
-                      Nilai
-                    </th>
-                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-20 text-center">
-                      Skor Mahasiswa
-                    </th>
-                    <th className="px-3 py-2 text-xs font-bold uppercase border border-gray-400 w-20 text-center">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {assessments.map((assessment, assessmentIdx) => {
-                    const subCpmk = localSubCpmk.find(
-                      (s) => s.id === Number(assessment.sub_cpmk_id),
-                    );
-                    const parentCpmk = localCpmk.find(
-                      (c) => c.id === subCpmk?.cpmk_id,
-                    );
-
-                    // Get CPL codes yang dibebankan pada MK dan terkait dengan IK melalui CPMK
-                    const getCplCodes = (): string => {
-                      if (!rpsData || !parentCpmk) return "-";
-
-                      // Ambil semua CPL dari matakuliah.cpl
-                      const matakuliahCpls = (rpsData.matakuliah?.cpl ||
-                        []) as any[];
-                      if (matakuliahCpls.length === 0) return "-";
-
-                      // Cari IK yang terkait dengan CPMK ini
-                      const rpsDataCpmk = rpsData.cpmk.find(
-                        (c: any) => c.id === parentCpmk.id,
-                      );
-                      if (!rpsDataCpmk || !(rpsDataCpmk as any).ik) return "-";
-
-                      const ikList = ((rpsDataCpmk as any).ik || []) as any[];
-                      if (ikList.length === 0) return "-";
-
-                      // Extract angka pertama dari IK kode (misal: 2.1 → 2, 3.2 → 3)
-                      const ikNumbers = new Set<string>();
-                      ikList.forEach((ik: any) => {
-                        const match = String(ik.kode_ik).match(/^(\d+)[\.\-]/);
-                        if (match) ikNumbers.add(match[1]);
-                      });
-
-                      // Cari CPL yang sesuai dengan IK numbers dari matakuliahCpls
-                      const matchedCpls: string[] = [];
-                      matakuliahCpls.forEach((cpl: any) => {
-                        // Extract angka dari CPL kode (misal: CPL-2 → 2)
-                        const cplMatch = String(cpl.kode_cpl).match(/\d+/);
-                        if (cplMatch && ikNumbers.has(cplMatch[0])) {
-                          matchedCpls.push(cpl.kode_cpl);
-                        }
-                      });
-
-                      return matchedCpls.length > 0
-                        ? matchedCpls.join(", ")
-                        : "-";
-                    };
-
-                    return (
-                      <tr
-                        key={assessment.id}
-                        className={
-                          assessmentIdx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                        }>
-                        <td className="px-4 py-3 text-xs font-bold text-indigo-700 bg-indigo-50 border border-gray-300 align-top">
-                          <div className="font-bold text-white bg-indigo-600 px-2 py-1 rounded text-center">
-                            {getCplCodes()}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-xs font-bold text-emerald-700 bg-emerald-50 border border-gray-300 align-top">
-                          <div className="flex flex-col gap-1">
-                            {parentCpmk?.ik &&
-                              parentCpmk.ik.map(
-                                (ikItem: any, ikIdx: number) => (
-                                  <span
-                                    key={ikIdx}
-                                    className="inline-block bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded border border-emerald-300 font-bold text-xs">
-                                    {ikItem.kode_ik}
-                                  </span>
-                                ),
-                              )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-xs font-bold text-blue-700 bg-blue-50 border border-gray-300 align-top">
-                          <span className="inline-block bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-300 font-bold">
-                            {parentCpmk?.kode_cpmk}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs font-semibold text-gray-800 border border-gray-300">
-                          <span className="inline-block bg-orange-100 text-orange-700 px-2 py-1 rounded border border-orange-200 font-bold text-xs">
-                            {subCpmk?.kode}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-700 border border-gray-300 text-center">
-                          <span
-                            className={`inline-block px-3 py-1 rounded text-xs font-bold ${
-                              assessment.assessment_type === "formative"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-purple-100 text-purple-700"
-                            }`}>
-                            {assessment.assessment_type === "formative"
-                              ? "Formative"
-                              : "Summative"}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-center text-xs font-bold text-gray-900 border border-gray-300">
-                          {assessment.bobot}%
-                        </td>
-                        <td className="px-3 py-2 text-center text-xs text-gray-500 border border-gray-300">
-                          -
-                        </td>
-                        <td className="px-3 py-2 text-center text-xs text-gray-500 border border-gray-300">
-                          -
-                        </td>
-                        <td className="px-3 py-2 text-center border border-gray-300">
-                          <div className="flex gap-1 justify-center">
-                            <button
-                              title="Edit"
-                              onClick={() => {
-                                setEditingAssessment(assessment);
-                                setShowAssessmentModal(true);
-                              }}
-                              className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg">
-                              <PenLine size={14} />
-                            </button>
-                            <button
-                              title="Hapus"
-                              onClick={() => {
-                                setAssessments((p) =>
-                                  p.filter((a) => a.id !== assessment.id),
-                                );
-                                showSuccess("Assessment dihapus.");
-                              }}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg">
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <div className="text-center py-12">
-                <ClipboardList
-                  size={40}
-                  className="mx-auto mb-3 text-indigo-300"
-                />
-                <h3 className="text-lg font-bold text-gray-900 mb-1">
-                  Belum Ada Assessment
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Klik "Tambah Assessment" untuk menambahkan penilaian.
-                </p>
               </div>
             )}
           </div>
