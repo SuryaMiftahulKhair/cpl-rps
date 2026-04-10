@@ -1020,9 +1020,24 @@ function PertemuanModal({
   onSave: (form: PertemuanRow) => void;
   isSaving: boolean;
 }) {
-  const [form, setForm] = useState<PertemuanRow>(initial ?? emptyPertemuan());
+  const [form, setForm] = useState<PertemuanRow>(
+    initial ?? { ...emptyPertemuan(), teknik_penilaian: "", kriteria: "" },
+  );
   useEffect(() => {
-    if (initial) setForm(initial);
+    if (initial) {
+      const rawData = initial.indikator || "";
+      if (rawData.includes("|")) {
+        const parts = rawData.split("|").map((p) => p.trim());
+        setForm({
+          ...initial,
+          teknik_penilaian: parts[0] || "",
+          kriteria: parts[1] || "",
+          indikator: parts[2] || "", // Teks indikator asli
+        });
+      } else {
+        setForm(initial);
+      }
+    }
   }, [initial]);
   const set = (k: keyof PertemuanRow, v: any) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -1053,7 +1068,7 @@ function PertemuanModal({
     "Project Based Learning",
   ];
 
-  const OPSI_KRITERIA = ["Kriteria Formative", "Kriteria"];
+  const OPSI_KRITERIA = ["Kriteria Formative", "Kriteria Summative"];
 
   const OPSI_INDIKATOR = ["Summative", "Formative"];
 
@@ -1076,7 +1091,19 @@ function PertemuanModal({
         id="pertemuan-form"
         onSubmit={(e) => {
           e.preventDefault();
-          onSave(form);
+
+          // SAPU BERSIH: Gabungkan Teknik | Kriteria | Indikator
+          const teknik = form.teknik_penilaian || "-";
+          const kriteria = form.kriteria || "-";
+          const indikatorAsli = form.indikator || "-";
+
+          const combinedData = `${teknik} | ${kriteria} | ${indikatorAsli}`;
+
+          // Kirim data yang sudah dijahit ke fungsi onSave di page.tsx
+          onSave({
+            ...form,
+            indikator: combinedData,
+          });
         }}
         className="space-y-5">
         {/* Pekan & Bobot */}
@@ -1126,49 +1153,49 @@ function PertemuanModal({
             ))}
           </select>
         </FormField>
-        // ... (Bagian atas kodingan Kakak tetap sama: useState, useEffect, set
-        function)
+
         {/* Penilaian */}
         <div className="border-2 border-indigo-100 rounded-xl overflow-hidden">
           <div className="bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-800 uppercase tracking-wide border-b border-indigo-100">
             Penilaian (Assessment)
           </div>
-          <div className="p-4 grid grid-cols-2 gap-4">
-            <FormField label="Indikator">
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Teknik Penilaian">
+                <select
+                  value={form.teknik_penilaian}
+                  onChange={(e) => set("teknik_penilaian", e.target.value)}
+                  className={inputCls}>
+                  <option value="">-- Pilih Teknik --</option>
+                  {OPSI_PENILAIAN.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label="Kriteria Penilaian">
+                <select
+                  value={form.kriteria}
+                  onChange={(e) => set("kriteria", e.target.value)}
+                  className={inputCls}>
+                  <option value="">-- Pilih Kriteria --</option>
+                  {OPSI_KRITERIA.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            </div>
+
+            <FormField label="Indikator Pencapaian">
               <select
                 value={form.indikator}
                 onChange={(e) => set("indikator", e.target.value)}
                 className={inputCls}>
                 <option value="">-- Pilih Indikator --</option>
                 {OPSI_INDIKATOR.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label="Kriteria">
-              {/* BERUBAH MENJADI SELECT */}
-              <select
-                value={form.kriteria}
-                onChange={(e) => set("kriteria", e.target.value)}
-                className={inputCls}>
-                <option value="">-- Pilih Kriteria --</option>
-                {OPSI_KRITERIA.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label="Teknik Penilaian">
-              {/* BERUBAH MENJADI SELECT */}
-              <select
-                value={form.teknik_penilaian}
-                onChange={(e) => set("teknik_penilaian", e.target.value)}
-                className={inputCls}>
-                <option value="">-- Pilih Teknik --</option>
-                {OPSI_PENILAIAN.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
                   </option>
@@ -1474,7 +1501,10 @@ function PertemuanTable({
   const totalBobot = rows.reduce((s, r) => s + Number(r.bobot || 0), 0);
   const isOver = totalBobot > 100,
     isDone = totalBobot === 100;
-  const findSub = (id: string) => subCpmkList.find((s) => String(s.id) === id);
+  const findSub = (id: string | number) => {
+    if (!id) return null;
+    return subCpmkList.find((s) => String(s.id) === id);
+  };
 
   const openAdd = () => {
     const next =
@@ -1662,7 +1692,31 @@ function PertemuanTable({
                         )}
                       </td>
                       <td className={tdCls}>
-                        {row.teknik_kriteria || (
+                        {row.db_id ? (
+                          <div className="space-y-1">
+                            {/* Jika data mengandung pemisah '|' kita pecah, jika tidak tampilkan apa adanya */}
+                            {row.indikator.includes("|") ? (
+                              <>
+                                <p>
+                                  <span className="font-bold text-indigo-700">
+                                    Teknik:
+                                  </span>{" "}
+                                  {row.indikator.split("|")[0]}
+                                </p>
+                                <p>
+                                  <span className="font-bold text-indigo-700">
+                                    Kriteria:
+                                  </span>{" "}
+                                  {row.indikator.split("|")[1]}
+                                </p>
+                              </>
+                            ) : (
+                              <span className="text-gray-400 italic">
+                                Klik edit untuk melengkapi
+                              </span>
+                            )}
+                          </div>
+                        ) : (
                           <span className="text-gray-300 italic">—</span>
                         )}
                       </td>
@@ -2086,7 +2140,8 @@ export default function DetailRPSPage({
           db_id: p.id, // ID asli dari database
           pekan_mulai: p.pekan_ke,
           pekan_sampai: p.pekan_ke,
-          sub_cpmk_id: String(p.sub_cpmk_id || ""),
+          sub_cpmk_id:
+            p.sub_cpmk && p.sub_cpmk.length > 0 ? String(p.sub_cpmk[0].id) : "",
           indikator: p.kriteria_penilaian || "", // Sesuai schema: kriteria_penilaian
           teknik_kriteria: "", // Jika Kakak butuh field ini, bisa ditambahkan ke schema nanti
           teknik_penilaian: "", // Required field from PertemuanRow type
@@ -2137,7 +2192,7 @@ export default function DetailRPSPage({
             waktu: form.luring_waktu,
             bobot_nilai: Number(form.bobot), // API Kakak minta 'bobot_nilai'
             metode_pembelajaran: form.luring_metode,
-            kriteria_penilaian: form.indikator, // API Kakak minta 'kriteria_penilaian'
+            kriteria_penilaian: `${form.teknik_penilaian} | ${form.kriteria} | ${form.indikator}`, // API Kakak minta 'kriteria_penilaian'
             sub_cpmk_id: form.sub_cpmk_id ? Number(form.sub_cpmk_id) : null,
             // Tambahan agar API tidak error:
             kemampuan_akhir: form.indikator,
@@ -3519,26 +3574,50 @@ export default function DetailRPSPage({
                   CPMK ⇒ Sub-CPMK
                 </td>
               </tr>
-              {localCpmk.map((cpmk, idx) => (
-                <tr key={idx}>
-                  <td
-                    style={{
-                      textAlign: "center",
-                      fontWeight: "bold",
-                      fontSize: "11px",
-                    }}
-                    className="light-gray-cell">
-                    {cpmk.kode_cpmk}
-                  </td>
-                  <td style={{ fontSize: "11px" }}>
-                    <strong>SUB-{cpmk.kode_cpmk}:</strong>{" "}
-                    {localSubCpmk
-                      .filter((s) => s.cpmk_id === cpmk.id)
-                      .map((s) => s.deskripsi)
-                      .join("; ") || cpmk.deskripsi}
-                  </td>
-                </tr>
-              ))}
+              {localCpmk.map((cpmk, idx) => {
+                // 1. Cari semua Sub-CPMK yang memiliki parent ID yang sama dengan CPMK ini
+                const relatedSubCpmk = localSubCpmk.filter(
+                  (s) => s.cpmk_id === cpmk.id,
+                );
+
+                return (
+                  <tr key={idx} className="border-b border-gray-300">
+                    {/* Kolom CPMK - Menjadi satu kotak untuk semua sub-cpmk di bawahnya */}
+                    <td
+                      style={{
+                        textAlign: "center",
+                        fontWeight: "bold",
+                        fontSize: "11px",
+                        verticalAlign: "top", // Agar teks di atas jika konten sebelah panjang
+                        padding: "8px",
+                      }}
+                      className="light-gray-cell border-r border-gray-300">
+                      {cpmk.kode_cpmk || "-"}
+                    </td>
+
+                    {/* Kolom Sub-CPMK - Menampilkan list kode dan deskripsi gabungan */}
+                    <td style={{ fontSize: "11px", padding: "8px" }}>
+                      {relatedSubCpmk.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                          {/* Bagian List Deskripsi per Sub-CPMK */}
+                          <ul className="list-disc ml-4 space-y-1">
+                            {relatedSubCpmk.map((s, sIdx) => (
+                              <li key={sIdx}>
+                                <span className="font-semibold">{s.kode}:</span>{" "}
+                                {s.deskripsi}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          Tidak ada Sub-CPMK
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               <tr>
                 <td
                   colSpan={2}
@@ -3559,7 +3638,7 @@ export default function DetailRPSPage({
           <div style={{ pageBreakBefore: "always" }} />
 
           {/* TABEL KORELASI LENGKAP - CPL | IK | CPMK | SUB-CPMK | ASESMEN | BOBOT */}
-          <table className="rps-table">
+          <table className="rps-table mt-8">
             <thead>
               <tr>
                 <th rowSpan={2} style={{ width: "10%", fontSize: "10px" }}>
@@ -3676,9 +3755,7 @@ export default function DetailRPSPage({
                           textAlign: "center",
                           fontSize: "10px",
                           fontWeight: "bold",
-                        }}>
-                        -
-                      </td>
+                        }}></td>
                       <td style={{ fontSize: "10px" }}></td>
                     </tr>
                   );
@@ -3804,45 +3881,6 @@ export default function DetailRPSPage({
             <tbody>
               <tr>
                 <td
-                  rowSpan={2}
-                  style={{
-                    width: "15%",
-                    fontWeight: "bold",
-                    textAlign: "center",
-                    verticalAlign: "top",
-                    padding: "10px 8px",
-                    fontSize: "11px",
-                  }}>
-                  Referensi
-                </td>
-                <td
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: "bold",
-                    padding: "6px 8px",
-                    backgroundColor: "#f0f0f0",
-                  }}>
-                  Daftar Pustaka
-                </td>
-              </tr>
-              <tr>
-                <td
-                  style={{
-                    fontSize: "11px",
-                    padding: "6px 8px",
-                    lineHeight: "1.6",
-                  }}
-                  dangerouslySetInnerHTML={{
-                    __html: deskripsi.daftar_pustaka || "-",
-                  }}
-                />
-              </tr>
-            </tbody>
-          </table>
-          <table className="rps-table">
-            <tbody>
-              <tr>
-                <td
                   style={{
                     width: "15%",
                     fontWeight: "bold",
@@ -3872,7 +3910,7 @@ export default function DetailRPSPage({
               </tr>
             </tbody>
           </table>
-          <div className="pdf-page" style={{ pageBreakBefore: "always" }}>
+          <div className="pdf-page mt-8" style={{ pageBreakBefore: "always" }}>
             <table className="rps-table">
               <thead>
                 <tr>
@@ -3900,9 +3938,11 @@ export default function DetailRPSPage({
               </thead>
               <tbody>
                 {pertemuanRows.map((p) => {
+                  // Pastikan pencarian menggunakan ID yang konsisten (string ke string)
                   const sub = localSubCpmk.find(
-                    (s) => String(s.id) === p.sub_cpmk_id,
+                    (s) => String(s.id) === String(p.sub_cpmk_id),
                   );
+
                   return (
                     <tr key={p.id}>
                       <td
@@ -3916,13 +3956,24 @@ export default function DetailRPSPage({
                           : `${p.pekan_mulai}–${p.pekan_sampai}`}
                       </td>
                       <td style={{ fontSize: "10px", padding: "6px 8px" }}>
-                        {sub?.kode || "-"}
+                        {/* Tampilkan KODE Sub-CPMK, jika tidak ketemu tampilkan pesan debug kecil */}
+                        {sub ? sub.kode : "-"}
                       </td>
                       <td style={{ fontSize: "10px", padding: "6px 8px" }}>
                         {p.indikator || "-"}
                       </td>
-                      <td style={{ fontSize: "10px", padding: "6px 8px" }}>
-                        {p.teknik_kriteria || "-"}
+                      {/* Di dalam PDF map pertemuanRows */}
+                      <td>
+                        {p.indikator && p.indikator.includes("|") ? (
+                          <>
+                            <strong>Teknik:</strong> {p.indikator.split("|")[0]}{" "}
+                            <br />
+                            <strong>Kriteria:</strong>{" "}
+                            {p.indikator.split("|")[1]}
+                          </>
+                        ) : (
+                          p.indikator
+                        )}
                       </td>
                       <td style={{ fontSize: "10px", padding: "6px 8px" }}>
                         {p.luring_bentuk && (
@@ -3940,10 +3991,7 @@ export default function DetailRPSPage({
                             <strong>Waktu:</strong> {p.luring_waktu}
                           </div>
                         )}
-                        {!p.luring_bentuk &&
-                          !p.luring_metode &&
-                          !p.luring_waktu &&
-                          "-"}
+                        {!p.luring_bentuk && !p.luring_metode && "-"}
                       </td>
                       <td style={{ fontSize: "10px", padding: "6px 8px" }}>
                         {p.daring_bentuk && (
@@ -3961,10 +4009,7 @@ export default function DetailRPSPage({
                             <strong>Waktu:</strong> {p.daring_waktu}
                           </div>
                         )}
-                        {!p.daring_bentuk &&
-                          !p.daring_metode &&
-                          !p.daring_waktu &&
-                          "-"}
+                        {!p.daring_bentuk && !p.daring_metode && "-"}
                       </td>
                       <td style={{ fontSize: "10px", padding: "6px 8px" }}>
                         {p.materi || "-"}
@@ -3975,11 +4020,14 @@ export default function DetailRPSPage({
                           fontWeight: "bold",
                           fontSize: "10px",
                         }}>
-                        {totalBobot}%
+                        {/* PERBAIKAN: Gunakan p.bobot (bobot baris ini), bukan totalBobot */}
+                        {p.bobot}%
                       </td>
                     </tr>
                   );
                 })}
+
+                {/* Baris Total di paling bawah */}
                 <tr>
                   <td
                     colSpan={7}
@@ -3997,6 +4045,7 @@ export default function DetailRPSPage({
                       fontWeight: "bold",
                       fontSize: "10px",
                     }}>
+                    {/* Di sini baru kita tampilkan total akumulasinya */}
                     {totalBobot}%
                   </td>
                 </tr>

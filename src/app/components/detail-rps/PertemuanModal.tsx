@@ -43,12 +43,19 @@ export default function PertemuanModal({
 
   const handleAutoFill = (cpmkId: string) => {
     setSelectedCpmk(cpmkId);
-    // KUNCI: Masukkan cpmkId ke field form 'cpmk_id'
     setValue("cpmk_id", cpmkId);
 
     const selected = cpmkList.find((c) => c.id === Number(cpmkId));
     if (selected) {
+      // Ambil deskripsi CPMK
       setValue("kemampuan_akhir", selected.deskripsi);
+
+      // --- KUNCI PERBAIKAN ---
+      // Jika CPMK ini sudah punya Sub-CPMK di database, ambil ID pertamanya
+      if (selected.sub_cpmk && selected.sub_cpmk.length > 0) {
+        setValue("sub_cpmk_id", String(selected.sub_cpmk[0].id));
+      }
+
       const ik = selected.ik?.[0];
       setValue(
         "kriteria_penilaian",
@@ -56,6 +63,8 @@ export default function PertemuanModal({
       );
     }
   };
+
+  // 2. Di dalam Form, tambahkan input hidden untuk sub_cpmk_id:
 
   if (!isOpen) return null;
 
@@ -80,6 +89,7 @@ export default function PertemuanModal({
           className="p-6 space-y-4 overflow-y-auto">
           {/* Tambahkan field hidden untuk menampung cpmk_id agar ikut tersubmit */}
           <input type="hidden" {...register("cpmk_id")} />
+          <input type="hidden" {...register("sub_cpmk_id")} />
 
           <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mb-2">
             <label className="block text-[10px] font-bold text-indigo-700 mb-1 uppercase tracking-widest">

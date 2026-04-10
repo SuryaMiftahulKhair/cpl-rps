@@ -1,3 +1,5 @@
+//src/app/api/rps/[id]/route.ts
+
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/../lib/prisma";
 
