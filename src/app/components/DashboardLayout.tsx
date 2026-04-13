@@ -14,7 +14,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <Sidebar />
 
             {/* Main Content */}
-            <div className="flex flex-col flex-1">
+            <div className="flex flex-col flex-1 min-w-0">
                 {/* Header */}
                 <Header />
 

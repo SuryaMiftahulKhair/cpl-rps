@@ -134,9 +134,9 @@ export default function Header() {
         {/* Gradient Accent Line */}
         <div className="h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-500" />
 
-        <div className="flex items-center justify-between px-6 lg:px-8 py-3">
+        <div className="flex items-center justify-between px-4 lg:px-6 py-2.5">
           {/* Left Section - Logo/Title (Optional) */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-gray-800 hidden lg:block">
               Dashboard
             </h2>
@@ -146,7 +146,7 @@ export default function Header() {
           <div className="flex items-center gap-3">
             {/* Notification Button (Optional) */}
             <button
-              className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 group"
+              className="relative p-2 rounded-xl hover:bg-gray-100 transition-all duration-200 group"
               aria-label="Notifications">
               <Bell
                 size={20}
@@ -159,7 +159,7 @@ export default function Header() {
 
             {/* Help Button (Optional) */}
             <button
-              className="p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 group hidden lg:flex"
+              className="p-2 rounded-xl hover:bg-gray-100 transition-all duration-200 group hidden lg:flex"
               aria-label="Help">
               <HelpCircle
                 size={20}
@@ -174,7 +174,7 @@ export default function Header() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-3 px-4 py-2.5 rounded-xl 
+                className="flex items-center gap-2 px-2.5 py-2 rounded-xl 
                           bg-gradient-to-br from-gray-50 to-gray-100 
                           hover:from-indigo-50 hover:to-blue-50
                           border border-gray-200 hover:border-indigo-200
@@ -184,11 +184,11 @@ export default function Header() {
                 aria-expanded={isDropdownOpen}
                 aria-haspopup="true">
                 {/* User Info - Hidden on mobile */}
-                <div className="text-right leading-tight hidden lg:block">
-                  <p className="text-sm font-bold text-gray-800 group-hover:text-indigo-700 transition-colors">
+                <div className="text-right leading-tight hidden xl:block">
+                  <p className="text-xs font-bold text-gray-800 group-hover:text-indigo-700 transition-colors">
                     {userData.nama}
                   </p>
-                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">
                     {userData.role}
                   </p>
                 </div>
@@ -199,8 +199,8 @@ export default function Header() {
                   <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-blue-500 opacity-75 group-hover:opacity-100 blur-sm transition-opacity"></div>
 
                   {/* Avatar container */}
-                  <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center border-2 border-white shadow-md">
-                    <span className="text-white text-sm font-bold">
+                  <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center border-2 border-white shadow-md">
+                    <span className="text-white text-xs font-bold">
                       {getUserInitials(userData.nama)}
                     </span>
                   </div>
@@ -212,7 +212,7 @@ export default function Header() {
                 {/* Dropdown indicator */}
                 <ChevronDown
                   size={16}
-                  className={`text-gray-500 transition-transform duration-200 hidden lg:block ${
+                  className={`text-gray-500 transition-transform duration-200 hidden xl:block ${
                     isDropdownOpen ? "rotate-180" : ""
                   }`}
                 />

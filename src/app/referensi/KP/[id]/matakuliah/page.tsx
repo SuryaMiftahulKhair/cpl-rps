@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
@@ -101,10 +101,6 @@ export default function MatriksCPLPageAFTER() {
 
   const [collapsedCPL, setCollapsedCPL] = useState<string[]>([]);
   const [cellStates, setCellStates] = useState<Record<string, CellState>>({});
-
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const tableRef = useRef<HTMLDivElement>(null);
-  const [currentVisibleCPL, setCurrentVisibleCPL] = useState<string>("");
 
   const [showMkModal, setShowMkModal] = useState(false);
 
@@ -318,24 +314,6 @@ export default function MatriksCPLPageAFTER() {
     }
   };
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (tableRef.current) {
-        setScrollLeft(tableRef.current.scrollLeft);
-        const scrollPosition = tableRef.current.scrollLeft;
-        const cellWidth = 60;
-        const visibleIndex = Math.floor(scrollPosition / cellWidth);
-        if (sortedCPL[visibleIndex]) {
-          setCurrentVisibleCPL(sortedCPL[visibleIndex].kode_cpl);
-        }
-      }
-    };
-
-    const ref = tableRef.current;
-    ref?.addEventListener("scroll", handleScroll);
-    return () => ref?.removeEventListener("scroll", handleScroll);
-  }, [sortedCPL]);
-
   const handleBack = () => {
     router.push(`/referensi/KP?prodiId=${prodiId}`);
   };
@@ -435,17 +413,17 @@ export default function MatriksCPLPageAFTER() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gray-50 p-6 lg:p-8">
+      <div className="min-h-screen bg-gray-50 p-4 lg:p-5">
 
         {/* HEADER */}
-        <div className="bg-blue-50 rounded-xl p-6 mb-6 border border-blue-200">
+        <div className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center shadow-md">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-md">
                 <Grid3x3 className="w-6 h-6 text-white" strokeWidth={2.5} />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">
                   Matriks CPL - Mata Kuliah
                 </h1>
                 <p className="text-sm text-gray-600">
@@ -463,20 +441,20 @@ export default function MatriksCPLPageAFTER() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => setShowMkModal(true)}
-                className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 font-semibold">
+                className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 font-semibold text-sm">
                 <Plus size={18} strokeWidth={2.5} />
                 Tambah MK
               </button>
               <button
                 onClick={handleExportExcel}
                 disabled={loading || matakuliahList.length === 0}
-                className="inline-flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-green-700 transition-all duration-200 font-semibold disabled:opacity-50">
+                className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-700 transition-all duration-200 font-semibold text-sm disabled:opacity-50">
                 <Download size={18} strokeWidth={2.5} />
                 Export Excel
               </button>
               <button
                 onClick={handleBack}
-                className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 px-5 py-2.5 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all font-semibold group">
+                className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all font-semibold text-sm group">
                 <ChevronLeft
                   size={18}
                   className="group-hover:-translate-x-1 transition-transform"
@@ -489,23 +467,23 @@ export default function MatriksCPLPageAFTER() {
         </div>
 
         {/* STATS CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {[
             { label: "Mata Kuliah", value: matakuliahList.length, icon: <Layers className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-blue-600" },
             { label: "Total CPL", value: sortedCPL.length, icon: <Target className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-green-600" },
             { label: "Total IK", value: allIK.length, icon: <CheckCircle className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-purple-600" },
             { label: "Total Mapping", value: totalMapping, icon: <Grid3x3 className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-orange-600" },
           ].map((card, i) => (
-            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div key={i} className="min-w-0 bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
               <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 ${card.bgColor} rounded-xl flex items-center justify-center shadow-md`}>
+                <div className={`w-11 h-11 ${card.bgColor} rounded-xl flex items-center justify-center shadow-md`}>
                   {card.icon}
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">
                     {card.label}
                   </p>
-                  <p className="text-3xl font-bold text-gray-900">
+                  <p className="text-2xl font-bold text-gray-900">
                     {card.value}
                   </p>
                 </div>
@@ -585,14 +563,22 @@ export default function MatriksCPLPageAFTER() {
 
         {/* TABLE SECTION */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto" ref={tableRef}>
+          <div className="border-b border-gray-100 px-4 py-3 bg-gray-50/70">
+            <p className="text-xs font-semibold text-gray-600">
+              Scroll horizontal pada tabel untuk melihat semua mapping CPL
+            </p>
+          </div>
+          <div
+            className="block w-full max-w-full overflow-x-auto overflow-y-visible table-mapping-scrollbar">
             {loading ? (
               <div className="p-20 text-center">
                 <Loader2 className="animate-spin inline text-blue-600 mb-4" size={48} strokeWidth={2.5} />
-                <p className="text-lg text-gray-700 font-semibold">Memuat data matriks CPL...</p>
+                <p className="text-base text-gray-700 font-semibold">Memuat data matriks CPL...</p>
               </div>
             ) : (
-              <table className="min-w-full text-[11px] border-collapse">
+              <table
+                className="w-max text-[11px] border-collapse"
+                style={{ minWidth: "900px" }}>
                 <thead className="sticky top-0 z-20">
                   {/* ROW 1: SEMESTER + BAHAN KAJIAN + CPL HEADERS */}
                   <tr>
@@ -616,7 +602,7 @@ export default function MatriksCPLPageAFTER() {
                         <th
                           key={cpl.id}
                           colSpan={ikCount || 1}
-                          className="border-2 border-white/30 px-3 py-5 text-center font-bold text-white text-xs bg-blue-600">
+                          className="border-2 border-white/30 px-3 py-5 text-center font-bold text-white text-xs bg-blue-600 whitespace-nowrap">
                           <div className="flex flex-col items-center gap-2">
                             <div className="bg-white/20 px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-sm">
                               {cpl.kode_cpl}
@@ -647,7 +633,7 @@ export default function MatriksCPLPageAFTER() {
                       return (cpl.iks || []).map((ik) => (
                         <th
                           key={ik.id}
-                          className="border-2 border-blue-300 px-2 py-4 text-center font-bold text-blue-900 text-[11px] bg-blue-50 transition-colors hover:brightness-95"
+                          className="border-2 border-blue-300 px-2 py-4 text-center font-bold text-blue-900 text-[11px] bg-blue-50 transition-colors hover:brightness-95 whitespace-nowrap"
                           style={{ minWidth: "70px", width: "70px" }}
                           title={`${cpl.kode_cpl} - ${ik.deskripsi || "No description"}`}>
                           <div className="flex flex-col items-center gap-1">
@@ -675,11 +661,11 @@ export default function MatriksCPLPageAFTER() {
                         {mkIdx === 0 && (
                           <td
                             rowSpan={mkInSemester.length}
-                            className="border-2 border-gray-300 px-4 py-4 text-center font-extrabold text-xl text-blue-900 bg-blue-50/40 sticky left-0 z-10">
+                            className="border-2 border-gray-300 px-4 py-4 text-center font-extrabold text-xl text-blue-900 bg-blue-50 sticky left-0 z-20">
                             {semester === 0 ? "-" : semester}
                           </td>
                         )}
-                        <td className="border-2 border-gray-300 px-4 py-3 sticky left-[100px] bg-white group-hover:bg-blue-50/50 z-10 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]">
+                        <td className={`border-2 border-gray-300 px-4 py-3 sticky left-[100px] z-30 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)] ${mkIdx % 2 === 0 ? "bg-white" : "bg-blue-50"} group-hover:bg-blue-100`}>
                           <div className="font-bold text-[13px] text-gray-900 leading-tight mb-1.5">
                             {mk.nama}
                           </div>
@@ -713,6 +699,7 @@ export default function MatriksCPLPageAFTER() {
                                   ${currentState === "saving" ? "bg-yellow-50 border-yellow-400 animate-pulse" : ""}
                                   ${currentState === "error" ? "bg-red-50 border-red-400 animate-pulse" : ""}
                                 `}
+                                style={{ minWidth: "72px", width: "72px" }}
                                 onMouseEnter={() =>
                                   currentState !== "saving" &&
                                   setCellStates((p) => ({
@@ -761,7 +748,7 @@ export default function MatriksCPLPageAFTER() {
         {!loading && matakuliahList.length > 0 && allIK.length > 0 && (
           <div className="mt-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-6 shadow-md">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-md">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-md">
                 <Info className="w-6 h-6 text-white" strokeWidth={2.5} />
               </div>
               <div className="flex-1">
