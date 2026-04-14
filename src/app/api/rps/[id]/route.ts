@@ -128,6 +128,23 @@ export async function PUT(
           nama_kaprodi: data.nama_kaprodi || null,
         },
       });
+    } else if (section === "deskripsi") {
+      await prisma.rPS.update({
+        where: { id: Number(id) },
+        data: {
+          // SESUAIKAN DENGAN SCHEMA PRISMA KAKAK:
+          deskripsi: data.deskripsi_mk, // deskripsi_mk di UI masuk ke kolom 'deskripsi'
+          pustaka_utama: data.materi_pembelajaran, // materi_pembelajaran masuk ke 'pustaka_utama' (Cek lagi apakah ini kolom yang benar untuk materi)
+          pustaka_pendukung: data.referensi_utama, // referensi_utama masuk ke 'pustaka_pendukung'
+        },
+      });
+    } else if (section === "tim_pengajar") {
+      await prisma.rPS.update({
+        where: { id: Number(id) },
+        data: {
+          nama_penyusun: data.tim_pengajaran,
+        },
+      });
     }
 
     return NextResponse.json({ success: true });

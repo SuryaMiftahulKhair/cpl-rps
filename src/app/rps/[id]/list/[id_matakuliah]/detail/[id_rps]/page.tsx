@@ -123,6 +123,9 @@ interface MKSyaratItem {
   nama: string;
 }
 interface RPSData {
+  pustaka_pendukung: string;
+  deskripsi: string;
+  pustaka_utama: string;
   id: number;
   nama_penyusun: string;
   nama_koordinator: string;
@@ -895,38 +898,65 @@ function SubCpmkModal({
   cpmkList: CPMK[];
   subList: SubCPMKLocal[];
   editingItem: SubCPMKLocal | null;
-  onAdd: (d: SubCpmkFormState) => void;
-  onUpdate: (id: number, d: SubCpmkFormState) => void;
+  onAdd: (d: any) => void;
+  onUpdate: (id: number, d: any) => void;
 }) {
-  const [form, setForm] = useState<SubCpmkFormState>({
-    cpmk_id: cpmkList[0]?.id || 0,
+  const [form, setForm] = useState<any>({
+    cpmk_id: 0,
+    ik_id: 0,
     deskripsi: "",
     bobot: 0,
   });
-  useEffect(() => {
-    if (isOpen) {
-      if (editingItem)
-        setForm({
-          cpmk_id: editingItem.cpmk_id,
-          deskripsi: editingItem.deskripsi,
-          bobot: editingItem.bobot,
-        });
-      else setForm({ cpmk_id: cpmkList[0]?.id || 0, deskripsi: "", bobot: 0 });
-    }
-  }, [isOpen, editingItem, cpmkList]);
 
+  // 1. Ambil daftar IK hanya dari CPMK yang sedang dipilih
+  const availableIksForSelectedCpmk = useMemo(() => {
+    const selected = cpmkList.find((c) => c.id === Number(form.cpmk_id));
+    return selected?.ik || [];
+  }, [form.cpmk_id, cpmkList]);
+
+  // 2. Fungsi Generate Kode Otomatis (Jangan Dihapus)
   const autoKode = (parentId: number) => {
     const parent = cpmkList.find((c) => c.id === Number(parentId));
     if (!parent) return "Sub-CPMK-?";
+    // Hilangkan tulisan "CPMK" dari kode parent jika ada
     const base = parent.kode_cpmk.replace(/^CPMK[-.]?/i, "");
+    // Hitung jumlah sub yang sudah ada di parent tersebut
     const count = subList.filter((s) => s.cpmk_id === Number(parentId)).length;
     return `Sub-CPMK-${base}.${editingItem ? "—" : count + 1}`;
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      if (editingItem) {
+        setForm({
+          cpmk_id: editingItem.cpmk_id,
+          ik_id: (editingItem as any).ik_id || 0,
+          deskripsi: editingItem.deskripsi,
+          bobot: editingItem.bobot,
+        });
+      } else {
+        setForm({
+          cpmk_id: cpmkList[0]?.id || 0,
+          ik_id: 0,
+          deskripsi: "",
+          bobot: 0,
+        });
+      }
+    }
+  }, [isOpen, editingItem, cpmkList]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingItem) onUpdate(editingItem.id, form);
-    else onAdd(form);
+    if (!form.cpmk_id) return alert("Pilih CPMK terlebih dahulu");
+
+    // Gabungkan kode otomatis ke dalam data yang akan disimpan
+    const finalData = {
+      ...form,
+      kode_sub_cpmk: autoKode(form.cpmk_id),
+    };
+
+    if (editingItem) onUpdate(editingItem.id, finalData);
+    else onAdd(finalData);
     onClose();
   };
 
@@ -943,13 +973,17 @@ function SubCpmkModal({
           confirmLabel={editingItem ? "Update" : "Tambah"}
         />
       }>
-      <form id="sub-cpmk-form" onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <form id="sub-cpmk-form" onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="Parent CPMK" required>
             <select
               value={form.cpmk_id}
               onChange={(e) =>
-                setForm((p) => ({ ...p, cpmk_id: Number(e.target.value) }))
+                setForm((p: any) => ({
+                  ...p,
+                  cpmk_id: Number(e.target.value),
+                  ik_id: 0,
+                }))
               }
               className={inputCls}>
               <option value={0}>-- Pilih CPMK --</option>
@@ -960,6 +994,8 @@ function SubCpmkModal({
               ))}
             </select>
           </FormField>
+
+          {/* FIELD KODE OTOMATIS (TETAP ADA) */}
           <FormField label="Kode Sub-CPMK (auto)">
             <input
               readOnly
@@ -968,11 +1004,38 @@ function SubCpmkModal({
             />
           </FormField>
         </div>
+
+        {/* FIELD PILIH IK (HASIL DARI CPMK DI ATAS) */}
+        <FormField label="Indikator Kinerja (IK) Terkait" required>
+          <select
+            value={form.ik_id}
+            disabled={availableIksForSelectedCpmk.length === 0}
+            onChange={(e) =>
+              setForm((p: any) => ({ ...p, ik_id: Number(e.target.value) }))
+            }
+            className={clsx(
+              inputCls,
+              availableIksForSelectedCpmk.length === 0 &&
+                "bg-gray-50 opacity-60",
+            )}>
+            <option value={0}>
+              {availableIksForSelectedCpmk.length > 0
+                ? "-- Pilih IK yang berkaitan --"
+                : "CPMK belum memiliki IK"}
+            </option>
+            {availableIksForSelectedCpmk.map((ik: any) => (
+              <option key={ik.id} value={ik.id}>
+                {ik.kode_ik} - {ik.deskripsi.substring(0, 70)}...
+              </option>
+            ))}
+          </select>
+        </FormField>
+
         <FormField label="Deskripsi Sub-CPMK" required>
           <textarea
             value={form.deskripsi}
             onChange={(e) =>
-              setForm((p) => ({ ...p, deskripsi: e.target.value }))
+              setForm((p: any) => ({ ...p, deskripsi: e.target.value }))
             }
             rows={3}
             className={textareaCls}
@@ -2108,11 +2171,9 @@ export default function DetailRPSPage({
 
     // 7. DESKRIPSI & REFERENSI
     setDeskripsi({
-      deskripsi_mk: rpsData.deskripsi_mk || "",
-      materi_pembelajaran: rpsData.materi_pembelajaran || "",
-      daftar_pustaka: [rpsData.referensi_utama, rpsData.referensi_tambahan]
-        .filter(Boolean)
-        .join("\n\n"),
+      deskripsi_mk: rpsData.deskripsi || "", // rpsData.deskripsi (dari DB) -> deskripsi_mk (di UI)
+      materi_pembelajaran: rpsData.pustaka_utama || "",
+      daftar_pustaka: rpsData.pustaka_pendukung || "",
     });
 
     // 8. TIM & SYARAT
@@ -2175,6 +2236,105 @@ export default function DetailRPSPage({
     [pertemuanRows],
   );
   const sisaBobot = useMemo(() => Math.max(0, 100 - totalBobot), [totalBobot]);
+
+  // Di dalam Page.tsx
+  const handleUpdateTimPengajaran = async (newTimList: TimDosenItem[]) => {
+    setIsSaving(true);
+    try {
+      // Ubah array object menjadi array string nama saja
+      const timNames = newTimList.map((t) => t.nama);
+
+      const res = await fetch(`/api/rps/${id_rps}?prodiId=${prodiId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          section: "tim_pengajar", // Gunakan penanda section baru
+          data: {
+            tim_pengajaran: JSON.stringify(timNames), // Simpan sebagai string JSON
+          },
+        }),
+      });
+
+      if (res.ok) {
+        setTimPengajaran(newTimList);
+        showSuccess("Tim pengajaran berhasil diperbarui.");
+      }
+    } catch (error) {
+      alert("Gagal memperbarui tim pengajaran");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveDeskripsi = async (formData: DeskripsiLocal) => {
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/rps/${id_rps}?prodiId=${prodiId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          section: "deskripsi", // Kita kasih penanda section
+          data: {
+            deskripsi_mk: formData.deskripsi_mk,
+            materi_pembelajaran: formData.materi_pembelajaran,
+            // Pisahkan daftar pustaka jika di DB Kakak kolomnya terpisah (Utama & Tambahan)
+            // Atau simpan ke kolom referensi_utama jika hanya satu kolom
+            referensi_utama: formData.daftar_pustaka,
+          },
+        }),
+      });
+
+      if (res.ok) {
+        // Update state layar agar langsung berubah tanpa refresh
+        setDeskripsi(formData);
+        setShowDeskripsiModal(false);
+        showSuccess("Konten deskriptif berhasil disimpan ke database.");
+
+        // Ambil data terbaru dari server untuk memastikan sinkron
+        await fetchRPSData();
+      } else {
+        throw new Error("Gagal menyimpan ke server");
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteSubCpmk = async (subId: number) => {
+    // 1. Konfirmasi ke user biar nggak salah klik
+    if (
+      !confirm(
+        "Hapus Sub-CPMK ini? Data yang terhubung di Rencana Mingguan mungkin akan ikut terpengaruh.",
+      )
+    )
+      return;
+
+    setIsSaving(true); // Pakai loading state yang sudah Kakak punya
+    try {
+      const res = await fetch(`/api/rps/sub-cpmk/${subId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        // 2. SAPU BERSIH: Update state lokal agar langsung hilang dari list
+        setLocalSubCpmk((prev) => prev.filter((s) => s.id !== subId));
+
+        // 3. Refresh data RPS agar sinkron total
+        await fetchRPSData();
+
+        showSuccess("Sub-CPMK berhasil dihapus permanen.");
+      } else {
+        const err = await res.json();
+        throw new Error(err.error || "Gagal menghapus");
+      }
+    } catch (e: any) {
+      alert("Kesalahan: " + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Pertemuan CRUD
   const handleAddPertemuan = useCallback(
@@ -2856,14 +3016,19 @@ export default function DetailRPSPage({
                             </button>
                             <button
                               title="Hapus"
-                              onClick={() => {
-                                setLocalSubCpmk((p) =>
-                                  p.filter((s) => s.id !== sc.id),
-                                );
-                                showSuccess("Sub-CPMK dihapus.");
-                              }}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg">
-                              <Trash2 size={14} />
+                              disabled={isSaving} // Cegah klik ganda saat proses hapus
+                              onClick={() => handleDeleteSubCpmk(sc.id)} // Panggil fungsi sakti kita
+                              className={clsx(
+                                "p-1.5 rounded-lg transition-all",
+                                isSaving
+                                  ? "text-gray-400 cursor-not-allowed"
+                                  : "text-red-600 hover:bg-red-50",
+                              )}>
+                              {isSaving ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={14} />
+                              )}
                             </button>
                           </div>
                         </div>
@@ -3035,21 +3200,21 @@ export default function DetailRPSPage({
         onClose={() => setShowDeskripsiModal(false)}
         data={deskripsi}
         isSaving={isSaving}
-        onSave={(d) => {
-          setDeskripsi(d);
-          setShowDeskripsiModal(false);
-          showSuccess("Konten deskriptif disimpan.");
-        }}
+        onSave={handleSaveDeskripsi}
       />
 
       <TimPengajaranModal
         isOpen={showTimModal}
         onClose={() => setShowTimModal(false)}
         timList={timPengajaran}
-        onAdd={(n) =>
-          setTimPengajaran((p) => [...p, { id: Date.now(), nama: n }])
-        }
-        onDelete={(id) => setTimPengajaran((p) => p.filter((t) => t.id !== id))}
+        onAdd={(n) => {
+          const newList = [...timPengajaran, { id: Date.now(), nama: n }];
+          handleUpdateTimPengajaran(newList); // Langsung tembak API
+        }}
+        onDelete={(id) => {
+          const newList = timPengajaran.filter((t) => t.id !== id);
+          handleUpdateTimPengajaran(newList); // Langsung tembak API
+        }}
       />
 
       <MKSyaratModal

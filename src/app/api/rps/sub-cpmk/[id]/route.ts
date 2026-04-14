@@ -1,4 +1,6 @@
+//src/app/api/rps/sub-cpmk/[id]/route.ts
 import { NextResponse } from "next/server";
+
 import prisma from "@/../lib/prisma";
 
 // --- 1. FUNGSI UPDATE (PUT) ---
