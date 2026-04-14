@@ -5,7 +5,7 @@ import { jwtVerify } from "jose";
 const secretKey = "rahasia-dapur-kita"; // Samakan dengan lib/auth.ts
 const key = new TextEncoder().encode(secretKey);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // 1. Ambil cookie session
   const sessionCookie = request.cookies.get("session")?.value;
 
