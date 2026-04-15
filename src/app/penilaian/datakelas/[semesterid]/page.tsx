@@ -18,6 +18,7 @@ import {
 } from "lucide-react"; 
 import DashboardLayout from "@/app/components/DashboardLayout";
 import KelasModal from "@/app/components/KelasModal";
+import { useRouter } from "next/navigation";
 
 interface PageParams {
   semesterid: string;
@@ -47,6 +48,7 @@ export default function SemesterMatakuliahListPage({
 }) {
   const resolvedParams = use(params);
   const { semesterid } = resolvedParams;
+  const router = useRouter();
 
   // State Data
   const [matakuliahList, setMatakuliahList] = useState<MatakuliahKelas[]>([]);
@@ -92,7 +94,7 @@ export default function SemesterMatakuliahListPage({
   }, [semesterid]);
 
   // Handler Create Kelas Manual 
-  const handleCreateKelas = async (data: { kode_mk: string; nama_mk: string; nama_kelas: string; sks: number; matakuliah_id?: number }) => {
+  const handleCreateKelas = async (data: { kode_mk: string; nama_mk: string; nama_kelas: string; sks: number; matakuliah_id?: number; rps_id?: number }) => {
     setSubmitting(true);
     try {
       const payload = {
@@ -138,15 +140,18 @@ export default function SemesterMatakuliahListPage({
         
         {/* ========== BREADCRUMB ========== */}
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-          <Link href="/penilaian/datanilai" className="hover:text-indigo-600 transition-colors">
+          <button 
+            onClick={() => router.back()} 
+            className="hover:text-indigo-600 transition-colors"
+          >
             Data Nilai
-          </Link>
+          </button>
           <ChevronRight size={16} className="text-gray-400" />
           <span className="font-semibold text-gray-900">Data Kelas</span>
         </div>
 
         {/* ========== HEADER ========== */}
-        <div className="bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-indigo-100/50 shadow-sm">
+        <div className="bg-linear-to-r from-indigo-50 via-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-indigo-100/50 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             
             {/* Left: Title & Info */}
@@ -166,12 +171,13 @@ export default function SemesterMatakuliahListPage({
 
             {/* Right: Actions */}
             <div className="flex items-center gap-3">
-              <Link href="/penilaian/datanilai">
-                <button className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl border-2 border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md transition-all font-semibold focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
-                  <ArrowLeft size={18} />
-                  <span>Kembali</span>
-                </button>
-              </Link>
+              <button 
+                onClick={() => router.back()}
+                className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl border-2 border-gray-200 hover:border-gray-300 shadow-sm transition-all font-semibold"
+              >
+                <ArrowLeft size={18} />
+                <span>Kembali</span>
+              </button>
 
               <button 
                 onClick={() => setIsModalOpen(true)}
@@ -188,7 +194,7 @@ export default function SemesterMatakuliahListPage({
         {/* ========== STATS CARDS ========== */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {/* Total Kelas */}
-          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-5 border border-indigo-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-linear-to-br from-indigo-50 to-indigo-100 rounded-xl p-5 border border-indigo-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-indigo-500 rounded-xl shadow-md">
                 <GraduationCap size={24} className="text-white" strokeWidth={2.5} />
@@ -205,7 +211,7 @@ export default function SemesterMatakuliahListPage({
           </div>
 
           {/* Total Mata Kuliah */}
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-blue-500 rounded-xl shadow-md">
                 <BookOpen size={24} className="text-white" strokeWidth={2.5} />
@@ -222,7 +228,7 @@ export default function SemesterMatakuliahListPage({
           </div>
 
           {/* Total SKS */}
-          <div className="bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl p-5 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-linear-to-br from-emerald-50 to-green-100 rounded-xl p-5 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-emerald-500 rounded-xl shadow-md">
                 <Calendar size={24} className="text-white" strokeWidth={2.5} />
@@ -242,7 +248,7 @@ export default function SemesterMatakuliahListPage({
         {/* ========== ERROR ALERT ========== */}
         {error && (
           <div className="mb-6 flex items-start gap-3 text-sm text-red-700 bg-red-50 p-4 rounded-xl border border-red-200">
-            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
             <div className="flex-1">
               <p className="font-semibold">Terjadi Kesalahan</p>
               <p className="mt-1">{error}</p>
@@ -344,7 +350,7 @@ export default function SemesterMatakuliahListPage({
                   <tr>
                     <td colSpan={5} className="px-6 py-16">
                       <div className="flex flex-col items-center justify-center text-center">
-                        <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-full flex items-center justify-center mb-5 shadow-inner">
+                        <div className="w-20 h-20 bg-linear-to-br from-indigo-100 to-blue-100 rounded-full flex items-center justify-center mb-5 shadow-inner">
                           {matakuliahList.length === 0 ? (
                             <BookOpen size={40} className="text-indigo-500" />
                           ) : (
@@ -393,13 +399,13 @@ export default function SemesterMatakuliahListPage({
                         </span>
                       </td>
                       <td className="px-6 py-5 text-center">
-                        <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 text-sm font-bold">
+                        <span className="inline-flex items-center gap-1.5 bg-linear-to-r from-indigo-50 to-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 text-sm font-bold">
                           <GraduationCap size={14} />
                           {mk.namaKelas}
                         </span>
                       </td>
                       <td className="px-6 py-5 text-center">
-                        <span className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700 rounded-xl font-bold text-base border border-emerald-200">
+                        <span className="inline-flex items-center justify-center w-12 h-12 bg-linear-to-br from-emerald-50 to-emerald-100 text-emerald-700 rounded-xl font-bold text-base border border-emerald-200">
                           {mk.sks}
                         </span>
                       </td>

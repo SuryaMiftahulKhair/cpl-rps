@@ -24,7 +24,7 @@ interface FormValues {
   matakuliah_id: string;
   rps_id: string;
   nama_kelas: string;
-  sks: number;
+  sks: number | ""; 
 }
 
 interface KelasModalProps {
@@ -64,7 +64,7 @@ export default function KelasModal({
       matakuliah_id: "",
       rps_id: "",
       nama_kelas: "",
-      sks: 0,
+      sks: "", 
     },
   });
 
@@ -78,14 +78,21 @@ export default function KelasModal({
     fetch("/api/matakuliah")
       .then((res) => res.json())
       .then((json) => setMkList(json.data || []))
+      .catch((err) => console.error("Gagal mengambil data mata kuliah", err))
       .finally(() => setLoadingMk(false));
   }, [isOpen]);
 
   /* ================== AUTO SKS ================== */
   useEffect(() => {
-    const mk = mkList.find((m) => String(m.id) === selectedMkId);
-    if (mk) {
-      setValue("sks", mk.sks);
+    if (selectedMkId) {
+      // Cari data mata kuliah yang dipilih
+      const mk = mkList.find((m) => String(m.id) === selectedMkId);
+      if (mk) {
+        setValue("sks", mk.sks);
+        setValue("rps_id", "");
+      }
+    } else {
+      setValue("sks", "");
       setValue("rps_id", "");
     }
   }, [selectedMkId, mkList, setValue]);
@@ -107,6 +114,12 @@ export default function KelasModal({
     reset();
   };
 
+  useEffect(() => {
+    if (!isOpen) {
+      reset();
+    }
+  }, [isOpen, reset]);
+
   if (!isOpen) return null;
 
   const selectedMk = mkList.find(
@@ -118,17 +131,17 @@ export default function KelasModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200">
 
         {/* ================= HEADER ================= */}
-        <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+        <div className="flex justify-between items-center p-4 border-b bg-gray-50 rounded-t-2xl">
           <h3 className="font-semibold text-lg text-gray-900">
             Tambah Kelas
           </h3>
 
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100"
+            className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-200 transition-colors"
           >
             <X size={20} />
           </button>
@@ -149,9 +162,12 @@ export default function KelasModal({
               {...register("matakuliah_id", {
                 required: "Mata kuliah wajib dipilih",
               })}
-              className={inputStyle}
+              disabled={loadingMk || submitting}
+              className={`${inputStyle} disabled:bg-gray-100 disabled:cursor-not-allowed`}
             >
-              <option value="">-- Pilih Mata Kuliah --</option>
+              <option value="">
+                {loadingMk ? "Memuat..." : "-- Pilih Mata Kuliah --"}
+              </option>
               {mkList.map((mk) => (
                 <option key={mk.id} value={mk.id}>
                   {mk.kode_mk} — {mk.nama}
@@ -176,8 +192,8 @@ export default function KelasModal({
               {...register("rps_id", {
                 required: "RPS wajib dipilih",
               })}
-              disabled={!selectedMk}
-              className={`${inputStyle} disabled:bg-gray-100`}
+              disabled={!selectedMk || submitting}
+              className={`${inputStyle} disabled:bg-gray-100 disabled:cursor-not-allowed`}
             >
               <option value="">-- Pilih RPS --</option>
 
@@ -199,15 +215,16 @@ export default function KelasModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-semibold text-gray-700 mb-1 block">
-                Nama Kelas
+                Nama Kelas <span className="text-red-500">*</span>
               </label>
 
               <input
                 {...register("nama_kelas", {
                   required: "Nama kelas wajib diisi",
                 })}
-                placeholder="A / B / C"
-                className={`${inputStyle} uppercase`}
+                disabled={submitting}
+                placeholder="Contoh: A / B / C"
+                className={`${inputStyle} uppercase disabled:bg-gray-100 disabled:cursor-not-allowed`}
               />
 
               {errors.nama_kelas && (
@@ -222,21 +239,30 @@ export default function KelasModal({
                 SKS
               </label>
 
-              <input
-                type="number"
-                {...register("sks")}
-                readOnly
-                className={`${inputStyle} bg-gray-100`}
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  {...register("sks")}
+                  readOnly
+                  placeholder="Auto"
+                  className={`${inputStyle} bg-gray-100 font-bold text-gray-600 cursor-not-allowed`}
+                />
+                {watch("sks") !== "" && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                    Auto
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
           {/* FOOTER */}
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-3 pt-6 border-t mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
+              disabled={submitting}
+              className="px-5 py-2.5 text-sm font-semibold bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-gray-200 disabled:opacity-50 transition-colors"
             >
               Batal
             </button>
@@ -244,14 +270,19 @@ export default function KelasModal({
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2.5 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 flex items-center gap-2 transition-colors"
             >
               {submitting ? (
-                <Loader2 className="animate-spin" size={16} />
+                <>
+                  <Loader2 className="animate-spin" size={16} />
+                  Menyimpan...
+                </>
               ) : (
-                <Save size={16} />
+                <>
+                  <Save size={16} />
+                  Simpan Kelas
+                </>
               )}
-              Simpan
             </button>
           </div>
         </form>
