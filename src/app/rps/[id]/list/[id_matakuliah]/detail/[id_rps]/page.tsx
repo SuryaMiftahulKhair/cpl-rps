@@ -708,14 +708,29 @@ function TimPengajaranModal({
   timList,
   onAdd,
   onDelete,
+  dosenList, // Tambahkan props ini
 }: {
   isOpen: boolean;
   onClose: () => void;
   timList: TimDosenItem[];
   onAdd: (nama: string) => void;
   onDelete: (id: number) => void;
+  dosenList: any[]; // List dosen hasil fetch
 }) {
-  const [nama, setNama] = useState("");
+  const [selectedDosen, setSelectedDosen] = useState("");
+
+  const handleAddClick = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedDosen) {
+      // Cari objek dosen berdasarkan nama atau ID
+      const dosen = dosenList.find((d) => d.nama === selectedDosen);
+      if (dosen) {
+        onAdd(dosen.nama);
+        setSelectedDosen(""); // Reset dropdown setelah tambah
+      }
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -733,28 +748,28 @@ function TimPengajaranModal({
         </div>
       }>
       <div className="space-y-4">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (nama.trim()) {
-              onAdd(nama.trim());
-              setNama("");
-            }
-          }}
-          className="flex gap-2">
-          <input
-            value={nama}
-            onChange={(e) => setNama(e.target.value)}
-            className={`${inputCls} flex-1`}
-            placeholder="Nama dosen pengampu..."
-            autoFocus
-          />
+        {/* DROPDOWN PILIH DOSEN */}
+        <form onSubmit={handleAddClick} className="flex gap-2">
+          <select
+            value={selectedDosen}
+            onChange={(e) => setSelectedDosen(e.target.value)}
+            className={`${inputCls} flex-1 text-sm`}>
+            <option value="">-- Pilih Dosen Pengampu --</option>
+            {dosenList.map((dosen) => (
+              <option key={dosen.id} value={dosen.nama}>
+                {dosen.nama}
+              </option>
+            ))}
+          </select>
           <button
             type="submit"
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold flex items-center gap-1.5">
+            disabled={!selectedDosen}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white rounded-xl text-sm font-bold flex items-center gap-1.5 whitespace-nowrap">
             <Plus size={14} /> Tambah
           </button>
         </form>
+
+        {/* LIST DOSEN YANG SUDAH TERPILIH */}
         {timList.length > 0 ? (
           <ul className="space-y-2 max-h-64 overflow-y-auto">
             {timList.map((d, idx) => (
@@ -772,7 +787,7 @@ function TimPengajaranModal({
                 <button
                   title="Hapus"
                   onClick={() => onDelete(d.id)}
-                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                   <Trash2 size={15} />
                 </button>
               </li>
@@ -787,7 +802,6 @@ function TimPengajaranModal({
     </Modal>
   );
 }
-
 // ==========================================
 // MODAL: MK SYARAT
 // ==========================================
@@ -2177,13 +2191,30 @@ export default function DetailRPSPage({
     });
 
     // 8. TIM & SYARAT
-    if (rpsData.tim_pengajaran)
-      setTimPengajaran(
-        rpsData.tim_pengajaran
-          .split(",")
-          .map((s, i) => ({ id: i + 1, nama: s.trim() }))
-          .filter((t) => t.nama),
-      );
+    const rawTim = rpsData.nama_penyusun;
+    if (rawTim) {
+      try {
+        // Cek apakah rawTim sudah berupa array atau masih string JSON
+        const parsed = typeof rawTim === "string" ? JSON.parse(rawTim) : rawTim;
+        if (Array.isArray(parsed)) {
+          setTimPengajaran(
+            parsed.map((nama: any, i: number) => ({
+              id: i + 1,
+              nama: typeof nama === "object" ? nama.nama : String(nama),
+            })),
+          );
+        }
+      } catch (e) {
+        // Fallback jika bukan JSON (string biasa dipisah koma)
+        setTimPengajaran(
+          String(rawTim)
+            .split(",")
+            .map((s, i) => ({ id: i + 1, nama: s.trim() })),
+        );
+      }
+    } else {
+      setTimPengajaran([]);
+    }
     if (rpsData.matakuliah_syarat)
       setMkSyarat(
         rpsData.matakuliah_syarat
@@ -3207,13 +3238,14 @@ export default function DetailRPSPage({
         isOpen={showTimModal}
         onClose={() => setShowTimModal(false)}
         timList={timPengajaran}
+        dosenList={dosenList} // Pastikan state dosenList ini ada dan terisi data
         onAdd={(n) => {
           const newList = [...timPengajaran, { id: Date.now(), nama: n }];
-          handleUpdateTimPengajaran(newList); // Langsung tembak API
+          handleUpdateTimPengajaran(newList); // Fungsi fetch PUT yang kita buat tadi
         }}
         onDelete={(id) => {
           const newList = timPengajaran.filter((t) => t.id !== id);
-          handleUpdateTimPengajaran(newList); // Langsung tembak API
+          handleUpdateTimPengajaran(newList); // Fungsi fetch PUT
         }}
       />
 
