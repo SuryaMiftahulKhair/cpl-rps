@@ -45,7 +45,7 @@ export async function POST(
                 if (targetCpmkId) {
                     await tx.komponenNilai.create({
                         data: {
-                            nama: p.kemampuan_akhir || `Evaluasi Pekan ${p.pekan_ke}`,
+                            nama: `Evaluasi Pekan ${p.pekan_ke}`,
                             bobot_nilai: p.bobot_assesment, 
                             kelas_id: kelasId,
                             cpmk_id: targetCpmkId
