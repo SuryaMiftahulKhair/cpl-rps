@@ -57,7 +57,7 @@ export async function POST(req: Request) {
               include: {
                 cpmk: { 
                   include: { 
-                    sub_cpmk: { include: { ik: true } },
+                    sub_cpmk: { include: { ik: true, rps_pertemuan: true } },
                     cpl: true 
                   } 
                 }
@@ -74,26 +74,13 @@ export async function POST(req: Request) {
     ) as number[];
 
     const allCPL = await prisma.cPL.findMany({ 
-        where: {
-            kurikulum_id: { in: activeKurikulumIds } 
-        },
+        where: { kurikulum_id: { in: activeKurikulumIds } },
         orderBy: { kode_cpl: 'asc' }, 
-        include: { 
-            iks: true,
-            cpmks: true 
-        } 
+        include: { iks: true, cpmks: true } 
     });
 
-    interface IKData {
-        inputs: { cpmkScore: number; cpmkWeight: number }[];
-        contributing_courses: Set<number>; 
-    }
-    const ikMap: Record<number, IKData> = {};
-
-    interface CplDirectData {
-        inputs: { cpmkScore: number; cpmkWeight: number }[];
-    }
-    const cplDirectMap: Record<number, CplDirectData> = {};
+    const ikMap: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[]; contributing_courses: Set<number> }> = {};
+    const cplDirectMap: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[] }> = {};
 
     for (const enrollment of enrollments) {
       const kelas = enrollment.kelas;
@@ -110,48 +97,51 @@ export async function POST(req: Request) {
       
       kelas.komponenNilai.forEach(komp => {
           if (!komp.cpmk_id) return;
-          
           if (!cpmkGroup[komp.cpmk_id]) {
               cpmkGroup[komp.cpmk_id] = { inputs: [], obj: komp.cpmk };
           }
-          
           const val = nilaiMap[komp.id] || 0;
           cpmkGroup[komp.cpmk_id].inputs.push({ nilai: val, bobot: komp.bobot_nilai });
       });
 
       Object.values(cpmkGroup).forEach(group => {
           const result = calculateCPMKScore(group.inputs);
-          
-          if (result.totalBobot === 0 || result.score <= 0) return;
+          if (result.totalBobot === 0) return;
 
           const cpmk = group.obj;
+
+          let totalBobotAssesment = 0;
+          cpmk.sub_cpmk?.forEach((sub: any) => {
+              sub.rps_pertemuan?.forEach((p: any) => {
+                  totalBobotAssesment += p.bobot_assesment || 0;
+              });
+          });
+
+          const dinamisWeight = totalBobotAssesment > 0 ? totalBobotAssesment : 1;
+
           const hasSubCpmk = Array.isArray(cpmk.sub_cpmk) && cpmk.sub_cpmk.length > 0;
           const hasDirectCpl = Array.isArray(cpmk.cpl) && cpmk.cpl.length > 0;
-          
-          const bobotCpmk = cpmk.bobot_cpmk ? Number(cpmk.bobot_cpmk) : 1; 
 
           if (hasSubCpmk) {
-              (cpmk.sub_cpmk as any[]).forEach((sub) => {
+              cpmk.sub_cpmk.forEach((sub: any) => {
                   const ikId = Number(sub.ik_id);
                   if (!ikId) return;
 
                   if (!ikMap[ikId]) {
                       ikMap[ikId] = { inputs: [], contributing_courses: new Set() };
                   }
-                  ikMap[ikId].inputs.push({ cpmkScore: result.score, cpmkWeight: bobotCpmk });
+                  ikMap[ikId].inputs.push({ cpmkScore: result.score, cpmkWeight: dinamisWeight });
                   ikMap[ikId].contributing_courses.add(mkId);
               });
           } 
           
           if (hasDirectCpl) {
-              (cpmk.cpl as any[]).forEach((cplObj) => {
+              cpmk.cpl.forEach((cplObj: any) => {
                   const cplId = Number(cplObj.id);
-
                   if (!cplDirectMap[cplId]) {
                       cplDirectMap[cplId] = { inputs: [] };
                   }
-                  
-                  cplDirectMap[cplId].inputs.push({ cpmkScore: result.score, cpmkWeight: bobotCpmk });
+                  cplDirectMap[cplId].inputs.push({ cpmkScore: result.score, cpmkWeight: dinamisWeight });
               });
           }
       });

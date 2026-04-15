@@ -37,10 +37,15 @@ export async function POST(req: Request) {
         orderBy: { kode_cpl: 'asc' },
         include: { 
             iks: true,
-            cpmks: true 
+            cpmks: {
+                include: {
+                    sub_cpmk: { include: { rps_pertemuan: true } }, 
+                    cpl: true
+                }
+            } 
         }
     });
-
+            
     const mkGroups: Record<number, Record<number, { classIds: number[], studentCount: number }>> = {};
     classes.forEach(cls => {
         if (!cls.matakuliah_id || !cls.rps_id || cls.peserta_kelas.length === 0) return;
@@ -66,10 +71,20 @@ export async function POST(req: Request) {
             const komponenList = await prisma.komponenNilai.findMany({
                 where: { kelas_id: { in: rpsData.classIds } },
                 include: {
-                    sub_cpmk: { include: { ik: true } },
+                    sub_cpmk: { 
+                        include: { 
+                            ik: true,
+                            rps_pertemuan: true 
+                        } 
+                    },
                     cpmk: { 
                         include: { 
-                            sub_cpmk: { include: { ik: true } }, 
+                            sub_cpmk: { 
+                                include: { 
+                                    ik: true,
+                                    rps_pertemuan: true 
+                                } 
+                            }, 
                             cpl: true                            
                         } 
                     }, 
@@ -85,9 +100,8 @@ export async function POST(req: Request) {
                 }
             });
 
-            // PERUBAHAN 2: Menyiapkan dua wadah penampung
-            const ikMappings: Record<number, { nilai: number; bobot: number }[]> = {}; // Untuk Jalur Presisi
-            const cpmkMappings: Record<number, { nilai: number; bobot: number }[]> = {}; // Untuk Jalur Tradisional
+            const ikMappings: Record<number, { nilai: number; bobot: number }[]> = {}; 
+            const cpmkMappings: Record<number, { nilai: number; bobot: number }[]> = {}; 
             
             komponenList.forEach(k => {
                 const score = componentScores[k.id];
@@ -106,9 +120,7 @@ export async function POST(req: Request) {
 
             for (const [ikIdStr, mappings] of Object.entries(ikMappings)) {
                 const ikId = Number(ikIdStr);
-                
                 const { score: finalIkScore, totalBobot } = calculateCPMKScore(mappings);
-                
                 if (totalBobot > 0) {
                      if (!mkIkWeighted[ikId]) mkIkWeighted[ikId] = { val: 0, w: 0 };
                      mkIkWeighted[ikId].val += (finalIkScore * populasi);
@@ -122,7 +134,6 @@ export async function POST(req: Request) {
             for (const [cpmkIdStr, mappings] of Object.entries(cpmkMappings)) {
                 const cpmkId = Number(cpmkIdStr);
                 const { score: finalScore, totalBobot } = calculateCPMKScore(mappings);
-                
                 if (totalBobot === 0) continue; 
                 
                 const cpmkObj = cpmkMap.get(cpmkId);
@@ -189,9 +200,17 @@ export async function POST(req: Request) {
                 const scores = cpmkScoresGlobal[cpmk.id];
                 if (scores?.length > 0) {
                     const avgCpmkScore = calculateAvgKomponen(scores);
-                    const bobot = cpmk.bobot_cpmk || 1; 
+
+                    let totalBobotDinamis = 0;
+                    cpmk.sub_cpmk?.forEach((sub: any) => {
+                        sub.rps_pertemuan?.forEach((p: any) => {
+                            totalBobotDinamis += p.bobot_assesment || 0;
+                        });
+                    });
+
+                    const weight = totalBobotDinamis > 0 ? totalBobotDinamis : 1;
                     
-                    cpmkInputs.push({ cpmkScore: avgCpmkScore, cpmkWeight: bobot });
+                    cpmkInputs.push({ cpmkScore: avgCpmkScore, cpmkWeight: weight });
                     countMk++;
                 }
             });

@@ -27,8 +27,22 @@ export async function POST(req: Request) {
         peserta_kelas: true,
         komponenNilai: {
           include: {
-            cpmk: { include: { sub_cpmk: true, cpl: true } },
-            sub_cpmk: { include: { cpmk: { include: { sub_cpmk: true, cpl: true } } } }, // Untuk Jalur Presisi
+            cpmk: { 
+              include: { 
+                sub_cpmk: { include: { rps_pertemuan: true } }, 
+                cpl: true 
+              } 
+            },
+            sub_cpmk: { 
+              include: { 
+                cpmk: { 
+                  include: { 
+                    sub_cpmk: { include: { rps_pertemuan: true } }, 
+                    cpl: true 
+                  } 
+                } 
+              } 
+            },
             nilai: true
           }
         }
@@ -46,7 +60,7 @@ export async function POST(req: Request) {
         where: { kurikulum_id: kurikulumId },
         orderBy: { kode_cpl: 'asc' },
         include: { 
-            iks: true, // Untuk mencari n_pi_cpl
+            iks: true,
             cpmks: true 
         }
     });
@@ -122,7 +136,17 @@ export async function POST(req: Request) {
                     globalCplAccumulator[cpl.kode_cpl].isTargeted = true;
                     
                     const nilai_cpmk = cpmkAchieved[cpmk.id] || 0;
-                    const bobot_cpmk = (cpmk.bobot_cpmk || 100) / 100;
+
+                    let totalBobotAssesmentCpmk = 0;
+                    cpmk.sub_cpmk?.forEach((sub: any) => {
+                        sub.rps_pertemuan?.forEach((p: any) => {
+                            totalBobotAssesmentCpmk += p.bobot_assesment || 0;
+                        });
+                    });
+
+                    const bobot_cpmk_dinamis = totalBobotAssesmentCpmk > 0 
+                        ? totalBobotAssesmentCpmk / 100 
+                        : 1;
 
                     let bobot_pi_cpl = 0;
                     if (n_pi_cpl > 0) {
@@ -131,7 +155,7 @@ export async function POST(req: Request) {
                         bobot_pi_cpl = 1 / (cpl.cpmks?.length || 1);
                     }
 
-                    const koef_cpl = bobot_mk * bobot_cpmk * bobot_pi_cpl;
+                    const koef_cpl = bobot_mk * bobot_cpmk_dinamis * bobot_pi_cpl;
                     const konversi = koef_cpl * 100;
 
                     konversiCpmkList.push({ cpmkId: cpmk.id, konversi, nilai_cpmk });
