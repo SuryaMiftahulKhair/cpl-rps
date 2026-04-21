@@ -31,15 +31,11 @@ export const CplService = {
 
     const globalIkAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[]; courses: Set<number> }> = {};
     const globalCplDirectAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[] }> = {};
-    const MINIMAL_KELULUSAN_SKS = 145; // Standar S1
 
     // 2. Iterasi Data Kelas
     for (const kelas of classesData) {
       console.log(`\nDEBUG: Memproses Kelas [${kelas.nama_kelas}] (Matakuliah ID: ${kelas.matakuliah_id})`);
       console.log(`DEBUG: Jumlah Komponen Nilai di kelas ini:`, kelas.komponenNilai?.length || 0);
-
-      const sksMk = kelas.matakuliah?.sks || 0;
-      const bobot_mk = sksMk / MINIMAL_KELULUSAN_SKS;
       
       const componentScores: Record<number, number> = {};
       kelas.komponenNilai.forEach((kn: any) => {
@@ -73,8 +69,9 @@ export const CplService = {
           });
         });
 
-        const dinamisWeight = totalBobotRps > 0 ? totalBobotRps : 1;
-        const finalWeight = bobot_mk * dinamisWeight;
+        // REVISI: Menggunakan murni bobot dari RPS (tidak dikali bobot SKS)
+        // Jika dosen belum mengisi RPS, kita beri default 1 agar angkanya tetap keluar (tidak jadi 0)
+        const finalWeight = totalBobotRps > 0 ? totalBobotRps : 1;
 
         if (cpmk.sub_cpmk?.length > 0) {
           cpmk.sub_cpmk.forEach((sub: any) => {
