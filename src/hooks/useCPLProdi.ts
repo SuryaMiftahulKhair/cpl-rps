@@ -92,17 +92,21 @@ export const useCPLProdi = () => {
         
         const json = await res.json();
         
-        if (json.cplData && Array.isArray(json.cplData)) {
-            const formattedRadar: RadarItem[] = json.cplData.map((item: any) => ({
-                subject: item.kode_cpl,
-                prodi: item.nilai_rata_rata || 0,
+        // --- PERBAIKAN SINKRONISASI DATA BACKEND BARU ---
+        // Service baru kita mengembalikan 'json.radarData'
+        if (json.radarData && Array.isArray(json.radarData)) {
+            const formattedRadar: RadarItem[] = json.radarData.map((item: any) => ({
+                subject: item.subject,   // Sesuai dengan struktur CplService
+                prodi: item.score || 0,  // Sesuai dengan struktur CplService
                 target: 75 
             }));
             setRadarData(formattedRadar);
         } else {
             setRadarData([]);
         }
-        setCourseList(json.courseData || []);
+        
+        // Untuk tabel kontribusi mata kuliah (jika service mengembalikan classData)
+        setCourseList(json.classData || json.courseData || []);
 
     } catch (error) {
         console.error(error);

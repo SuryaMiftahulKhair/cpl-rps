@@ -90,7 +90,7 @@ function CPLMahasiswaContent() {
         {/* ================= MAIN CONTENT ================= */}
         <div className="flex-1 p-6 lg:p-8 overflow-y-auto min-h-screen bg-gray-50">
           {/* HEADER WITH GRADIENT */}
-          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6 mb-6 border border-indigo-100">
+          <div className="bg-linear-to-r from-indigo-50 to-blue-50 rounded-xl p-6 mb-6 border border-indigo-100">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
@@ -111,7 +111,7 @@ function CPLMahasiswaContent() {
           {/* ================= FILTER SECTION - Enhanced ================= */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
             {/* Header */}
-            <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+            <div className="border-b border-gray-100 px-6 py-4 bg-linear-to-r from-gray-50 to-white">
               <div className="flex items-center gap-2">
                 <Filter className="w-5 h-5 text-indigo-600" />
                 <h3 className="text-lg font-bold text-gray-900">
@@ -210,13 +210,13 @@ function CPLMahasiswaContent() {
           {/* ================= TABLE SECTION ================= */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             {/* Header */}
-            <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+            <div className="border-b border-gray-100 px-6 py-4 bg-linear-to-r from-gray-50 to-white">
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <Users className="w-5 h-5 text-indigo-600" />
                   Daftar Mahasiswa
                 </h2>
-                <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 text-xs font-bold">
+                <span className="inline-flex items-center gap-1.5 bg-linear-to-r from-indigo-50 to-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 text-xs font-bold">
                   <Users className="w-3.5 h-3.5" />
                   {filteredStudents.length} Mahasiswa
                 </span>
@@ -310,7 +310,7 @@ function CPLMahasiswaContent() {
                             <td className="px-6 py-4 text-center">
                               <button
                                 onClick={() => handleOpenCPL(s)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg transition-all text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-linear-to-r from-emerald-500 to-emerald-600 text-white rounded-lg hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg transition-all text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
                                 <Award size={16} strokeWidth={2.5} />
                                 Lihat CPL
                               </button>
@@ -329,7 +329,7 @@ function CPLMahasiswaContent() {
         {/* ================= RIGHT PANEL (Info Sidebar) ================= */}
         <div className="hidden xl:block w-80 bg-white border-l border-gray-200 overflow-y-auto h-screen sticky top-0">
           {/* Header */}
-          <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+          <div className="border-b border-gray-100 px-6 py-4 bg-linear-to-r from-gray-50 to-white">
             <h3 className="font-bold text-gray-900 flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-indigo-600" />
               Panduan
@@ -339,9 +339,9 @@ function CPLMahasiswaContent() {
           {/* Content */}
           <div className="p-6 space-y-6">
             {/* Info Card */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
+            <div className="bg-linear-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
                   <Filter className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -364,7 +364,7 @@ function CPLMahasiswaContent() {
 
               <div className="space-y-2">
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
                     <Calendar className="w-4 h-4 text-indigo-600" />
                   </div>
                   <div>
@@ -378,7 +378,7 @@ function CPLMahasiswaContent() {
                 </div>
 
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
                     <BarChart3 className="w-4 h-4 text-amber-600" />
                   </div>
                   <div>
@@ -392,7 +392,7 @@ function CPLMahasiswaContent() {
                 </div>
 
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0">
                     <TrendingUp className="w-4 h-4 text-emerald-600" />
                   </div>
                   <div>
@@ -415,10 +415,10 @@ function CPLMahasiswaContent() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-5">
+            <div className="border-b border-gray-100 bg-linear-to-r from-indigo-50 to-blue-50 px-6 py-5">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                  <div className="w-14 h-14 bg-linear-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
                     <Award className="w-7 h-7 text-white" strokeWidth={2} />
                   </div>
                   <div>
@@ -472,7 +472,7 @@ function CPLMahasiswaContent() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                        <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
                           <Target
                             className="w-6 h-6 text-white"
                             strokeWidth={2}
@@ -491,7 +491,7 @@ function CPLMahasiswaContent() {
 
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                        <div className="w-12 h-12 bg-linear-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
                           <TrendingUp
                             className="w-6 h-6 text-white"
                             strokeWidth={2}
@@ -510,7 +510,7 @@ function CPLMahasiswaContent() {
 
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                        <div className="w-12 h-12 bg-linear-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
                           <Award
                             className="w-6 h-6 text-white"
                             strokeWidth={2}
@@ -558,7 +558,7 @@ function CPLMahasiswaContent() {
 
                   {/* Chart Container */}
                   <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+                    <div className="border-b border-gray-100 px-6 py-4 bg-linear-to-r from-gray-50 to-white">
                       <h4 className="font-bold text-gray-900">
                         Visualisasi Data CPL
                       </h4>
@@ -643,7 +643,7 @@ function CPLMahasiswaContent() {
 
                   {/* Detail Table */}
                   <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
+                    <div className="border-b border-gray-100 px-6 py-4 bg-linear-to-r from-gray-50 to-white">
                       <h4 className="font-bold text-gray-900">
                         Detail Capaian Per CPL
                       </h4>
@@ -692,10 +692,10 @@ function CPLMahasiswaContent() {
                                 <span
                                   className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold border ${
                                     item.nilai >= 75
-                                      ? "bg-gradient-to-r from-green-50 to-green-100 text-green-700 border-green-200"
+                                      ? "bg-linear-to-r from-green-50 to-green-100 text-green-700 border-green-200"
                                       : item.nilai >= 60
-                                        ? "bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-700 border-yellow-200"
-                                        : "bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-red-200"
+                                        ? "bg-linear-to-r from-yellow-50 to-yellow-100 text-yellow-700 border-yellow-200"
+                                        : "bg-linear-to-r from-red-50 to-red-100 text-red-700 border-red-200"
                                   }`}>
                                   {item.nilai >= 75
                                     ? "✓ Sangat Baik"
