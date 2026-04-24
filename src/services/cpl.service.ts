@@ -20,12 +20,22 @@ export const CplService = {
       a.kode_cpl.localeCompare(b.kode_cpl, undefined, { numeric: true, sensitivity: 'base' })
     );
 
-    const globalIkAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[]; courses: Set<number> }> = {};
-    const globalCplDirectAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[] }> = {};
+    const ikScoresByMk: Record<number, Record<number, { scoreXstudents: number, totalStudents: number }>> = {};
+    const cplDirectScoresByMk: Record<number, Record<number, { scoreXstudents: number, totalStudents: number }>> = {};
     const classDataArr: any[] = [];
 
     for (const kelas of classesData) {
-      
+      let classStudentCount = 0;
+      kelas.komponenNilai.forEach((kn: any) => {
+        if (Array.isArray(kn.nilai)) {
+          classStudentCount = Math.max(classStudentCount, kn.nilai.length);
+        }
+      });
+      if (classStudentCount === 0 && kelas.komponenNilai.some((kn: any) => kn.nilai_individu !== undefined)) {
+        classStudentCount = 1;
+      }
+      if (classStudentCount === 0) classStudentCount = 1; // Mencegah error pembagian nol (Infinity)
+
       const classIkAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[] }> = {};
       const classCplDirectAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[] }> = {};
 
@@ -68,10 +78,6 @@ export const CplService = {
             const ikId = sub.ik_id;
             if (!ikId) return;
 
-            if (!globalIkAcc[ikId]) globalIkAcc[ikId] = { inputs: [], courses: new Set() };
-            globalIkAcc[ikId].inputs.push({ cpmkScore, cpmkWeight: finalWeight });
-            globalIkAcc[ikId].courses.add(kelas.matakuliah_id);
-
             if (!classIkAcc[ikId]) classIkAcc[ikId] = { inputs: [] };
             classIkAcc[ikId].inputs.push({ cpmkScore, cpmkWeight: finalWeight });
           });
@@ -79,13 +85,20 @@ export const CplService = {
         
         if (cpmk.cpl?.length > 0) {
           cpmk.cpl.forEach((cplObj: any) => {
-            if (!globalCplDirectAcc[cplObj.id]) globalCplDirectAcc[cplObj.id] = { inputs: [] };
-            globalCplDirectAcc[cplObj.id].inputs.push({ cpmkScore, cpmkWeight: finalWeight });
-
             if (!classCplDirectAcc[cplObj.id]) classCplDirectAcc[cplObj.id] = { inputs: [] };
             classCplDirectAcc[cplObj.id].inputs.push({ cpmkScore, cpmkWeight: finalWeight });
           });
         }
+      }
+
+      const classIkFinalScores: Record<number, number> = {};
+      for (const [ikIdStr, acc] of Object.entries(classIkAcc)) {
+        classIkFinalScores[Number(ikIdStr)] = calculateIKScore(acc.inputs);
+      }
+
+      const classCplDirectFinalScores: Record<number, number> = {};
+      for (const [cplIdStr, acc] of Object.entries(classCplDirectAcc)) {
+        classCplDirectFinalScores[Number(cplIdStr)] = calculateIKScore(acc.inputs);
       }
 
       const classScores: Record<string, number> = {};
@@ -93,14 +106,14 @@ export const CplService = {
         let val = 0;
         if (cpl.iks && cpl.iks.length > 0) {
           const ikResults = cpl.iks.map(ikMaster => {
-            const data = classIkAcc[ikMaster.id];
-            if (!data) return null;
-            return { ikScore: calculateIKScore(data.inputs), bobotIK: 1 };
+            const ikS = classIkFinalScores[ikMaster.id];
+            if (ikS === undefined) return null;
+            return { ikScore: ikS, bobotIK: 1 };
           }).filter(Boolean);
           if (ikResults.length > 0) val = calculateFinalCPL(ikResults as any);
         } else {
-          const direct = classCplDirectAcc[cpl.id];
-          if (direct) val = calculateIKScore(direct.inputs);
+          const direct = classCplDirectFinalScores[cpl.id];
+          if (direct !== undefined) val = direct;
         }
         if (val > 0) classScores[cpl.kode_cpl] = parseFloat(val.toFixed(2));
       });
@@ -110,8 +123,52 @@ export const CplService = {
         code: kelas.matakuliah?.kode_mk || "-",
         name: kelas.matakuliah?.nama || "-",
         class_name: kelas.nama_kelas,
+        total_students: classStudentCount, 
         scores: classScores
       });
+
+      const mkId = kelas.matakuliah_id;
+      if (!ikScoresByMk[mkId]) ikScoresByMk[mkId] = {};
+      if (!cplDirectScoresByMk[mkId]) cplDirectScoresByMk[mkId] = {};
+
+      for (const [ikIdStr, score] of Object.entries(classIkFinalScores)) {
+        const id = Number(ikIdStr);
+        if (!ikScoresByMk[mkId][id]) ikScoresByMk[mkId][id] = { scoreXstudents: 0, totalStudents: 0 };
+        ikScoresByMk[mkId][id].scoreXstudents += (score * classStudentCount);
+        ikScoresByMk[mkId][id].totalStudents += classStudentCount;
+      }
+
+      for (const [cplIdStr, score] of Object.entries(classCplDirectFinalScores)) {
+        const id = Number(cplIdStr);
+        if (!cplDirectScoresByMk[mkId][id]) cplDirectScoresByMk[mkId][id] = { scoreXstudents: 0, totalStudents: 0 };
+        cplDirectScoresByMk[mkId][id].scoreXstudents += (score * classStudentCount);
+        cplDirectScoresByMk[mkId][id].totalStudents += classStudentCount;
+      }
+    }
+
+    const globalIkFinals: Record<number, { scoreSum: number, mkCount: number }> = {};
+    const globalCplDirectFinals: Record<number, { scoreSum: number, mkCount: number }> = {};
+
+    for (const [mkIdStr, ikMap] of Object.entries(ikScoresByMk)) {
+      for (const [ikIdStr, acc] of Object.entries(ikMap)) {
+        const id = Number(ikIdStr);
+        const mkIkScore = acc.totalStudents > 0 ? (acc.scoreXstudents / acc.totalStudents) : 0;
+        
+        if (!globalIkFinals[id]) globalIkFinals[id] = { scoreSum: 0, mkCount: 0 };
+        globalIkFinals[id].scoreSum += mkIkScore;
+        globalIkFinals[id].mkCount += 1; // 
+      }
+    }
+
+    for (const [mkIdStr, cplMap] of Object.entries(cplDirectScoresByMk)) {
+      for (const [cplIdStr, acc] of Object.entries(cplMap)) {
+        const id = Number(cplIdStr);
+        const mkCplScore = acc.totalStudents > 0 ? (acc.scoreXstudents / acc.totalStudents) : 0;
+        
+        if (!globalCplDirectFinals[id]) globalCplDirectFinals[id] = { scoreSum: 0, mkCount: 0 };
+        globalCplDirectFinals[id].scoreSum += mkCplScore;
+        globalCplDirectFinals[id].mkCount += 1;
+      }
     }
 
     const radarData = allCPL.map(cpl => {
@@ -119,18 +176,22 @@ export const CplService = {
 
       if (cpl.iks && cpl.iks.length > 0) {
         const ikResults = cpl.iks.map(ikMaster => {
-          const data = globalIkAcc[ikMaster.id];
-          if (!data) return null;
+          const globalIk = globalIkFinals[ikMaster.id];
+          if (!globalIk || globalIk.mkCount === 0) return null;
+          
+          const avgIkScore = globalIk.scoreSum / globalIk.mkCount;
           return {
-            ikScore: calculateIKScore(data.inputs),
-            bobotIK: data.courses.size 
+            ikScore: avgIkScore,
+            bobotIK: globalIk.mkCount
           };
         }).filter(Boolean);
 
         if (ikResults.length > 0) finalValue = calculateFinalCPL(ikResults as any);
       } else {
-        const direct = globalCplDirectAcc[cpl.id];
-        if (direct) finalValue = calculateIKScore(direct.inputs);
+        const globalDir = globalCplDirectFinals[cpl.id];
+        if (globalDir && globalDir.mkCount > 0) {
+          finalValue = globalDir.scoreSum / globalDir.mkCount;
+        }
       }
 
       return {
