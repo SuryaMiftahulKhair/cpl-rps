@@ -6,37 +6,29 @@ import {
 } from "@/utils/cplCalculation";
 
 export const CplService = {
-  /**
-   * CORE ENGINE: Mesin penghitung utama
-   */
   async processCplLogic(classesData: any[], kurikulumId: number) {
-    console.log("\n--- START DEBUG: processCplLogic ---");
-    console.log("DEBUG: Kurikulum ID yang digunakan:", kurikulumId);
-    console.log("DEBUG: Jumlah data kelas yang masuk:", classesData.length);
-
     if (classesData.length === 0) {
-      console.log("DEBUG: Berhenti karena tidak ada data kelas (classesData kosong).");
-      console.log("--- END DEBUG ---\n");
-      return { radarData: [] };
+      return { radarData: [], classData: [] };
     }
 
-    // 1. Ambil Master CPL & IK dari Kurikulum
-    const allCPL = await prisma.cPL.findMany({
+    const rawCPL = await prisma.cPL.findMany({
       where: { kurikulum_id: kurikulumId },
       include: { iks: true },
-      orderBy: { kode_cpl: 'asc' }
     });
     
-    console.log("DEBUG: Master CPL ditemukan:", allCPL.length);
+    const allCPL = rawCPL.sort((a, b) => 
+      a.kode_cpl.localeCompare(b.kode_cpl, undefined, { numeric: true, sensitivity: 'base' })
+    );
 
     const globalIkAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[]; courses: Set<number> }> = {};
     const globalCplDirectAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[] }> = {};
+    const classDataArr: any[] = [];
 
-    // 2. Iterasi Data Kelas
     for (const kelas of classesData) {
-      console.log(`\nDEBUG: Memproses Kelas [${kelas.nama_kelas}] (Matakuliah ID: ${kelas.matakuliah_id})`);
-      console.log(`DEBUG: Jumlah Komponen Nilai di kelas ini:`, kelas.komponenNilai?.length || 0);
       
+      const classIkAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[] }> = {};
+      const classCplDirectAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[] }> = {};
+
       const componentScores: Record<number, number> = {};
       kelas.komponenNilai.forEach((kn: any) => {
         if (Array.isArray(kn.nilai)) {
@@ -69,19 +61,19 @@ export const CplService = {
           });
         });
 
-        // REVISI: Menggunakan murni bobot dari RPS (tidak dikali bobot SKS)
-        // Jika dosen belum mengisi RPS, kita beri default 1 agar angkanya tetap keluar (tidak jadi 0)
         const finalWeight = totalBobotRps > 0 ? totalBobotRps : 1;
 
         if (cpmk.sub_cpmk?.length > 0) {
           cpmk.sub_cpmk.forEach((sub: any) => {
             const ikId = sub.ik_id;
             if (!ikId) return;
-            if (!globalIkAcc[ikId]) {
-              globalIkAcc[ikId] = { inputs: [], courses: new Set() };
-            }
+
+            if (!globalIkAcc[ikId]) globalIkAcc[ikId] = { inputs: [], courses: new Set() };
             globalIkAcc[ikId].inputs.push({ cpmkScore, cpmkWeight: finalWeight });
             globalIkAcc[ikId].courses.add(kelas.matakuliah_id);
+
+            if (!classIkAcc[ikId]) classIkAcc[ikId] = { inputs: [] };
+            classIkAcc[ikId].inputs.push({ cpmkScore, cpmkWeight: finalWeight });
           });
         }
         
@@ -89,12 +81,39 @@ export const CplService = {
           cpmk.cpl.forEach((cplObj: any) => {
             if (!globalCplDirectAcc[cplObj.id]) globalCplDirectAcc[cplObj.id] = { inputs: [] };
             globalCplDirectAcc[cplObj.id].inputs.push({ cpmkScore, cpmkWeight: finalWeight });
+
+            if (!classCplDirectAcc[cplObj.id]) classCplDirectAcc[cplObj.id] = { inputs: [] };
+            classCplDirectAcc[cplObj.id].inputs.push({ cpmkScore, cpmkWeight: finalWeight });
           });
         }
       }
+
+      const classScores: Record<string, number> = {};
+      allCPL.forEach(cpl => {
+        let val = 0;
+        if (cpl.iks && cpl.iks.length > 0) {
+          const ikResults = cpl.iks.map(ikMaster => {
+            const data = classIkAcc[ikMaster.id];
+            if (!data) return null;
+            return { ikScore: calculateIKScore(data.inputs), bobotIK: 1 };
+          }).filter(Boolean);
+          if (ikResults.length > 0) val = calculateFinalCPL(ikResults as any);
+        } else {
+          const direct = classCplDirectAcc[cpl.id];
+          if (direct) val = calculateIKScore(direct.inputs);
+        }
+        if (val > 0) classScores[cpl.kode_cpl] = parseFloat(val.toFixed(2));
+      });
+
+      classDataArr.push({
+        id: kelas.id,
+        code: kelas.matakuliah?.kode_mk || "-",
+        name: kelas.matakuliah?.nama || "-",
+        class_name: kelas.nama_kelas,
+        scores: classScores
+      });
     }
 
-    // 3. Final Agregasi ke Radar Chart
     const radarData = allCPL.map(cpl => {
       let finalValue = 0;
 
@@ -121,30 +140,13 @@ export const CplService = {
       };
     });
 
-    console.log("\nDEBUG: Eksekusi selesai. Mengirim radarData.");
-    console.log("--- END DEBUG ---\n");
-
-    return { radarData };
+    return { radarData, classData: classDataArr };
   },
 
   /**
    * LAPORAN MAHASISWA
    */
   async getMahasiswaReport(studentId: number, semesterIds?: number[]) {
-    const student = await prisma.mahasiswa.findUnique({
-        where: { id: studentId }
-    });
-
-    const pId = (student as any)?.prodiId || (student as any)?.prodi_id;
-    if (!pId) throw new Error("Data Prodi mahasiswa tidak ditemukan.");
-
-    const activeKurikulum = await prisma.kurikulum.findFirst({
-        where: { prodi_id: Number(pId), is_active: true },
-        select: { id: true }
-    });
-
-    if (!activeKurikulum) throw new Error("Kurikulum aktif untuk prodi ini tidak ditemukan.");
-
     const enrollments = await prisma.pesertaKelas.findMany({
       where: { 
         mahasiswa_id: studentId,
@@ -170,6 +172,13 @@ export const CplService = {
       }
     });
 
+    if (enrollments.length === 0) {
+        return { radarData: [], classData: [] };
+    }
+
+    const kurikulumId = enrollments[0].kelas.matakuliah?.kurikulum_id;
+    if (!kurikulumId) throw new Error("Gagal mendeteksi kurikulum dari kelas yang diambil.");
+
     const classesData = enrollments.map(e => ({
         ...e.kelas,
         komponenNilai: e.kelas.komponenNilai.map(kn => ({
@@ -178,7 +187,7 @@ export const CplService = {
         }))
     }));
 
-    return this.processCplLogic(classesData, activeKurikulum.id);
+    return this.processCplLogic(classesData, kurikulumId);
   },
 
   /**
@@ -215,9 +224,7 @@ export const CplService = {
   /**
    * LAPORAN PRODI
    */
-  async getProdiReport(kurikulumId: number, semesterIds?: number[]) {
-    console.log("DEBUG API PRODI: Menarik data kelas untuk Kurikulum ID:", kurikulumId, "Semester IDs:", semesterIds);
-    
+  async getProdiReport(kurikulumId: number, semesterIds?: number[]) {    
     const classes = await prisma.kelas.findMany({
       where: {
         matakuliah: { kurikulum_id: kurikulumId },
@@ -238,8 +245,6 @@ export const CplService = {
         }
       }
     });
-
-    console.log("DEBUG API PRODI: Query selesai. Ditemukan kelas sebanyak:", classes.length);
 
     return this.processCplLogic(classes, kurikulumId);
   }

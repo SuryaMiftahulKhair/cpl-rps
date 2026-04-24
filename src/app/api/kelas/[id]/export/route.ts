@@ -28,22 +28,29 @@ export async function GET(
       return NextResponse.json({ error: "Kelas tidak ditemukan" }, { status: 404 });
     }
 
-    const dataExcel = kelas.peserta_kelas.map((p, index) => {
-      const row: any = {
-        No: index + 1,
-        NIM: p.mahasiswa.nim,
-        Nama: p.mahasiswa.nama,
-      };
+    const headers = ["No", "NIM", "Nama"];
+    kelas.komponenNilai.forEach((k) => {
+      headers.push(k.nama);
+    });
+
+    const rows = kelas.peserta_kelas.map((p, index) => {
+      const rowData: (string | number)[] = [
+        index + 1,
+        p.mahasiswa.nim,
+        p.mahasiswa.nama,
+      ];
 
       kelas.komponenNilai.forEach((k) => {
         const nilaiMhs = p.nilai.find((n) => n.komponen_nilai_id === k.id);
-        row[k.nama] = nilaiMhs ? nilaiMhs.nilai_komponen : 0;
+        rowData.push(nilaiMhs ? nilaiMhs.nilai_komponen : 0);
       });
 
-      return row;
+      return rowData;
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(dataExcel);
+    const dataAOA = [headers, ...rows];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(dataAOA);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Nilai Mahasiswa");
 
@@ -61,6 +68,7 @@ export async function GET(
       },
     });
   } catch (error: any) {
+    console.error("Download Template Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

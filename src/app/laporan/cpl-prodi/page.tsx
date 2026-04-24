@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense } from "react"; // Tambahkan Suspense
+import { Suspense } from "react";
 import {
   Loader2,
   Filter,
@@ -26,11 +26,11 @@ import {
 
 // ============================================================
 // 1. KOMPONEN KONTEN UTAMA
-// Pindahkan seluruh logika asli Kakak ke sini tanpa ubah apa pun
 // ============================================================
 function LaporanCplProdiContent() {
   const {
     semesterList,
+    kurikulumList, 
     uniqueYears,
     radarData,
     courseList,
@@ -42,6 +42,8 @@ function LaporanCplProdiContent() {
     setSelectedYear,
     selectedSemesterId,
     setSelectedSemesterId,
+    selectedKurikulumId, 
+    setSelectedKurikulumId, 
     loadReport,
   } = useCPLProdi();
 
@@ -66,7 +68,7 @@ function LaporanCplProdiContent() {
           </div>
         </div>
 
-        {/* ================= FILTER SECTION - Enhanced Design ================= */}
+        {/* ================= FILTER SECTION ================= */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
           {/* Header */}
           <div className="border-b border-gray-100 px-6 py-4 bg-linear-to-r from-gray-50 to-white">
@@ -78,10 +80,31 @@ function LaporanCplProdiContent() {
             </div>
           </div>
 
-          {/* Content */}
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Dropdown 1: Tipe Filter */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                   Kurikulum
+                </label>
+                <div className="relative">
+                  <select
+                    className="w-full border-2 border-gray-200 px-4 py-3 rounded-lg text-sm bg-white hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-700 font-medium appearance-none cursor-pointer transition-all"
+                    value={selectedKurikulumId}
+                    onChange={(e) => setSelectedKurikulumId(e.target.value)}>
+                    {!kurikulumList || kurikulumList.length === 0 ? (
+                      <option disabled value="">Memuat...</option>
+                    ) : (
+                      kurikulumList.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k.nama} ({k.tahun})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Cakupan Data
@@ -100,7 +123,6 @@ function LaporanCplProdiContent() {
                 </div>
               </div>
 
-              {/* Dropdown 2: Konteks (Dinamis) */}
               <div className="space-y-2">
                 <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {filterType === "TAHUN"
@@ -140,14 +162,13 @@ function LaporanCplProdiContent() {
                 )}
               </div>
 
-              {/* Tombol Search */}
               <div className="space-y-2">
                 <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider opacity-0 pointer-events-none">
                   Action
                 </label>
                 <button
                   onClick={loadReport}
-                  disabled={loading || semesterList.length === 0}
+                  disabled={loading || semesterList.length === 0 || kurikulumList?.length === 0}
                   className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                   {loading ? (
                     <>
@@ -172,7 +193,6 @@ function LaporanCplProdiContent() {
 
         {/* ================= CONTENT SECTION ================= */}
         {!hasSearched ? (
-          /* Empty State - Enhanced */
           <div className="bg-white rounded-xl border-2 border-dashed border-gray-200 py-20">
             <div className="flex flex-col items-center justify-center text-center">
               <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
@@ -182,7 +202,7 @@ function LaporanCplProdiContent() {
                 Belum Ada Data Ditampilkan
               </h3>
               <p className="text-sm text-gray-500 max-w-md">
-                Silakan pilih filter cakupan data dan periode, lalu klik tombol
+                Silakan pilih filter kurikulum, cakupan data dan periode, lalu klik tombol
                 "Tampilkan Laporan" untuk melihat grafik dan analisis CPL
               </p>
             </div>
@@ -544,7 +564,6 @@ function LaporanCplProdiContent() {
 
 // ============================================================
 // 2. WRAPPER UTAMA (Penyedia Suspense Boundary)
-// Hanya membungkus konten di atas agar proses Build Vercel Sukses
 // ============================================================
 export default function LaporanCplProdiPage() {
   return (

@@ -1,84 +1,75 @@
 import { useState, useEffect, useMemo } from 'react';
 
-// --- Types ---
-export interface TahunAjaran {
-  id: number;
-  tahun: string;
-  semester: string;
+export interface TahunAjaran { id: number; tahun: string; semester: string; }
+
+export interface MataKuliah { 
+  id: number; 
+  kode_mk: string; 
+  nama: string; 
+  nama_mk: string; 
+  kodeMatakuliah: string; 
+  namaMatakuliah: string;
 }
 
-export interface Matakuliah {
-  id: number;
-  code: string;
-  name: string;
-}
-
-export interface RadarItem {
-  subject: string;
-  prodi: number;
-  target: number;
-}
-
-export interface ClassDetail {
-  id: number;
-  class_name: string;
-  total_students: number;
-  scores: Record<string, number>; // { "CPL-01": 80, "CPL-02": 75 }
-}
-
+export interface RadarItem { subject: string; prodi: number; target: number; }
+export interface CourseItem { id: number; code: string; name: string; class_name: string; scores: Record<string, number>; }
 export type FilterType = "SEMUA" | "TAHUN" | "SEMESTER";
 
 export const useCPLMatakuliah = () => {
-  // --- STATE: Master Data ---
   const [semesterList, setSemesterList] = useState<TahunAjaran[]>([]);
-  const [matakuliahList, setMatakuliahList] = useState<Matakuliah[]>([]);
+  const [matakuliahList, setMatakuliahList] = useState<MataKuliah[]>([]); 
   
-  // --- STATE: Filter Controls ---
   const [filterType, setFilterType] = useState<FilterType>("SEMESTER");
-  const [selectedYear, setSelectedYear] = useState<string>("");
-  const [selectedSemesterId, setSelectedSemesterId] = useState<string>("");
-  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>(""); 
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string>(""); 
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(""); 
 
-  // --- STATE: Data Report ---
   const [radarData, setRadarData] = useState<RadarItem[]>([]);
-  const [classDetails, setClassDetails] = useState<ClassDetail[]>([]);
+  const [classDetails, setClassDetails] = useState<CourseItem[]>([]); 
   
-  // --- STATE: UI ---
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // 1. Initial Load: Ambil Daftar Tahun Ajaran & Matakuliah
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchMasterData = async () => {
       try {
-        const resSemester = await fetch("/api/tahunAjaran");
-        const jsonSemester = await resSemester.json();
-        const dataSemester = Array.isArray(jsonSemester) ? jsonSemester : jsonSemester.data || [];
-        setSemesterList(dataSemester);
-
-        const resCourse = await fetch("/api/matakuliah");
-        const jsonCourse = await resCourse.json();
-        const rawCourse = Array.isArray(jsonCourse) ? jsonCourse : jsonCourse.data || [];
-        
-        const dataCourse = rawCourse.map((c: any) => ({
-            id: c.id,
-            code: c.kode_mk || c.code || "",
-            name: c.nama || c.name || ""
-        }));
-        setMatakuliahList(dataCourse);
-
-        if (dataSemester.length > 0) {
-          setSelectedSemesterId(String(dataSemester[0].id));
-          setSelectedYear(dataSemester[0].tahun);
+        const resSem = await fetch("/api/tahunAjaran");
+        const jsonSem = await resSem.json();
+        const dataSem = Array.isArray(jsonSem) ? jsonSem : jsonSem.data || [];
+        setSemesterList(dataSem);
+        if (dataSem.length > 0) {
+            setSelectedSemesterId(String(dataSem[0].id));
+            setSelectedYear(dataSem[0].tahun);
         }
-        if (dataCourse.length > 0) {
-          setSelectedCourseId(String(dataCourse[0].id));
+
+        const resMk = await fetch("/api/matakuliah"); 
+        const jsonMk = await resMk.json();
+        const rawDataMk = Array.isArray(jsonMk) ? jsonMk : jsonMk.data || [];
+        
+        const safeDataMk = rawDataMk.map((mk: any) => {
+          const kode = mk.kode_mk || mk.kodeMatakuliah || mk.kode || "-";
+          const nama = mk.nama || mk.nama_mk || mk.namaMatakuliah || mk.name || "Tanpa Nama";
+          
+          return {
+            id: mk.id,
+            kode_mk: kode,
+            kodeMatakuliah: kode,
+            nama: nama,
+            nama_mk: nama,
+            namaMatakuliah: nama
+          };
+        });
+
+        setMatakuliahList(safeDataMk);
+        
+        if (safeDataMk.length > 0) {
+            setSelectedCourseId(String(safeDataMk[0].id));
         }
       } catch (err) {
-        console.error("Gagal load data awal", err);
+        console.error("Gagal load master data matakuliah", err);
       }
     };
-    fetchInitialData();
+    fetchMasterData();
   }, []);
 
   const uniqueYears = useMemo(() => {
@@ -86,58 +77,59 @@ export const useCPLMatakuliah = () => {
   }, [semesterList]);
 
   const loadReport = async () => {
-    if (!selectedCourseId) {
-      alert("Pilih matakuliah terlebih dahulu");
-      return;
-    }
-
     setLoading(true);
     setHasSearched(true);
-
-    let semesterIds: number[] = [];
+    
+    let ids: number[] = [];
     if (filterType === "SEMUA") {
-      semesterIds = semesterList.map(s => Number(s.id));
+        ids = semesterList.map(s => Number(s.id));
     } else if (filterType === "TAHUN") {
-      semesterIds = semesterList.filter(s => s.tahun === selectedYear).map(s => Number(s.id));
+        ids = semesterList.filter(s => s.tahun === selectedYear).map(s => Number(s.id));
     } else {
-      semesterIds = [Number(selectedSemesterId)];
+        ids = [Number(selectedSemesterId)];
     }
 
     try {
-      const res = await fetch("/api/laporan/cpl-matakuliah", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          matakuliah_id: Number(selectedCourseId), // Sesuaikan dengan DB
-          semester_ids: semesterIds,
-        }),
-      });
+        const res = await fetch("/api/laporan/cpl-matakuliah", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                matakuliah_id: Number(selectedCourseId),
+                semester_ids: ids 
+            })
+        });
+        
+        const json = await res.json();
+        
+        if (json.radarData && Array.isArray(json.radarData)) {
+            const formattedRadar: RadarItem[] = json.radarData.map((item: any) => ({
+                subject: item.subject,
+                prodi: item.score || 0,
+                target: 75 
+            }));
+            setRadarData(formattedRadar);
+        } else {
+            setRadarData([]);
+        }
+        
+        setClassDetails(json.classData || json.courseData || []);
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Gagal memuat data");
-
-      const formattedRadar = (json.radarData || []).map((item: any) => ({
-          subject: item.subject,
-          prodi: item.prodi || 0,
-          target: 75 
-      }));
-
-      setRadarData(formattedRadar);
-      setClassDetails(json.classData || []);
-    } catch (error: any) {
-      console.error(error);
-      alert(error.message);
-      setRadarData([]);
-      setClassDetails([]);
+    } catch (error) {
+        console.error(error);
+        alert("Gagal memuat data grafik matakuliah");
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
   return {
-    semesterList, matakuliahList, uniqueYears, radarData, classDetails,
-    loading, hasSearched, filterType, setFilterType, selectedYear, setSelectedYear,
-    selectedSemesterId, setSelectedSemesterId, selectedCourseId, setSelectedCourseId,
-    loadReport,
+    semesterList, matakuliahList, uniqueYears,
+    radarData, classDetails, courseList: classDetails, 
+    loading, hasSearched,
+    filterType, setFilterType,
+    selectedYear, setSelectedYear,
+    selectedSemesterId, setSelectedSemesterId,
+    selectedCourseId, setSelectedCourseId,
+    loadReport
   };
 };

@@ -10,7 +10,6 @@ export async function POST(req: NextRequest) {
     let kId = body.kurikulum_id || body.kurikulumId;
     const taIdsRaw = body.tahun_ajaran_ids || body.tahunAjaranIds || body.semester_ids;
 
-    // 1. Normalisasi Tahun Ajaran (Pindah ke atas agar bisa digunakan untuk pelacakan)
     let taIds: number[] = [];
     if (Array.isArray(taIdsRaw)) {
       taIds = taIdsRaw.map(Number).filter(id => !isNaN(id));
@@ -18,12 +17,10 @@ export async function POST(req: NextRequest) {
       taIds = [Number(taIdsRaw)];
     }
 
-    // --- CADANGAN SUPER CERDAS (AUTO-DETECT KURIKULUM) ---
     if (!kId) {
       if (taIds.length > 0) {
         console.log("DEBUG: kId kosong. Melacak kurikulum dari data jadwal kelas di semester terpilih...");
         
-        // Cari 1 kelas saja yang ada di semester yang dipilih user
         const kelasReferensi = await prisma.kelas.findFirst({
           where: { tahun_ajaran_id: { in: taIds } },
           include: { matakuliah: true }
@@ -35,18 +32,16 @@ export async function POST(req: NextRequest) {
         }
       }
       
-      // Jika semester tersebut benar-benar tidak ada jadwal kelas sama sekali
       if (!kId) {
         console.log("DEBUG: Tidak ada kelas. Mengambil Kurikulum pertama (terlama) sebagai default...");
         const defaultKurikulum = await prisma.kurikulum.findFirst({
-          orderBy: { id: 'asc' }, // Mengambil ID terkecil (biasanya data master/asli ada di sini)
+          orderBy: { id: 'asc' }, 
           select: { id: true }
         });
         kId = defaultKurikulum?.id;
       }
     }
 
-    // 2. Validasi Akhir
     if (!kId) {
       return NextResponse.json(
         { success: false, error: "Sistem gagal menemukan ID Kurikulum." }, 
@@ -54,7 +49,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Eksekusi Mesin Hitung Utama
     const result = await CplService.getProdiReport(Number(kId), taIds);
 
     return NextResponse.json({ success: true, ...result });
