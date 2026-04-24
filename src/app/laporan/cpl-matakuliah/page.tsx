@@ -80,9 +80,10 @@ function LaporanCplMatakuliahContent() {
                     value={selectedCourseId}
                     onChange={(e) => setSelectedCourseId(e.target.value)}>
                     <option value="">-- Pilih Matakuliah --</option>
-                    {matakuliahList.map((course) => (
+                    {/* PERBAIKAN DI SINI: Penambahan ': any' dan pemanggilan 'kode_mk' dan 'nama' */}
+                    {matakuliahList.map((course: any) => (
                       <option key={course.id} value={String(course.id)}>
-                        {course.code} - {course.name}
+                        {course.kode_mk || course.code || "-"} - {course.nama || course.name || "Tanpa Nama"}
                       </option>
                     ))}
                   </select>
@@ -137,7 +138,7 @@ function LaporanCplMatakuliahContent() {
                     value={selectedSemesterId}
                     onChange={(e) => setSelectedSemesterId(e.target.value)}>
                     <option value="">-- Pilih Semester --</option>
-                    {semesterList.map((s) => (
+                    {semesterList.map((s: any) => (
                       <option key={s.id} value={String(s.id)}>
                         {s.tahun} - {s.semester}
                       </option>
@@ -229,7 +230,7 @@ function LaporanCplMatakuliahContent() {
                     <p className="text-3xl font-bold text-gray-900">
                       {radarData.length > 0
                         ? (
-                            radarData.reduce((acc, item) => acc + (item.prodi || 0), 0) /
+                            radarData.reduce((acc: any, item: any) => acc + (item.prodi || 0), 0) /
                             radarData.length
                           ).toFixed(1)
                         : "0"}
@@ -308,7 +309,8 @@ function LaporanCplMatakuliahContent() {
                 <div className="p-4 max-h-[468px] overflow-y-auto">
                   {radarData.length > 0 ? (
                     <div className="space-y-3">
-                      {radarData.map((item, idx) => (
+                      {/* PERBAIKAN DI SINI: Penambahan ': any' */}
+                      {radarData.map((item: any, idx: number) => (
                         <div
                           key={idx}
                           className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition border border-gray-100">
@@ -368,7 +370,8 @@ function LaporanCplMatakuliahContent() {
                   </thead>
                   <tbody>
                     {classDetails.length > 0 ? (
-                      classDetails.map((cls, idx) => {
+                      /* PERBAIKAN DI SINI: Penambahan ': any' */
+                      classDetails.map((cls: any, idx: number) => {
                         const scoreValues = cls.scores ? Object.values(cls.scores) as number[] : [];
                         const avgScore = scoreValues.length > 0
                           ? (scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length).toFixed(1)
@@ -384,7 +387,7 @@ function LaporanCplMatakuliahContent() {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-600 text-center">
-                              {cls.total_students} Mhs
+                              {cls.total_students || 0} Mhs
                             </td>
                             <td className="px-6 py-4 text-sm font-semibold text-gray-900 text-center">
                               {avgScore}%

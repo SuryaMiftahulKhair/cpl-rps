@@ -1,4 +1,3 @@
-// src/hooks/useCPLProdi.ts
 import { useState, useEffect, useMemo } from 'react';
 
 // --- Types ---
@@ -6,6 +5,12 @@ export interface TahunAjaran {
   id: number;
   tahun: string;
   semester: string;
+}
+
+export interface Kurikulum {
+  id: number;
+  nama: string;
+  tahun: number;
 }
 
 export interface RadarItem {
@@ -27,11 +32,13 @@ export type FilterType = "SEMUA" | "TAHUN" | "SEMESTER";
 export const useCPLProdi = () => {
   // --- STATE: Master Data ---
   const [semesterList, setSemesterList] = useState<TahunAjaran[]>([]);
+  const [kurikulumList, setKurikulumList] = useState<Kurikulum[]>([]);
   
   // --- STATE: Filter Controls ---
   const [filterType, setFilterType] = useState<FilterType>("SEMESTER");
   const [selectedYear, setSelectedYear] = useState<string>(""); 
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>(""); 
+  const [selectedKurikulumId, setSelectedKurikulumId] = useState<string>("");
 
   // --- STATE: Data Report ---
   const [radarData, setRadarData] = useState<RadarItem[]>([]);
@@ -41,39 +48,46 @@ export const useCPLProdi = () => {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // 1. Initial Load: Ambil Daftar Tahun Ajaran
+  // 1. Initial Load: Ambil Daftar Tahun Ajaran & Kurikulum
   useEffect(() => {
-    const fetchSemester = async () => {
+    const fetchMasterData = async () => {
       try {
-        const res = await fetch("/api/tahunAjaran");
-        const json = await res.json();
-        const data = Array.isArray(json) ? json : json.data || [];
+        // Fetch Semester
+        const resSem = await fetch("/api/tahunAjaran");
+        const jsonSem = await resSem.json();
+        const dataSem = Array.isArray(jsonSem) ? jsonSem : jsonSem.data || [];
+        setSemesterList(dataSem);
         
-        setSemesterList(data);
-        
-        // Set default values ke semester terbaru
-        if (data.length > 0) {
-            setSelectedSemesterId(String(data[0].id));
-            setSelectedYear(data[0].tahun);
+        if (dataSem.length > 0) {
+            setSelectedSemesterId(String(dataSem[0].id));
+            setSelectedYear(dataSem[0].tahun);
         }
+
+        // Fetch Kurikulum
+        const resKur = await fetch("/api/kurikulum");
+        const jsonKur = await resKur.json();
+        const dataKur = Array.isArray(jsonKur) ? jsonKur : jsonKur.data || [];
+        setKurikulumList(dataKur);
+
+        if (dataKur.length > 0) {
+            setSelectedKurikulumId(String(dataKur[0].id));
+        }
+
       } catch (err) {
-        console.error("Gagal load tahun ajaran", err);
+        console.error("Gagal load master data", err);
       }
     };
-    fetchSemester();
+    fetchMasterData();
   }, []);
 
-  // Helper: Ambil Tahun Unik
   const uniqueYears = useMemo(() => {
     return Array.from(new Set(semesterList.map(s => s.tahun)));
   }, [semesterList]);
 
-  // 2. Action: Load Data Grafik (POST ke Backend)
   const loadReport = async () => {
     setLoading(true);
     setHasSearched(true);
     
-    // Logic ID Semester berdasarkan Filter
     let ids: number[] = [];
     if (filterType === "SEMUA") {
         ids = semesterList.map(s => Number(s.id));
@@ -87,22 +101,26 @@ export const useCPLProdi = () => {
         const res = await fetch("/api/laporan/cpl-prodi", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ semester_ids: ids })
+            body: JSON.stringify({ 
+                kurikulum_id: Number(selectedKurikulumId), 
+                semester_ids: ids 
+            })
         });
         
         const json = await res.json();
         
-        if (json.cplData && Array.isArray(json.cplData)) {
-            const formattedRadar: RadarItem[] = json.cplData.map((item: any) => ({
-                subject: item.kode_cpl,
-                prodi: item.nilai_rata_rata || 0,
+        if (json.radarData && Array.isArray(json.radarData)) {
+            const formattedRadar: RadarItem[] = json.radarData.map((item: any) => ({
+                subject: item.subject,
+                prodi: item.score || 0,
                 target: 75 
             }));
             setRadarData(formattedRadar);
         } else {
             setRadarData([]);
         }
-        setCourseList(json.courseData || []);
+        
+        setCourseList(json.classData || json.courseData || []);
 
     } catch (error) {
         console.error(error);
@@ -114,6 +132,7 @@ export const useCPLProdi = () => {
 
   return {
     semesterList,
+    kurikulumList,
     uniqueYears,
     radarData,
     courseList,
@@ -122,6 +141,7 @@ export const useCPLProdi = () => {
     filterType, setFilterType,
     selectedYear, setSelectedYear,
     selectedSemesterId, setSelectedSemesterId,
+    selectedKurikulumId, setSelectedKurikulumId,
     loadReport
   };
 };
