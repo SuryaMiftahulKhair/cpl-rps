@@ -308,9 +308,9 @@ export default function MatriksCPLTable({
     0,
   );
 
-  const semesterColWidth = "4rem";
-  const mkColWidth = compactMode ? "12rem" : "18rem";
-  const mkColLeft = "4rem";
+  const semesterColWidth = compactMode ? "3.25rem" : "3.75rem";
+  const mkColWidth = compactMode ? "11rem" : "12.5rem";
+  const mkColLeft = semesterColWidth;
 
   return (
     <div
@@ -426,18 +426,18 @@ export default function MatriksCPLTable({
             </div>
           ) : (
             <table className="min-w-full text-[11px] border-collapse">
-              <thead className="sticky top-0 z-20">
+              <thead className="sticky top-0 z-40">
                 <tr>
                   <th
                     rowSpan={2}
-                    className="border-2 border-white/20 px-4 py-4 text-center font-bold text-white sticky left-0 bg-blue-600 z-30 text-xs"
-                    style={{ width: semesterColWidth }}>
+                    className="border-2 border-white/20 px-2 py-4 text-center font-bold text-white sticky top-0 bg-blue-600 z-50 text-xs shadow-none"
+                    style={{ width: semesterColWidth, minWidth: semesterColWidth, left: 0 }}>
                     SEMESTER
                   </th>
                   <th
                     rowSpan={2}
-                    className="border-2 border-white/20 px-5 py-4 text-center font-bold text-white sticky left-[100px] bg-blue-600 z-30 text-xs shadow-[4px_0_12px_-2px_rgba(37,99,235,0.3)]"
-                    style={{ minWidth: "300px", width: "300px" }}>
+                    className="border-2 border-white/20 px-3 py-4 text-center font-bold text-white sticky top-0 bg-blue-600 z-40 text-xs shadow-none"
+                    style={{ minWidth: mkColWidth, width: mkColWidth, left: semesterColWidth }}>
                     BAHAN KAJIAN <br /> (MATA KULIAH)
                   </th>
                   {sortedCPL.map((cpl) => {
@@ -515,17 +515,18 @@ export default function MatriksCPLTable({
                       {mkIdx === 0 && (
                         <td
                           rowSpan={mkInSemester.length}
-                          className="border-2 border-blue-200 px-3 py-3 text-center font-extrabold text-base text-blue-900 bg-gradient-to-br from-blue-50 to-blue-100 sticky left-0 z-10">
+                          className="border-2 border-blue-200 px-2 py-3 text-center align-top font-extrabold text-base text-blue-900 !bg-white sticky left-0 z-30 shadow-none overflow-hidden"
+                          style={{ width: semesterColWidth, minWidth: semesterColWidth, left: 0 }}>
                           {semester === 0 ? "-" : semester}
                         </td>
                       )}
                       <td
-                        className="border-2 border-blue-200 px-3 py-2 sticky bg-white group-hover:bg-blue-50/60 z-10 shadow-[4px_0_8px_-2px_rgba(29,78,216,0.1)]"
-                        style={{ left: mkColLeft }}>
-                        <div className="font-bold text-[11px] text-blue-900 leading-tight mb-1">
+                        className="border-2 border-blue-200 px-2 py-2 sticky left-0 z-20 shadow-none align-top overflow-hidden !bg-white"
+                        style={{ left: mkColLeft, minWidth: mkColWidth, width: mkColWidth }}>
+                        <div className="font-bold text-[11px] text-blue-900 leading-tight mb-1 px-1 pt-1 truncate bg-white">
                           {mk.nama}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 px-1 pb-1 bg-white">
                           <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                             {mk.kode_mk}
                           </span>
