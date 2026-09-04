@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { sortByCode, sortByText } from '@/../lib/sorting';
 
 export interface TahunAjaran { id: number; tahun: string; semester: string; }
 export interface Mahasiswa { id: number; nim: string; nama: string; prodi?: string; }
@@ -50,7 +51,7 @@ export const useCPLMahasiswa = () => {
         const resMhs = await fetch("/api/mahasiswa?limit=1000"); 
         const jsonMhs = await resMhs.json();
         const dataMhs = Array.isArray(jsonMhs) ? jsonMhs : jsonMhs.data || [];
-        setMahasiswaList(dataMhs);
+        setMahasiswaList(sortByText(dataMhs, (item: Mahasiswa) => item.nama));
     } catch (error) {
         console.error(error);
         alert("Gagal memuat data mahasiswa");
@@ -60,11 +61,11 @@ export const useCPLMahasiswa = () => {
   };
 
   const filteredStudents = useMemo(() => {
-    return mahasiswaList.filter(m => {
+    return sortByText(mahasiswaList.filter(m => {
         const matchNim = m.nim.toLowerCase().includes(searchNim.toLowerCase());
         const matchName = m.nama.toLowerCase().includes(searchName.toLowerCase());
         return matchNim && matchName;
-    });
+    }), (item) => item.nama);
   }, [mahasiswaList, searchNim, searchName]);
 
   const handleOpenCPL = async (student: Mahasiswa) => {
@@ -93,7 +94,7 @@ export const useCPLMahasiswa = () => {
         const json = await res.json();
 
         if (json.radarData && Array.isArray(json.radarData)) {
-            const formatted: StudentCPL[] = json.radarData.map((item: any) => ({
+            const formatted: StudentCPL[] = sortByCode(json.radarData, (item: any) => item.subject).map((item: any) => ({
                 code: item.subject,
                 description: item.full_name || "Deskripsi CPL",
                 nilai: item.score || 0

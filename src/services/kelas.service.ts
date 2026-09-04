@@ -1,7 +1,7 @@
 import prisma from "@/../lib/prisma";
 
 export const KelasService = {
-   getNilaiHuruf(totalScore: number): string {
+  getNilaiHuruf(totalScore: number): string {
     if (totalScore >= 85) return "A";
     if (totalScore >= 80) return "A-";
     if (totalScore >= 75) return "B+";
@@ -46,7 +46,7 @@ export const KelasService = {
         if (targetCpmkId) {
           await tx.komponenNilai.create({
             data: {
-              nama: `Evaluasi Pekan ${p.pekan_ke}`,
+              nama: p.nama_tugas?.trim() || `Evaluasi Pekan ${p.pekan_ke}`,
               bobot_nilai: p.bobot_assesment,
               kelas_id: kelasId,
               cpmk_id: targetCpmkId,
@@ -67,26 +67,27 @@ export const KelasService = {
     let failedCount = 0;
     let errors: string[] = [];
 
-    await prisma.$transaction(
-      async (tx) => {
-        for (let i = 0; i < dataNilai.length; i++) {
-          const row = dataNilai[i];
-          const rowIndex = i + 1;
-          const nimKey = Object.keys(row).find((k) => k.trim().toLowerCase() === "nim");
-          const namaKey = Object.keys(row).find((k) => k.trim().toLowerCase() === "nama");
+    for (let i = 0; i < dataNilai.length; i++) {
+      const row = dataNilai[i];
+      const rowIndex = i + 1;
+      const nimKey = Object.keys(row).find((k) => k.trim().toLowerCase() === "nim");
+      const namaKey = Object.keys(row).find((k) => k.trim().toLowerCase() === "nama");
 
-          const rawNim = nimKey ? row[nimKey] : null;
-          const rawNama = namaKey ? row[namaKey] : null;
+      const rawNim = nimKey ? row[nimKey] : null;
+      const rawNama = namaKey ? row[namaKey] : null;
 
-          if (!rawNim) {
-            errors.push(`Baris ${rowIndex}: Kolom NIM kosong.`);
-            failedCount++;
-            continue;
-          }
+      if (!rawNim) {
+        errors.push(`Baris ${rowIndex}: Kolom NIM kosong.`);
+        failedCount++;
+        continue;
+      }
 
-          const nimString = String(rawNim).trim();
-          const namaExcel = String(rawNama || "").trim().toLowerCase();
+      const nimString = String(rawNim).trim();
+      const namaExcel = String(rawNama || "").trim().toLowerCase();
 
+      try {
+        await prisma.$transaction(async (tx) => {
+          
           let peserta = await tx.pesertaKelas.findFirst({
             where: {
               kelas_id: kelasId,
@@ -99,15 +100,11 @@ export const KelasService = {
               where: { nim: nimString },
             });
             if (!mhsMaster) {
-              errors.push(`Baris ${rowIndex} (NIM ${nimString}): Data mahasiswa tidak ditemukan di database kampus.`);
-              failedCount++;
-              continue;
+              throw new Error(`Data mahasiswa tidak ditemukan di database.`);
             }
             const namaMaster = mhsMaster.nama.toLowerCase();
             if (namaExcel && !namaMaster.includes(namaExcel) && !namaExcel.includes(namaMaster)) {
-              errors.push(`Baris ${rowIndex} (NIM ${nimString}): Nama di Excel ("${rawNama}") tidak cocok dengan data Master ("${mhsMaster.nama}").`);
-              failedCount++;
-              continue;
+              throw new Error(`Nama di Excel ("${rawNama}") tidak cocok dengan data Master ("${mhsMaster.nama}").`);
             }
             
             peserta = await tx.pesertaKelas.create({
@@ -119,6 +116,7 @@ export const KelasService = {
           }
 
           let isRowUpdated = false;
+          const upsertNilaiPromises = [];
 
           for (const k of komponen) {
             const excelKey = Object.keys(row).find(
@@ -129,23 +127,29 @@ export const KelasService = {
               const nilaiInput = parseFloat(row[excelKey]);
 
               if (!isNaN(nilaiInput)) {
-                await tx.nilai.upsert({
-                  where: {
-                    peserta_kelas_id_komponen_nilai_id: {
+                upsertNilaiPromises.push(
+                  tx.nilai.upsert({
+                    where: {
+                      peserta_kelas_id_komponen_nilai_id: {
+                        peserta_kelas_id: peserta.id,
+                        komponen_nilai_id: k.id,
+                      },
+                    },
+                    update: { nilai_komponen: nilaiInput },
+                    create: {
                       peserta_kelas_id: peserta.id,
                       komponen_nilai_id: k.id,
+                      nilai_komponen: nilaiInput,
                     },
-                  },
-                  update: { nilai_komponen: nilaiInput },
-                  create: {
-                    peserta_kelas_id: peserta.id,
-                    komponen_nilai_id: k.id,
-                    nilai_komponen: nilaiInput,
-                  },
-                });
+                  })
+                );
                 isRowUpdated = true;
               }
             }
+          }
+
+          if (upsertNilaiPromises.length > 0) {
+            await Promise.all(upsertNilaiPromises);
           }
 
           if (isRowUpdated) {
@@ -160,7 +164,7 @@ export const KelasService = {
             });
 
             totalScore = parseFloat(totalScore.toFixed(2));
-            const huruf = this.getNilaiHuruf(totalScore);
+            const huruf = KelasService.getNilaiHuruf(totalScore);
 
             await tx.pesertaKelas.update({
               where: { id: peserta.id },
@@ -169,13 +173,16 @@ export const KelasService = {
                 nilai_akhir_huruf: huruf,
               },
             });
-
-            successCount++;
           }
-        }
-      },
-      { maxWait: 5000, timeout: 20000 }
-    );
+        }); 
+
+        successCount++; 
+
+      } catch (error: any) {
+        errors.push(`Baris ${rowIndex} (NIM ${nimString}): ${error.message}`);
+        failedCount++;
+      }
+    }
 
     return { successCount, failedCount, errors };
   },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   FileText, 
   Printer,
@@ -12,6 +12,22 @@ import DashboardLayout from "@/app/components/DashboardLayout";
 import Link from "next/link";
 
 export default function DokumenAkreditasiPage() {
+  // 🌟 State untuk mendeteksi apakah komponen sudah dimuat di browser
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // 🌟 Mencegah prerender error saat 'npm run build'
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-500 font-medium animate-pulse">Mempersiapkan dokumen...</div>
+      </div>
+    );
+  }
+
   return (
     <DashboardLayout>
       <style jsx global>{`

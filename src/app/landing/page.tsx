@@ -240,7 +240,7 @@ export default function LandingPage() {
           {/* Logo/Brand - Now System Title */}
           <div className="text-center mb-12">
             <h1 className="text-5xl lg:text-6xl font-black text-gray-900 mb-4 leading-tight">
-              TemanCPL
+              MLOA V2
             </h1>
             <p className="text-xl lg:text-2xl text-gray-600 font-medium max-w-3xl mx-auto">
               Sistem pemetaan{" "}

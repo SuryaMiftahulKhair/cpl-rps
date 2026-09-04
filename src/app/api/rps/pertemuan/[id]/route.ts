@@ -16,6 +16,7 @@ export async function PUT(
       where: { id: Number(id) },
       data: {
         pekan_ke: Number(body.pekan_ke),
+        nama_tugas: body.nama_tugas?.trim() || null,
         kemampuan_akhir: body.kemampuan_akhir,
         bahan_kajian: body.bahan_kajian,
         metode_pembelajaran: body.metode_pembelajaran,

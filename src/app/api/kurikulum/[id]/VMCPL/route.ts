@@ -42,7 +42,7 @@ export async function GET(
 
 // --- FUNGSI PATCH (REVISI TOTAL UNTUK VERCEL) ---
 export async function PATCH(
-  req: NextRequest, // Gunakan NextRequest agar konsisten
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {

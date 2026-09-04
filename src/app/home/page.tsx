@@ -8,7 +8,6 @@ import { HiOutlineHome, HiOutlineExclamationTriangle } from "react-icons/hi2";
 import { Grid3x3, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useProdiStore } from "@/store/useProdiStore";
-import { url } from "inspector";
 
 function HomeContent() {
   const searchParams = useSearchParams();
@@ -25,34 +24,46 @@ function HomeContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [isSyncing, setIsSyncing] = useState(true);
+
   // 2. FUNGSI VALIDASI PRODI TERBARU (Paling Penting!)
   useEffect(() => {
     const validateAndSyncProdi = async () => {
       try {
+        // 1. Ambil profil user yang sedang login
         const res = await fetch("/api/auth/profile");
         const result = await res.json();
 
-        if (result.success && result.user.programStudis.length > 0) {
-          // Ambil prodi pertama dari database (S3 jika Kakak login S3)
+        // Cek apakah data user dan programStudis ada
+        if (result.success && result.user?.programStudis?.length > 0) {
+          // Ambil prodi pertama dari relasi user (karena tadi kita seed ke S1)
           const dbProdi = result.user.programStudis[0];
           const urlProdiId = searchParams.get("prodiId");
 
-          // Jika URL kosong atau tidak sama dengan prodi user di database, PAKSA sinkron
+          console.log("DB Prodi ditemukan:", dbProdi.id); // Cek di Console F12
+
+          // 2. SET STATE SEKARANG JUGA (Jangan tunggu router replace)
+          setCurrentProdiId(dbProdi.id);
+          setActiveProdi(dbProdi.id, dbProdi.nama, dbProdi.jenjang);
+
+          // 3. Jika URL tidak sinkron, update URL-nya pelan-pelan
           if (!urlProdiId || parseInt(urlProdiId) !== dbProdi.id) {
-            setActiveProdi(dbProdi.id, dbProdi.nama, dbProdi.jenjang);
-            setCurrentProdiId(dbProdi.id);
             router.replace(`${pathname}?prodiId=${dbProdi.id}`);
-          } else {
-            setCurrentProdiId(parseInt(urlProdiId));
           }
+        } else {
+          console.error("User tidak punya relasi Program Studi di DB");
+          setError("User Anda belum terhubung ke Program Studi manapun.");
         }
       } catch (err) {
         console.error("Gagal sinkron prodi:", err);
+        setError("Gagal memvalidasi profil user.");
+      } finally {
+        setLoading(false); // Matikan loading utama
       }
     };
 
     validateAndSyncProdi();
-  }, [pathname, router]); // Berjalan sekali saat masuk halaman
+  }, [pathname, searchParams, router, setActiveProdi]); // Berjalan sekali saat masuk halaman
 
   // 3. FETCH KURIKULUM berdasarkan currentProdiId yang sudah divalidasi
   const fetchKurikulum = useCallback(async () => {
@@ -81,19 +92,21 @@ function HomeContent() {
   }, [currentProdiId]);
 
   useEffect(() => {
-    fetchKurikulum();
-  }, [fetchKurikulum]);
+    if (currentProdiId) {
+      fetchKurikulum();
+    }
+  }, [currentProdiId, fetchKurikulum]);
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen overflow-x-hidden bg-slate-50">
       {/* SIDEBAR dimasukkan ke sini agar aman dari error useSearchParams */}
       <Sidebar />
 
-      <div className="flex flex-col flex-1 bg-white">
+      <div className="flex min-w-0 flex-1 flex-col bg-white">
         {/* HEADER juga dimasukkan ke sini */}
         <Header />
 
-        <main className="p-8 space-y-6 bg-white">
+        <main className="min-w-0 overflow-x-hidden p-8 space-y-6 bg-white">
           {/* Dashboard Title */}
           <div className="flex items-center gap-2 text-2xl font-bold text-gray-800 border-b border-gray-200 pb-3">
             <HiOutlineHome className="w-6 h-6 text-indigo-600" />
@@ -125,6 +138,12 @@ function HomeContent() {
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">
                     Matriks CPL - Mata Kuliah
+                    {/* Debugging Singkat */}
+                    <div className="text-xs text-gray-400">
+                      Status: {loading ? "Loading..." : "Ready"} | Prodi:{" "}
+                      {currentProdiId || "Belum ada"} | Kurikulum Terdeteksi:{" "}
+                      {kurikulumList.length}
+                    </div>
                   </h2>
                   <p className="text-sm text-gray-600">
                     Pemetaan Indikator Kinerja (IK) terhadap Mata Kuliah Prodi

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { sortByCode, sortByText } from '@/../lib/sorting';
 
 // --- Types ---
 export interface TahunAjaran {
@@ -67,7 +68,7 @@ export const useCPLProdi = () => {
         const resKur = await fetch("/api/kurikulum");
         const jsonKur = await resKur.json();
         const dataKur = Array.isArray(jsonKur) ? jsonKur : jsonKur.data || [];
-        setKurikulumList(dataKur);
+        setKurikulumList(sortByText(dataKur, (item: any) => item.nama));
 
         if (dataKur.length > 0) {
             setSelectedKurikulumId(String(dataKur[0].id));
@@ -81,7 +82,7 @@ export const useCPLProdi = () => {
   }, []);
 
   const uniqueYears = useMemo(() => {
-    return Array.from(new Set(semesterList.map(s => s.tahun)));
+    return Array.from(new Set(semesterList.map(s => s.tahun))).sort((a, b) => Number(a) - Number(b));
   }, [semesterList]);
 
   const loadReport = async () => {
@@ -110,7 +111,7 @@ export const useCPLProdi = () => {
         const json = await res.json();
         
         if (json.radarData && Array.isArray(json.radarData)) {
-            const formattedRadar: RadarItem[] = json.radarData.map((item: any) => ({
+            const formattedRadar: RadarItem[] = sortByCode(json.radarData, (item: any) => item.subject).map((item: any) => ({
                 subject: item.subject,
                 prodi: item.score || 0,
                 target: 75 
@@ -120,7 +121,7 @@ export const useCPLProdi = () => {
             setRadarData([]);
         }
         
-        setCourseList(json.classData || json.courseData || []);
+        setCourseList(sortByText(json.classData || json.courseData || [], (item: any) => item.name || item.nama || item.code));
 
     } catch (error) {
         console.error(error);

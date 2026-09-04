@@ -60,7 +60,13 @@ function RekapMetodeContent() {
       const json = await res.json();
       const data = Array.isArray(json) ? json : (json?.data ?? []);
 
-      setSemesterList(data);
+      setSemesterList(
+        data.sort(
+          (a: TahunAjaran, b: TahunAjaran) =>
+            b.tahun.localeCompare(a.tahun) ||
+            b.semester.localeCompare(a.semester),
+        ),
+      );
     } catch (err: any) {
       console.error("Fetch Tahun Ajaran error:", err);
       setError(err?.message || "Gagal memuat data.");

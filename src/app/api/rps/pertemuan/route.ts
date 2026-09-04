@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       data: {
         rps_id: rps_id,
         pekan_ke: pekan_ke,
+        nama_tugas: body.nama_tugas?.trim() || null,
         bobot_assesment: bobot_assesment,
 
         kemampuan_akhir: body.kemampuan_akhir || "",

@@ -13,7 +13,17 @@ export const CplService = {
 
     const rawCPL = await prisma.cPL.findMany({
       where: { kurikulum_id: kurikulumId },
-      include: { iks: true },
+      include: { 
+        iks: {
+          include: {
+            _count: {
+              select: {
+                mataKuliah: { where: { kurikulum_id: kurikulumId } }
+              }
+            }
+          }
+        }
+      },
     });
     
     const allCPL = rawCPL.sort((a, b) => 
@@ -34,7 +44,7 @@ export const CplService = {
       if (classStudentCount === 0 && kelas.komponenNilai.some((kn: any) => kn.nilai_individu !== undefined)) {
         classStudentCount = 1;
       }
-      if (classStudentCount === 0) classStudentCount = 1; // Mencegah error pembagian nol (Infinity)
+      if (classStudentCount === 0) classStudentCount = 1;
 
       const classIkAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[] }> = {};
       const classCplDirectAcc: Record<number, { inputs: { cpmkScore: number; cpmkWeight: number }[] }> = {};
@@ -108,7 +118,10 @@ export const CplService = {
           const ikResults = cpl.iks.map(ikMaster => {
             const ikS = classIkFinalScores[ikMaster.id];
             if (ikS === undefined) return null;
-            return { ikScore: ikS, bobotIK: 1 };
+
+            const bobotIK = (ikMaster as any)._count?.mataKuliah || 1;
+
+            return { ikScore: ikS, bobotIK };
           }).filter(Boolean);
           if (ikResults.length > 0) val = calculateFinalCPL(ikResults as any);
         } else {
@@ -156,7 +169,7 @@ export const CplService = {
         
         if (!globalIkFinals[id]) globalIkFinals[id] = { scoreSum: 0, mkCount: 0 };
         globalIkFinals[id].scoreSum += mkIkScore;
-        globalIkFinals[id].mkCount += 1; // 
+        globalIkFinals[id].mkCount += 1; 
       }
     }
 
@@ -180,9 +193,12 @@ export const CplService = {
           if (!globalIk || globalIk.mkCount === 0) return null;
           
           const avgIkScore = globalIk.scoreSum / globalIk.mkCount;
+
+          const bobotIK = (ikMaster as any)._count?.mataKuliah || 1;
+
           return {
             ikScore: avgIkScore,
-            bobotIK: globalIk.mkCount
+            bobotIK
           };
         }).filter(Boolean);
 

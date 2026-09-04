@@ -59,25 +59,36 @@ export const MahasiswaService = {
 
     let processed = 0;
 
-    await prisma.$transaction(async (tx) => {
-      for (const row of dataMahasiswa) {
-        const nimKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'nim');
-        const namaKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'nama');
-        
-        const nim = nimKey ? String(row[nimKey]).trim() : null;
-        const nama = namaKey ? String(row[namaKey]).trim() : null;
-        
-        if (!nim || !nama) continue;
+    await prisma.$transaction(
+      async (tx) => {
+        const upsertPromises = [];
 
-        await tx.mahasiswa.upsert({
-          where: { nim: nim },
-          update: { nama: nama },
-          create: { nim: nim, nama: nama }
-        });
+        for (const row of dataMahasiswa) {
+          const nimKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'nim');
+          const namaKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'nama');
+          
+          const nim = nimKey ? String(row[nimKey]).trim() : null;
+          const nama = namaKey ? String(row[namaKey]).trim() : null;
+          
+          if (!nim || !nama) continue;
 
-        processed++;
+          upsertPromises.push(
+            tx.mahasiswa.upsert({
+              where: { nim: nim },
+              update: { nama: nama },
+              create: { nim: nim, nama: nama }
+            })
+          );
+
+          processed++;
+        }
+
+        await Promise.all(upsertPromises);
+      },
+      {
+        timeout: 30000,
       }
-    });
+    );
 
     return { processed };
   }

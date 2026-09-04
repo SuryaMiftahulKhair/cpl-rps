@@ -62,7 +62,7 @@ export async function POST(req: Request) {
                     const cpmkId = p.sub_cpmk?.[0]?.cpmk_id;
                     if (cpmkId) {
                         komponenToCreate.push({
-                            nama: p.metode_pembelajaran || `Evaluasi Pekan ${p.pekan_ke}`,
+                            nama: p.nama_tugas || `Evaluasi Pekan ${p.pekan_ke}`,
                             kelas_id: newKelas.id,
                             bobot_nilai: p.bobot_assesment, 
                             cpmk_id: cpmkId

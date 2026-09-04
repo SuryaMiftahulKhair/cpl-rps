@@ -90,8 +90,8 @@ export async function GET(
             const firstCpmk = p.sub_cpmk?.[0]?.cpmk;
             
             return {
-                nama: p.metode_pembelajaran && p.metode_pembelajaran.trim() !== ""
-                    ? p.metode_pembelajaran
+                nama: p.nama_tugas && p.nama_tugas.trim() !== ""
+                  ? p.nama_tugas
                     : `Evaluasi Pekan ${p.pekan_ke}`,
                 
                 bobot: p.bobot_assesment || 0,

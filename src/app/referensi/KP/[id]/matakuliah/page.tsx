@@ -83,6 +83,33 @@ function getCplDesign(_kode: string) {
   return cplDesignSystem["default"];
 }
 
+const compareCplCodes = (first: CPL, second: CPL) => {
+  const firstNumber = Number(first.kode_cpl.match(/\d+/)?.[0] ?? Infinity);
+  const secondNumber = Number(second.kode_cpl.match(/\d+/)?.[0] ?? Infinity);
+
+  return (
+    firstNumber - secondNumber ||
+    first.kode_cpl.localeCompare(second.kode_cpl, "id", {
+      sensitivity: "base",
+    })
+  );
+};
+
+const compareIkCodes = (first: IndikatorKinerja, second: IndikatorKinerja) => {
+  const firstParts = (first.kode_ik.match(/\d+/g) || []).map(Number);
+  const secondParts = (second.kode_ik.match(/\d+/g) || []).map(Number);
+  const length = Math.max(firstParts.length, secondParts.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const difference = (firstParts[index] ?? -1) - (secondParts[index] ?? -1);
+    if (difference !== 0) return difference;
+  }
+
+  return first.kode_ik.localeCompare(second.kode_ik, "id", {
+    sensitivity: "base",
+  });
+};
+
 export default function MatriksCPLPageAFTER() {
   const params = useParams();
   const router = useRouter();
@@ -94,7 +121,9 @@ export default function MatriksCPLPageAFTER() {
   const [matakuliahList, setMatakuliahList] = useState<MatakuliahCPL[]>([]);
   const [cplList, setCplList] = useState<CPL[]>([]);
   const [kurikulumList, setKurikulumList] = useState<Kurikulum[]>([]);
-  const [selectedKurikulum, setSelectedKurikulum] = useState<Kurikulum | null>(null);
+  const [selectedKurikulum, setSelectedKurikulum] = useState<Kurikulum | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,10 +135,10 @@ export default function MatriksCPLPageAFTER() {
   const [showMkModal, setShowMkModal] = useState(false);
 
   const sortedCPL = [...cplList]
-    .sort((a, b) => (a.urutan || 0) - (b.urutan || 0))
+    .sort(compareCplCodes)
     .map((cpl) => ({
       ...cpl,
-      iks: (cpl.iks || []).sort((a, b) => (a.urutan || 0) - (b.urutan || 0)),
+      iks: (cpl.iks || []).sort(compareIkCodes),
     }));
 
   const allIK: IndikatorKinerja[] = [];
@@ -351,15 +380,12 @@ export default function MatriksCPLPageAFTER() {
     }
   };
 
-  const semesterGroups = matakuliahList.reduce(
-    (acc, mk) => {
-      const sem = mk.semester || 0;
-      if (!acc[sem]) acc[sem] = [];
-      acc[sem].push(mk);
-      return acc;
-    },
-    {} as { [key: number]: MatakuliahCPL[] },
-  );
+  const semesterGroups = matakuliahList.reduce((acc, mk) => {
+    const sem = mk.semester || 0;
+    if (!acc[sem]) acc[sem] = [];
+    acc[sem].push(mk);
+    return acc;
+  }, {} as { [key: number]: MatakuliahCPL[] });
 
   const sortedSemesters = Object.keys(semesterGroups)
     .map(Number)
@@ -385,7 +411,6 @@ export default function MatriksCPLPageAFTER() {
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-gray-50 p-4 lg:p-5">
-
         {/* HEADER */}
         <div className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
@@ -403,9 +428,7 @@ export default function MatriksCPLPageAFTER() {
                     {kurikulumId}
                   </span>{" "}
                   • Prodi ID:{" "}
-                  <span className="font-semibold text-blue-700">
-                    {prodiId}
-                  </span>
+                  <span className="font-semibold text-blue-700">{prodiId}</span>
                 </p>
               </div>
             </div>
@@ -440,14 +463,39 @@ export default function MatriksCPLPageAFTER() {
         {/* STATS CARDS */}
         <div className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {[
-            { label: "Mata Kuliah", value: matakuliahList.length, icon: <Layers className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-blue-600" },
-            { label: "Total CPL", value: sortedCPL.length, icon: <Target className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-green-600" },
-            { label: "Total IK", value: allIK.length, icon: <CheckCircle className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-purple-600" },
-            { label: "Total Mapping", value: totalMapping, icon: <Grid3x3 className="w-7 h-7 text-white" strokeWidth={2} />, bgColor: "bg-orange-600" },
+            {
+              label: "Mata Kuliah",
+              value: matakuliahList.length,
+              icon: <Layers className="w-7 h-7 text-white" strokeWidth={2} />,
+              bgColor: "bg-blue-600",
+            },
+            {
+              label: "Total CPL",
+              value: sortedCPL.length,
+              icon: <Target className="w-7 h-7 text-white" strokeWidth={2} />,
+              bgColor: "bg-green-600",
+            },
+            {
+              label: "Total IK",
+              value: allIK.length,
+              icon: (
+                <CheckCircle className="w-7 h-7 text-white" strokeWidth={2} />
+              ),
+              bgColor: "bg-purple-600",
+            },
+            {
+              label: "Total Mapping",
+              value: totalMapping,
+              icon: <Grid3x3 className="w-7 h-7 text-white" strokeWidth={2} />,
+              bgColor: "bg-orange-600",
+            },
           ].map((card, i) => (
-            <div key={i} className="min-w-0 bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
+            <div
+              key={i}
+              className="min-w-0 bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
               <div className="flex items-center gap-4">
-                <div className={`w-11 h-11 ${card.bgColor} rounded-xl flex items-center justify-center shadow-md`}>
+                <div
+                  className={`w-11 h-11 ${card.bgColor} rounded-xl flex items-center justify-center shadow-md`}>
                   {card.icon}
                 </div>
                 <div>
@@ -476,7 +524,9 @@ export default function MatriksCPLPageAFTER() {
                 <Eye size={14} /> Tampilkan Semua
               </button>
               <button
-                onClick={() => setCollapsedCPL(sortedCPL.map((c) => c.kode_cpl))}
+                onClick={() =>
+                  setCollapsedCPL(sortedCPL.map((c) => c.kode_cpl))
+                }
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200">
                 <EyeOff size={14} /> Sembunyikan Semua
               </button>
@@ -495,8 +545,8 @@ export default function MatriksCPLPageAFTER() {
               onChange={(e) => handleChangeKurikulum(Number(e.target.value))}
               className="w-full md:w-auto px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm font-semibold text-gray-900 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white shadow-sm">
               <option value="" disabled hidden>
-                {selectedKurikulum 
-                  ? `${selectedKurikulum.nama} (${selectedKurikulum.tahun})` 
+                {selectedKurikulum
+                  ? `${selectedKurikulum.nama} (${selectedKurikulum.tahun})`
                   : "-- Pilih Kurikulum --"}
               </option>
               {kurikulumList.map((k) => (
@@ -515,7 +565,9 @@ export default function MatriksCPLPageAFTER() {
         {successMessage && (
           <div className="mb-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-blue-600" strokeWidth={2.5} />
-            <p className="text-sm font-semibold text-blue-800">{successMessage}</p>
+            <p className="text-sm font-semibold text-blue-800">
+              {successMessage}
+            </p>
           </div>
         )}
 
@@ -523,10 +575,15 @@ export default function MatriksCPLPageAFTER() {
           <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h4 className="text-sm font-bold text-red-900 mb-1">Terjadi Kesalahan</h4>
+              <h4 className="text-sm font-bold text-red-900 mb-1">
+                Terjadi Kesalahan
+              </h4>
               <p className="text-sm text-red-700">{error}</p>
             </div>
-            <button title="Hapus Error" onClick={() => setError(null)} className="text-red-600 hover:text-red-800">
+            <button
+              title="Hapus Error"
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -560,7 +617,8 @@ export default function MatriksCPLPageAFTER() {
                         <span className="text-white text-xs font-bold">1</span>
                       </div>
                       <span>
-                        Semua CPL menggunakan <strong>warna biru</strong> yang seragam dan konsisten
+                        Semua CPL menggunakan <strong>warna biru</strong> yang
+                        seragam dan konsisten
                       </span>
                     </li>
                     <li className="flex items-start gap-2.5">
@@ -568,7 +626,8 @@ export default function MatriksCPLPageAFTER() {
                         <span className="text-white text-xs font-bold">2</span>
                       </div>
                       <span>
-                        Gunakan tombol <strong>collapse/expand</strong> (▼/▶) untuk fokus pada CPL tertentu
+                        Gunakan tombol <strong>collapse/expand</strong> (▼/▶)
+                        untuk fokus pada CPL tertentu
                       </span>
                     </li>
                     <li className="flex items-start gap-2.5">
@@ -576,7 +635,8 @@ export default function MatriksCPLPageAFTER() {
                         <span className="text-white text-xs font-bold">3</span>
                       </div>
                       <span>
-                        Klik sel untuk <strong>toggle mapping</strong> IK ke mata kuliah
+                        Klik sel untuk <strong>toggle mapping</strong> IK ke
+                        mata kuliah
                       </span>
                     </li>
                   </ul>
@@ -586,7 +646,9 @@ export default function MatriksCPLPageAFTER() {
                         <span className="text-white text-xs font-bold">4</span>
                       </div>
                       <span>
-                        Status sel: <strong>Putih</strong> (kosong), <strong>Biru</strong> (mapped), <strong>Kuning</strong> (saving)
+                        Status sel: <strong>Putih</strong> (kosong),{" "}
+                        <strong>Biru</strong> (mapped), <strong>Kuning</strong>{" "}
+                        (saving)
                       </span>
                     </li>
                     <li className="flex items-start gap-2.5">
@@ -594,7 +656,8 @@ export default function MatriksCPLPageAFTER() {
                         <span className="text-white text-xs font-bold">5</span>
                       </div>
                       <span>
-                        Hover pada <strong>header IK</strong> untuk melihat deskripsi lengkap indikator
+                        Hover pada <strong>header IK</strong> untuk melihat
+                        deskripsi lengkap indikator
                       </span>
                     </li>
                     <li className="flex items-start gap-2.5">
@@ -602,7 +665,9 @@ export default function MatriksCPLPageAFTER() {
                         <span className="text-white text-xs font-bold">6</span>
                       </div>
                       <span>
-                        Scroll horizontal akan menampilkan <strong>floating indicator</strong> CPL yang sedang dilihat
+                        Scroll horizontal akan menampilkan{" "}
+                        <strong>floating indicator</strong> CPL yang sedang
+                        dilihat
                       </span>
                     </li>
                   </ul>

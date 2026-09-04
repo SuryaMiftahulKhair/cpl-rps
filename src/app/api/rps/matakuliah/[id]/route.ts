@@ -1,26 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/../lib/prisma";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const { id } = await params;
     const mataKuliahId = Number(id);
 
     const { searchParams } = new URL(req.url);
-    const mode = searchParams.get('mode');
-    const tahun = searchParams.get('tahun') || new Date().getFullYear().toString();
-    const semester = searchParams.get('semester') || "1";
+    const mode = searchParams.get("mode");
+    const tahun =
+      searchParams.get("tahun") || new Date().getFullYear().toString();
+    const semester = searchParams.get("semester") || "1";
 
     // ==========================================
     // KONDISI 1: JIKA MINTA HISTORY (LIST DATA)
     // ==========================================
-    if (mode === 'history') {
+    if (mode === "history") {
       const listRps = await prisma.rPS.findMany({
         where: { matakuliah_id: mataKuliahId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         include: {
-          matakuliah: { select: { nama: true, kode_mk: true } }
-        }
+          matakuliah: {
+            select: {
+              nama: true,
+              kode_mk: true,
+            },
+          },
+        },
       });
       return NextResponse.json({ success: true, data: listRps });
     }
@@ -28,30 +37,34 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // ==========================================
     // KONDISI 2: DEFAULT (DETAIL / GET OR CREATE)
     // ==========================================
-    
+
     // 1. Cek Matkul
     const matkul = await prisma.mataKuliah.findUnique({
       where: { id: mataKuliahId },
       include: {
-        cpl: { include: { iks: true } }
-      }
+        cpl: { include: { iks: true } },
+      },
     });
 
-    if (!matkul) return NextResponse.json({ error: "Mata kuliah tidak ditemukan" }, { status: 404 });
+    if (!matkul)
+      return NextResponse.json(
+        { error: "Mata kuliah tidak ditemukan" },
+        { status: 404 },
+      );
 
     // 2. Cari RPS yang sesuai dengan Matkul + Tahun + Semester (Untuk Laporan)
     // Kita tidak pakai upsert, tapi findFirst. Jika tidak ada, baru create.
     let rps = await prisma.rPS.findFirst({
-      where: { 
+      where: {
         matakuliah_id: mataKuliahId,
         // Kita bisa tambahkan filter tahun di sini nanti jika field sudah ada
       },
       include: {
         cpmk: {
           include: { ik: true },
-          orderBy: { kode_cpmk: 'asc' }
-        }
-      }
+          orderBy: { kode_cpmk: "asc" },
+        },
+      },
     });
 
     // 3. Jika belum ada RPS sama sekali, buatkan satu sebagai draft
@@ -60,25 +73,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         data: {
           matakuliah_id: mataKuliahId,
           nomor_dokumen: `RPS-${matkul.kode_mk}-${tahun}-${semester}`,
-          deskripsi: "Rencana Pembelajaran Semester...",
+          judul_rps: "Rencana Pembelajaran Semester...",
           nama_penyusun: "Dosen Pengampu",
+          is_active: false,
         },
         include: {
-          cpmk: { include: { ik: true }, orderBy: { kode_cpmk: 'asc' } }
-        }
+          cpmk: { include: { ik: true }, orderBy: { kode_cpmk: "asc" } },
+        },
       });
     }
 
     // 4. Mapping Available IKs (Untuk Dropdown di Frontend)
     const availableIks: any[] = [];
-    matkul.cpl.forEach(c => {
+    matkul.cpl.forEach((c) => {
       if (c.iks) {
-        c.iks.forEach(item => {
+        c.iks.forEach((item) => {
           availableIks.push({
             id: item.id,
             kode: item.kode_ik,
             deskripsi: item.deskripsi,
-            cpl_kode: c.kode_cpl
+            cpl_kode: c.kode_cpl,
           });
         });
       }
@@ -88,10 +102,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       success: true,
       data: {
         ...rps, // Mengembalikan object rps lengkap (termasuk id, nomor_dokumen, dll)
-        available_iks: availableIks
-      }
+        available_iks: availableIks,
+      },
     });
-
   } catch (err: any) {
     console.error("GET RPS Error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });

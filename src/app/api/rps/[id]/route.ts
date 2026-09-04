@@ -78,6 +78,7 @@ export async function GET(
           kode: ik.kode_ik, // Di frontend kita pakai ik.kode
           deskripsi: ik.deskripsi,
           cpl_kode: ik.cpl?.kode_cpl || "CPL", // Ambil dari include cpl tadi
+          cpl_deskripsi: ik.cpl?.deskripsi || "",
         });
       });
     }

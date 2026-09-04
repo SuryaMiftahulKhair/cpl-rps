@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { sortByCode, sortByText } from '@/../lib/sorting';
 
 export interface TahunAjaran { id: number; tahun: string; semester: string; }
 
@@ -60,7 +61,7 @@ export const useCPLMatakuliah = () => {
           };
         });
 
-        setMatakuliahList(safeDataMk);
+        setMatakuliahList(sortByText(safeDataMk, (item) => item.nama));
         
         if (safeDataMk.length > 0) {
             setSelectedCourseId(String(safeDataMk[0].id));
@@ -73,7 +74,7 @@ export const useCPLMatakuliah = () => {
   }, []);
 
   const uniqueYears = useMemo(() => {
-    return Array.from(new Set(semesterList.map(s => s.tahun)));
+    return Array.from(new Set(semesterList.map(s => s.tahun))).sort((a, b) => Number(a) - Number(b));
   }, [semesterList]);
 
   const loadReport = async () => {
@@ -102,7 +103,7 @@ export const useCPLMatakuliah = () => {
         const json = await res.json();
         
         if (json.radarData && Array.isArray(json.radarData)) {
-            const formattedRadar: RadarItem[] = json.radarData.map((item: any) => ({
+            const formattedRadar: RadarItem[] = sortByCode(json.radarData, (item: any) => item.subject).map((item: any) => ({
                 subject: item.subject,
                 prodi: item.score || 0,
                 target: 75 
@@ -112,7 +113,7 @@ export const useCPLMatakuliah = () => {
             setRadarData([]);
         }
         
-        setClassDetails(json.classData || json.courseData || []);
+        setClassDetails(sortByText(json.classData || json.courseData || [], (item: any) => item.name || item.nama || item.code));
 
     } catch (error) {
         console.error(error);

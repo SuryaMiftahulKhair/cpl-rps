@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import MataKuliahCard from "../components/MataKuliahCard";
 import ScrollToTop from "../components/ScrollToTop";
 import DashboardLayout from "@/app/components/DashboardLayout";
+import { sortByText } from "@/../lib/sorting";
 
 interface Props {
   id: number;
@@ -58,7 +59,7 @@ export default function SemesterPage({
     if (semester) fetchData();
   }, [semester]);
 
-  const Matakuliah = matakuliahList.map((m) => ({
+  const Matakuliah = sortByText(matakuliahList, (m) => m.namaMatakuliah).map((m) => ({
     id: m.id,
     kode: m.kodeMatakuliah,
     nama: m.namaMatakuliah,

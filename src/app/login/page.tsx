@@ -108,7 +108,7 @@ export default function LoginPage() {
               </div>
               
               <h1 className="text-4xl font-black mb-3 leading-tight">
-                APP-CPL
+                MLOA V2
               </h1>
               <p className="text-blue-100 text-lg font-medium">
                 Universitas Hasanuddin

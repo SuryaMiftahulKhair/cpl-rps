@@ -19,6 +19,8 @@ import {
   UsersIcon,
   LucideIcon,
   ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useProdiStore } from "@/store/useProdiStore";
 
@@ -173,6 +175,7 @@ export default function Sidebar() {
   const [listProgram, setListProgram] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>("");
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
@@ -236,7 +239,22 @@ export default function Sidebar() {
   }, [currentPath]);
 
   return (
-    <div className="w-72 h-screen sticky top-0 bg-white shadow-2xl flex flex-col border-r border-gray-100">
+    <>
+      <button
+        type="button"
+        onClick={() => setIsCollapsed((collapsed) => !collapsed)}
+        className={`fixed left-3 top-4 z-[60] rounded-lg border border-gray-200 bg-white p-2 text-gray-600 shadow-md transition-all hover:bg-indigo-50 hover:text-indigo-700 ${
+          isCollapsed ? "translate-x-0" : "-translate-x-20"
+        }`}
+        aria-label={isCollapsed ? "Tampilkan sidebar" : "Sembunyikan sidebar"}
+        title={isCollapsed ? "Tampilkan sidebar" : "Sembunyikan sidebar"}>
+        {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+      </button>
+
+      <div
+        className={`relative sticky top-0 flex h-screen shrink-0 flex-col overflow-hidden border-r border-gray-100 bg-white shadow-2xl transition-[width] duration-300 ${
+          isCollapsed ? "w-0 border-r-0 shadow-none" : "w-72"
+        }`}>
       {/* ========== HEADER SECTION - Enhanced ========== */}
       <div className="p-6 border-b border-indigo-100 bg-linear-to-br from-indigo-500 via-indigo-600 to-blue-600">
         {/* Logo & Title */}
@@ -246,7 +264,7 @@ export default function Sidebar() {
           </div>
           <div>
             <h1 className="font-extrabold text-2xl text-white tracking-tight">
-              APP-CPL
+              MLOA V2
             </h1>
             <p className="text-xs text-indigo-100 font-medium">
               Sistem Penilaian CPL
@@ -328,20 +346,20 @@ export default function Sidebar() {
                 isActive={currentPath === "/penilaian/datakelas"}>
                 Data Kelas
               </SubMenuItem>
-              <SubMenuItem
+              {/* <SubMenuItem
                 href="/penilaian/portofolio"
                 isActive={currentPath === "/penilaian/portofolio"}>
                 Portofolio
-              </SubMenuItem>
+              </SubMenuItem> */}
             </CollapsibleMenu>
 
             {/* Dokumen Akreditasi */}
-            <MenuItem
+            {/* <MenuItem
               href="/dokumen"
               icon={Book}
               isActive={currentPath === "/dokumen"}>
               Dokumen Akreditasi
-            </MenuItem>
+            </MenuItem> */}
 
             {/* RPS Matakuliah */}
             <MenuItem
@@ -373,10 +391,15 @@ export default function Sidebar() {
                 isActive={currentPath === "/laporan/cpl-matakuliah"}>
                 CPL Matakuliah
               </SubMenuItem>
-              <SubMenuItem
+              {/* <SubMenuItem
                 href="/laporan/rekap-metode"
                 isActive={currentPath.startsWith("/laporan/rekap-metode")}>
                 Rekap Metode
+              </SubMenuItem> */}
+              <SubMenuItem
+                href="/laporan/laporan-pdf"
+                isActive={currentPath === "/laporan/laporan-pdf"}>
+                Laporan PDF
               </SubMenuItem>
             </CollapsibleMenu>
           </>
@@ -385,12 +408,12 @@ export default function Sidebar() {
         {userRole === "ADMIN" && (
           <>
             {/* Monitoring Universitas */}
-            <MenuItem
+            {/* <MenuItem
               href="/monitoring"
               icon={Monitor}
               isActive={currentPath === "/monitoring"}>
               Monitoring Univ
-            </MenuItem>
+            </MenuItem> */}
 
             {/* Referensi - Collapsible */}
             <CollapsibleMenu
@@ -440,6 +463,15 @@ export default function Sidebar() {
         {/* Logout Button (if needed) */}
         {/* <LogoutButton /> */}
       </div>
-    </div>
+        <button
+          type="button"
+          onClick={() => setIsCollapsed(true)}
+          className="absolute right-3 top-4 rounded-lg p-2 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+          aria-label="Sembunyikan sidebar"
+          title="Sembunyikan sidebar">
+          <PanelLeftClose size={20} />
+        </button>
+      </div>
+    </>
   );
 }

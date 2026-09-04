@@ -27,7 +27,8 @@ interface RPSVersion {
   nomor_dokumen: string | null;
   tanggal_penyusunan: string;
   updatedAt: string;
-  deskripsi: string | null;
+  judul_rps: string | null;
+  is_active: boolean;
   is_locked: boolean;
   tahun?: string;
   semester?: Semester;
@@ -69,7 +70,9 @@ export default function RPSVersionHistoryPage({
       setError(null);
       try {
         // Fetch mata kuliah info
-        const mkRes = await fetch(`/api/kurikulum/${id}/matakuliah/${id_matakuliah}?prodiId=${prodiId}`);
+        const mkRes = await fetch(
+          `/api/kurikulum/${id}/matakuliah/${id_matakuliah}?prodiId=${prodiId}`,
+        );
         if (mkRes.ok) {
           const mkJson = await mkRes.json();
           setMatakuliah(mkJson.data || mkJson);
@@ -104,7 +107,7 @@ export default function RPSVersionHistoryPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           matakuliah_id: id_matakuliah,
-          keterangan: data.keterangan,
+          judul_rps: data.judul_rps,
           is_new_ta: data.is_new_ta,
           new_tahun: data.new_tahun,
           new_semester: data.new_semester,
@@ -154,11 +157,49 @@ export default function RPSVersionHistoryPage({
     }
   };
 
+  const handleSetActive = async (rpsId: number) => {
+    if (!confirm("Jadikan versi ini sebagai RPS Aktif?")) return;
+
+    setIsProcessing(true);
+    try {
+      const res = await fetch("/api/rps/set-active", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rpsId, matakuliahId: id_matakuliah }),
+      });
+
+      if (res.ok) {
+        // --- SAPU BERSIH STATE LOKAL ---
+        // Kita update state rpsList secara manual:
+        // Semua is_active jadi false, kecuali yang ID-nya cocok
+        setRpsList((prevList) =>
+          prevList.map((rps) => ({
+            ...rps,
+            is_active: rps.id === rpsId,
+          })),
+        );
+
+        alert("RPS Aktif berhasil diperbarui!");
+      } else {
+        alert("Gagal memperbarui status aktif");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal memperbarui status aktif");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center h-screen flex-col gap-4">
-          <Loader2 className="animate-spin text-indigo-600" size={48} strokeWidth={2.5} />
+          <Loader2
+            className="animate-spin text-indigo-600"
+            size={48}
+            strokeWidth={2.5}
+          />
           <p className="text-gray-600 font-semibold text-lg">Memuat Data...</p>
         </div>
       </DashboardLayout>
@@ -168,14 +209,17 @@ export default function RPSVersionHistoryPage({
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8">
-        
         {/* ========== BREADCRUMB ========== */}
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-          <Link href={`/rps?prodiId=${prodiId}`} className="hover:text-indigo-600 transition-colors">
+          <Link
+            href={`/rps?prodiId=${prodiId}`}
+            className="hover:text-indigo-600 transition-colors">
             RPS
           </Link>
           <ChevronRight size={16} className="text-gray-400" />
-          <Link href={`/rps/${id}/list?prodiId=${prodiId}`} className="hover:text-indigo-600 transition-colors">
+          <Link
+            href={`/rps/${id}/list?prodiId=${prodiId}`}
+            className="hover:text-indigo-600 transition-colors">
             Daftar Mata Kuliah
           </Link>
           <ChevronRight size={16} className="text-gray-400" />
@@ -185,7 +229,6 @@ export default function RPSVersionHistoryPage({
         {/* ========== HEADER ========== */}
         <div className="bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-indigo-100/50 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            
             <div className="flex items-start gap-4 flex-1">
               <div className="p-3 bg-white rounded-xl shadow-sm border border-indigo-100">
                 <FileText size={28} className="text-indigo-600" />
@@ -217,7 +260,11 @@ export default function RPSVersionHistoryPage({
             <div className="flex gap-2">
               <Link href={`/rps/${id}/list?prodiId=${prodiId}`}>
                 <button className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl border-2 border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md transition-all font-semibold group">
-                  <ChevronLeft size={18} className="group-hover:-translate-x-1 transition-transform" strokeWidth={2.5} />
+                  <ChevronLeft
+                    size={18}
+                    className="group-hover:-translate-x-1 transition-transform"
+                    strokeWidth={2.5}
+                  />
                   <span>Kembali</span>
                 </button>
               </Link>
@@ -263,7 +310,6 @@ export default function RPSVersionHistoryPage({
 
         {/* ========== CONTENT ========== */}
         <div className="bg-white shadow-sm rounded-2xl border border-gray-200 overflow-hidden">
-          
           {/* Section Header */}
           <div className="p-6 border-b border-gray-200 bg-gray-50/50">
             <div className="flex items-center gap-3">
@@ -271,7 +317,9 @@ export default function RPSVersionHistoryPage({
                 <FileText size={20} className="text-indigo-600" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-800">Daftar Dokumen RPS</h2>
+                <h2 className="text-xl font-bold text-gray-800">
+                  Daftar Dokumen RPS
+                </h2>
                 <p className="text-sm text-gray-600">
                   {rpsList.length} versi dokumen tersedia
                 </p>
@@ -291,21 +339,27 @@ export default function RPSVersionHistoryPage({
                   Belum Ada RPS
                 </h3>
                 <p className="text-sm text-gray-500 max-w-md mx-auto">
-                  Belum ada dokumen RPS yang dibuat untuk mata kuliah ini. Klik tombol "Buat RPS Baru" untuk memulai.
+                  Belum ada dokumen RPS yang dibuat untuk mata kuliah ini. Klik
+                  tombol "Buat RPS Baru" untuk memulai.
                 </p>
               </div>
             ) : (
               /* RPS Cards Grid */
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {rpsList.map((item) => (
-                  <div 
+                  <div
                     key={item.id}
-                    className="group relative bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-2xl p-5 hover:border-indigo-300 hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
-                  >
+                    className="group relative bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-2xl p-5 hover:border-indigo-300 hover:shadow-xl hover:scale-[1.02] transition-all duration-200">
                     {/* Background Pattern */}
                     <div className="absolute top-0 right-0 opacity-5">
                       <svg width="80" height="80" viewBox="0 0 80 80">
-                        <circle cx="60" cy="20" r="30" fill="currentColor" className="text-indigo-600" />
+                        <circle
+                          cx="60"
+                          cy="20"
+                          r="30"
+                          fill="currentColor"
+                          className="text-indigo-600"
+                        />
                       </svg>
                     </div>
 
@@ -317,14 +371,15 @@ export default function RPSVersionHistoryPage({
                           <span className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-xs font-mono font-bold px-3 py-1.5 rounded-lg shadow-sm">
                             {item.nomor_dokumen || `Draft #${item.id}`}
                           </span>
+
                           <div className="inline-flex items-center gap-1 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700 border-2 border-emerald-200 text-xs font-bold px-2.5 py-1 rounded-lg">
                             <Calendar size={12} />
                             TA {item.tahun || "-"}
                           </div>
                         </div>
-                        
+
                         <h3 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 text-base leading-tight min-h-[40px]">
-                          {item.deskripsi || "Tanpa Keterangan"}
+                          {item.judul_rps || "Tanpa Keterangan"}
                         </h3>
 
                         <div className="flex items-center gap-2 text-xs text-gray-600 mt-3">
@@ -334,12 +389,37 @@ export default function RPSVersionHistoryPage({
                           <div className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-lg">
                             <Clock size={12} />
                             <span>
-                              {new Date(item.updatedAt).toLocaleDateString("id-ID", { 
-                                day: "numeric", 
-                                month: "short", 
-                                year: "numeric" 
-                              })}
+                              {new Date(item.updatedAt).toLocaleDateString(
+                                "id-ID",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
                             </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {item.is_active ? (
+                              // Tampilan jika AKTIF
+                              <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border-2 border-emerald-200 px-3 py-1 rounded-full shadow-sm">
+                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                                <span className="text-[10px] font-extrabold uppercase tracking-widest">
+                                  Aktif Sekarang
+                                </span>
+                              </div>
+                            ) : (
+                              // Tampilan jika tidak aktif (Tombol untuk mengaktifkan)
+                              <button
+                                onClick={() => handleSetActive(item.id)}
+                                disabled={isProcessing}
+                                className="flex items-center gap-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1 rounded-full border border-dashed border-gray-300 hover:border-indigo-300 transition-all group">
+                                <div className="w-1.5 h-1.5 bg-gray-300 group-hover:bg-indigo-400 rounded-full" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">
+                                  Set Sebagai Aktif
+                                </span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -348,20 +428,19 @@ export default function RPSVersionHistoryPage({
                       <div className="border-t-2 border-gray-100 pt-4 mt-4">
                         {/* Actions */}
                         <div className="flex items-center justify-between gap-2">
-                          <Link 
+                          <Link
                             href={`/rps/${id}/list/${id_matakuliah}/detail/${item.id}?prodiId=${prodiId}`}
-                            className="flex-1"
-                          >
+                            className="flex-1">
                             <button className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg transition-all font-semibold text-sm group/btn">
                               <Eye size={16} />
                               <span>Lihat</span>
-                              <ChevronRight 
-                                size={14} 
+                              <ChevronRight
+                                size={14}
                                 className="group-hover/btn:translate-x-1 transition-transform"
                               />
                             </button>
                           </Link>
-                          
+
                           <button
                             onClick={() => handleDeleteRPS(item.id)}
                             disabled={isDeleting === item.id}
@@ -394,9 +473,13 @@ export default function RPSVersionHistoryPage({
                 <span className="text-white font-bold text-lg">💡</span>
               </div>
               <div>
-                <h4 className="font-bold text-blue-900 mb-2 text-sm">Informasi</h4>
+                <h4 className="font-bold text-blue-900 mb-2 text-sm">
+                  Informasi
+                </h4>
                 <p className="text-xs text-blue-800 leading-relaxed">
-                  Setiap versi RPS mewakili periode tahun ajaran dan semester yang berbeda. Anda dapat melihat detail, mengedit, atau menghapus versi RPS sesuai kebutuhan.
+                  Setiap versi RPS mewakili periode tahun ajaran dan semester
+                  yang berbeda. Anda dapat melihat detail, mengedit, atau
+                  menghapus versi RPS sesuai kebutuhan.
                 </p>
               </div>
             </div>
